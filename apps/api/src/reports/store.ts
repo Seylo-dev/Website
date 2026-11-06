@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { SQL } from "bun";
 import { randomToken, safeEqual, sha256Hex } from "../crypto";
 
 export const REPORT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -15,46 +15,43 @@ export interface CreatedReport extends StoredReport {
   deleteToken: string;
 }
 
-export function createReportStore(db: Database) {
-  const insert = db.prepare(`
-    INSERT INTO reports (id, delete_token_hash, body, created_at, expires_at)
-    VALUES ($id, $deleteTokenHash, $body, $createdAt, $expiresAt)
-  `);
-  const selectLive = db.prepare<StoredReport, { id: string; now: number }>(`
-    SELECT id, body, created_at AS createdAt, expires_at AS expiresAt
-    FROM reports WHERE id = $id AND expires_at > $now
-  `);
-  const selectTokenHash = db.prepare<{ hash: string }, { id: string }>(
-    "SELECT delete_token_hash AS hash FROM reports WHERE id = $id",
-  );
-  const remove = db.prepare("DELETE FROM reports WHERE id = $id");
-  const removeExpired = db.prepare("DELETE FROM reports WHERE expires_at <= $now");
+// The timestamps are BIGINT columns, which Postgres returns as strings.
+type ReportRow = { id: string; body: string; createdAt: number | string; expiresAt: number | string };
 
+export function createReportStore(sql: SQL) {
   return {
-    create(body: string, now = Date.now()): CreatedReport {
+    async create(body: string, now = Date.now()): Promise<CreatedReport> {
       // 128 random bits: the link is the only thing protecting a report, so it must not be guessable.
       const report = { id: randomToken(16), body, createdAt: now, expiresAt: now + REPORT_TTL_MS };
       const deleteToken = randomToken(24);
-      insert.run({ ...report, deleteTokenHash: sha256Hex(deleteToken) });
+      await sql`
+        INSERT INTO reports (id, delete_token_hash, body, created_at, expires_at)
+        VALUES (${report.id}, ${sha256Hex(deleteToken)}, ${report.body}, ${report.createdAt}, ${report.expiresAt})
+      `;
       return { ...report, deleteToken };
     },
 
     /** The report, or null when it never existed, was deleted or has expired. */
-    get(id: string, now = Date.now()): StoredReport | null {
-      return selectLive.get({ id, now });
+    async get(id: string, now = Date.now()): Promise<StoredReport | null> {
+      const [row] = await sql<ReportRow[]>`
+        SELECT id, body, created_at AS "createdAt", expires_at AS "expiresAt"
+        FROM reports WHERE id = ${id} AND expires_at > ${now}
+      `;
+      return row ? { ...row, createdAt: Number(row.createdAt), expiresAt: Number(row.expiresAt) } : null;
     },
 
     /** Deletes the report when the token matches. Returns false for an unknown id or wrong token. */
-    delete(id: string, deleteToken: string): boolean {
-      const row = selectTokenHash.get({ id });
+    async delete(id: string, deleteToken: string): Promise<boolean> {
+      const [row] = await sql<{ hash: string }[]>`SELECT delete_token_hash AS hash FROM reports WHERE id = ${id}`;
       if (!row || !safeEqual(row.hash, sha256Hex(deleteToken))) return false;
-      remove.run({ id });
+      await sql`DELETE FROM reports WHERE id = ${id}`;
       return true;
     },
 
     /** Removes expired reports. Reads already hide them; this just frees the space. */
-    purgeExpired(now = Date.now()): number {
-      return removeExpired.run({ now }).changes;
+    async purgeExpired(now = Date.now()): Promise<number> {
+      const result = await sql`DELETE FROM reports WHERE expires_at <= ${now}`;
+      return result.count;
     },
   };
 }

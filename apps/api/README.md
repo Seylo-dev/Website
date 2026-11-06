@@ -1,6 +1,7 @@
 # Site API (`apps/api`)
 
-Bun + Elysia, one SQLite file. Three jobs, all public and unauthenticated:
+Bun + Elysia, with Postgres in production and a SQLite file in dev. Three jobs, all public and
+unauthenticated:
 
 | Route | What |
 | --- | --- |
@@ -22,7 +23,30 @@ bun test
 bun run start    # what the Docker image runs: src/index.ts, no build step
 ```
 
-Settings are environment variables, all optional. See `.env.example`.
+Settings are environment variables, see `.env.example`. All are optional in dev; production needs
+`DATABASE_URL`.
+
+## Data
+
+Storage goes through Bun's built-in SQL client (`src/db.ts`), with one set of queries for two
+databases:
+
+- `DATABASE_URL=postgres://...` set: Postgres. On Easypanel, use the Postgres service's internal
+  connection URL (host `<project>_<service>`), not an exposed one. `sslmode` in the URL is honoured
+  (`?sslmode=require`). No volume: the container keeps nothing on disk.
+- unset, outside production: a SQLite file, `site.db` in `DATA_DIR` (`./data`), so dev needs nothing.
+- unset with `NODE_ENV=production` (the Docker image): the API refuses to start and says why.
+
+The tables are created at boot if they are missing. Timestamps are unix milliseconds in BIGINT
+columns, days are `YYYY-MM-DD` text, so the same SQL runs on both.
+
+`bun test` runs on SQLite in memory and needs nothing. To run the same tests on Postgres as well,
+point `SITE_API_PG_URL` at a server where the tests may create and drop throwaway databases:
+
+```bash
+docker run -d --name site-api-pg -e POSTGRES_PASSWORD=test -p 127.0.0.1:55432:5432 postgres:17-alpine
+SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
+```
 
 ## Where it sits
 
@@ -33,7 +57,9 @@ Settings are environment variables, all optional. See `.env.example`.
 
 ## Code map
 
-- `src/app.ts` builds the Elysia app (tests drive it with `app.handle()`); `src/index.ts` listens.
+- `src/app.ts` builds the Elysia app (tests drive it with `app.handle()`); `src/index.ts` opens the
+  database, listens, runs the hourly report sweep and shuts down cleanly on SIGTERM.
+- `src/db.ts`: the connection (Postgres or SQLite), the pool and the tables.
 - `src/telemetry/`, `src/reports/`, `src/installer/`: one folder per job, each with its routes and store.
 - `src/reports/redaction.ts`: the secret patterns a report is checked against. The agent redacts
   before upload; this is the second line of defence. Add a rule here with a test in

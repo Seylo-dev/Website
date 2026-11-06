@@ -12,7 +12,10 @@ export interface InstallerConfig {
 
 export interface Config {
   port: number;
-  /** Folder for the SQLite database. */
+  production: boolean;
+  /** Postgres connection URL. Required in production; without it, dev and tests use SQLite in `dataDir`. */
+  databaseUrl: string | null;
+  /** Folder for the SQLite file used when there is no DATABASE_URL. */
   dataDir: string;
   /** Public base URL that report links are built on, without a trailing slash: `https://seylo.dev/l`. */
   reportBaseUrl: string;
@@ -38,6 +41,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 
   return {
     port: Number(env.PORT ?? 4000),
+    production,
+    databaseUrl: env.DATABASE_URL?.trim() || null,
     dataDir: resolve(env.DATA_DIR ?? resolve(apiRoot, "data")),
     reportBaseUrl: `${siteUrl}/l`,
     trustProxy: env.TRUST_PROXY === "true",

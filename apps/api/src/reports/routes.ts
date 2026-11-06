@@ -43,7 +43,7 @@ export function reportRoutes({ store, trustProxy, reportBaseUrl }: ReportRoutesO
     )
     .post(
       "/l",
-      ({ body, set }) => {
+      async ({ body, set }) => {
         if (Buffer.byteLength(body) > MAX_REPORT_BYTES) {
           set.status = 413;
           return { error: "too_large", maxBytes: MAX_REPORT_BYTES };
@@ -63,7 +63,7 @@ export function reportRoutes({ store, trustProxy, reportBaseUrl }: ReportRoutesO
           };
         }
 
-        const report = store.create(body);
+        const report = await store.create(body);
         set.status = 201;
         return {
           id: report.id,
@@ -87,8 +87,8 @@ export function reportRoutes({ store, trustProxy, reportBaseUrl }: ReportRoutesO
     )
     .get(
       "/l/:id",
-      ({ params }) => {
-        const report = store.get(params.id);
+      async ({ params }) => {
+        const report = await store.get(params.id);
         return report
           ? new Response(renderReportPage(report), { headers: pageHeaders })
           : new Response(renderMissingReportPage(), { status: 404, headers: pageHeaders });
@@ -97,8 +97,8 @@ export function reportRoutes({ store, trustProxy, reportBaseUrl }: ReportRoutesO
     )
     .get(
       "/l/:id/raw",
-      ({ params }) => {
-        const report = store.get(params.id);
+      async ({ params }) => {
+        const report = await store.get(params.id);
         if (!report) return new Response("Not found\n", { status: 404 });
         return new Response(report.body, {
           headers: {
@@ -112,9 +112,9 @@ export function reportRoutes({ store, trustProxy, reportBaseUrl }: ReportRoutesO
     )
     .delete(
       "/l/:id",
-      ({ params, headers, set }) => {
+      async ({ params, headers, set }) => {
         const token = headers.authorization?.replace(/^Bearer /, "") ?? "";
-        if (!store.delete(params.id, token)) {
+        if (!(await store.delete(params.id, token))) {
           set.status = 404;
           return { error: "not_found" };
         }

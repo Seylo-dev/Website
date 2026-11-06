@@ -1,6 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { createInstallerSource } from "../src/installer/source";
-import { request, testApp } from "./helpers";
+import { closeTestDatabases, request, testApp } from "./helpers";
+
+afterAll(closeTestDatabases);
 
 const config = { releaseUrl: "https://example.test/install.sh", cacheSeconds: 60, localPath: null };
 
@@ -39,9 +41,9 @@ describe("installer source", () => {
 
   test("serves / on the install host and 503 with nothing to serve", async () => {
     const script = { get: async () => ({ script: "#!/bin/sh\n", origin: "release" as const }) };
-    const { app } = testApp({ installer: script });
+    const { app } = await testApp({ installer: script });
     const response = await app.handle(new Request("http://install.site.test/"));
     expect(await response.text()).toBe("#!/bin/sh\n");
-    expect((await testApp().app.handle(request("/install.sh"))).status).toBe(503);
+    expect((await (await testApp()).app.handle(request("/install.sh"))).status).toBe(503);
   });
 });

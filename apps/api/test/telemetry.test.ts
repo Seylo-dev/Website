@@ -1,5 +1,7 @@
-import { describe, expect, test } from "bun:test";
-import { request, testApp } from "./helpers";
+import { afterAll, describe, expect, test } from "bun:test";
+import { backends, closeTestDatabases, request, testApp } from "./helpers";
+
+afterAll(closeTestDatabases);
 
 const ping = (body: unknown, ip?: string) =>
   request("/telemetry", {
@@ -11,9 +13,9 @@ const ping = (body: unknown, ip?: string) =>
 
 const validPing = { installId: "inst_0123456789abcdef", version: "0.1.0", nodes: 3, services: 12 };
 
-describe("telemetry", () => {
+describe.each(backends)("telemetry ($name)", (backend) => {
   test("counts one row per install per day", async () => {
-    const { app } = testApp({ statsToken: "stats-secret" });
+    const { app } = await testApp({ statsToken: "stats-secret", backend });
     expect((await app.handle(ping(validPing))).status).toBe(204);
     expect((await app.handle(ping({ ...validPing, nodes: 4 }))).status).toBe(204);
     expect((await app.handle(ping({ ...validPing, installId: "inst_fedcba9876543210" }))).status).toBe(204);
@@ -28,21 +30,21 @@ describe("telemetry", () => {
   });
 
   test("rejects bad values", async () => {
-    const { app } = testApp();
+    const { app } = await testApp({ backend });
     expect((await app.handle(ping({ ...validPing, nodes: -1 }))).status).toBe(422);
     expect((await app.handle(ping({ ...validPing, installId: "short" }))).status).toBe(422);
   });
 
   test("summary needs the stats token", async () => {
-    expect((await testApp().app.handle(request("/telemetry/summary"))).status).toBe(404);
-    const { app } = testApp({ statsToken: "stats-secret" });
+    expect((await (await testApp({ backend })).app.handle(request("/telemetry/summary"))).status).toBe(404);
+    const { app } = await testApp({ statsToken: "stats-secret", backend });
     expect(
       (await app.handle(request("/telemetry/summary", { headers: { authorization: "Bearer wrong" } }))).status,
     ).toBe(401);
   });
 
   test("rate limits pings per client", async () => {
-    const { app } = testApp();
+    const { app } = await testApp({ backend });
     let last = 0;
     for (let i = 0; i < 61; i++) last = (await app.handle(ping(validPing, "198.51.100.9"))).status;
     expect(last).toBe(429);

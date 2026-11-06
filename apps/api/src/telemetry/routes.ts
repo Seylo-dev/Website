@@ -28,8 +28,8 @@ export function telemetryRoutes({ store, trustProxy, statsToken }: TelemetryRout
     )
     .post(
       "/telemetry",
-      ({ body, set }) => {
-        store.record(body);
+      async ({ body, set }) => {
+        await store.record(body);
         set.status = 204;
       },
       {
@@ -45,7 +45,7 @@ export function telemetryRoutes({ store, trustProxy, statsToken }: TelemetryRout
     )
     .get(
       "/telemetry/summary",
-      ({ headers, query, set }) => {
+      async ({ headers, query, set }) => {
         if (!statsToken) {
           set.status = 404;
           return "Not found";

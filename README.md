@@ -4,12 +4,12 @@ The repo behind [seylo.dev](https://seylo.dev): the landing page, the docs and t
 workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and the templates) lives in
 [Seylo-dev/App](https://github.com/Seylo-dev/App).
 
-| Folder                               | Stack               | Serves                                                    |
-| ------------------------------------ | ------------------- | --------------------------------------------------------- |
-| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4 | `seylo.dev`; proxies `seylo.dev/l/*` (reports) to the API |
-| [`apps/docs`](apps/docs)             | Next 16, Fumadocs   | `docs.seylo.dev`, with the API and CLI references         |
-| [`apps/api`](apps/api)               | Bun, Elysia, SQLite | `api.seylo.dev` (telemetry, reports), `install.seylo.dev` |
-| [`tools/hero-shot`](tools/hero-shot) | Playwright          | The landing's hero image, captured from a running panel   |
+| Folder                               | Stack                 | Serves                                                    |
+| ------------------------------------ | --------------------- | --------------------------------------------------------- |
+| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4   | `seylo.dev`; proxies `seylo.dev/l/*` (reports) to the API |
+| [`apps/docs`](apps/docs)             | Next 16, Fumadocs     | `docs.seylo.dev`, with the API and CLI references         |
+| [`apps/api`](apps/api)               | Bun, Elysia, Postgres | `api.seylo.dev` (telemetry, reports), `install.seylo.dev` |
+| [`tools/hero-shot`](tools/hero-shot) | Playwright            | The landing's hero image, captured from a running panel   |
 
 Names, domains and the GitHub repos come from [`brand/brand.json`](brand/brand.json).
 
@@ -35,14 +35,20 @@ Dockerfile:
 | ------- | ------------------------- | ------------------------------------ | ------------------------------------------- |
 | landing | `apps/landing/Dockerfile` | `seylo.dev`, `www.seylo.dev`         | a Redirect from `www.seylo.dev` to the apex |
 | docs    | `apps/docs/Dockerfile`    | `docs.seylo.dev`                     |                                             |
-| api     | `apps/api/Dockerfile`     | `api.seylo.dev`, `install.seylo.dev` | a volume mounted at `/data`                 |
+| api     | `apps/api/Dockerfile`     | `api.seylo.dev`, `install.seylo.dev` | `DATABASE_URL`, see below                   |
 
 The api image trusts proxy headers (`cf-connecting-ip`, `X-Forwarded-For`) for its rate limits, so the api must
 only be reachable through Cloudflare: limit the Easypanel host's ports 80 and 443 to Cloudflare's IP ranges (or
 use Authenticated Origin Pulls).
 
-Every image listens on port 80, Easypanel's default, so there is nothing to type in the domain's port. No env
-is needed. Optional:
+Every image listens on port 80, Easypanel's default, so there is nothing to type in the domain's port.
+
+The api keeps telemetry and reports in Postgres and needs no volume. Add a Postgres service to the same
+Easypanel project and set `DATABASE_URL` on the api to that service's internal connection URL
+(`postgres://...@<project>_<service>:5432/...`), not an exposed one, so the database never leaves the
+private network. The api creates its tables on first start, and refuses to start without `DATABASE_URL`.
+
+Nothing else is needed. Optional:
 
 - `STATS_TOKEN` on the api: enables `GET /telemetry/summary` (see `apps/api/.env.example` for the rest).
 - `SITE_API_URL` on the landing and `NEXT_PUBLIC_SITE_URL` on the docs, only if the domains change. They are
