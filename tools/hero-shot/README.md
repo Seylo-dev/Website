@@ -5,7 +5,7 @@ projects with running services), taken with Playwright from a running panel. The
 frame in `apps/landing/components/product-shot.tsx`.
 
 ```bash
-bun install
+bun install              # once, at the repo root (this folder is a workspace)
 ./stage.sh               # demo projects + load on the nodes (once; then let it run for an hour)
 bun run capture.ts       # -> out/dashboard.png and apps/landing/public/product/dashboard.webp
 bun run preview.ts       # landing hero at 1440x900 and 390x844 -> out/hero-*.png

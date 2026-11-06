@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "tools/*"
   ],
   "scripts": {
     "dev": "concurrently -n api,landing,docs -c blue,magenta,green \"bun run dev:api\" \"bun run dev:landing\" \"bun run dev:docs\"",

@@ -1,0 +1,156 @@
+---
+title: GitLab, Gitea and Bitbucket
+description: Connect GitLab, Gitea or Forgejo and Bitbucket Cloud with an access token, deploy on push through a webhook the panel creates, preview merge requests and post commit statuses.
+---
+
+<Callout title="New in 0.2">
+Available from Seylo 0.2, which is not released yet. On 0.1, deploy from these hosts with the **Git** source and the [deploy trigger URL](/guides/github-and-git#deploy-trigger-url).
+</Callout>
+
+Besides [GitHub](/guides/github-and-git), the panel connects natively to:
+
+| Provider | Which servers |
+| --- | --- |
+| **GitLab** | gitlab.com, or your own GitLab, also under a path (`https://example.com/gitlab`) |
+| **Gitea** | Any Gitea or Forgejo server at an `https://` address |
+| **Bitbucket** | Bitbucket Cloud, one workspace per connection |
+
+A connection holds one access token. With it the panel lists repositories and branches, clones private ones, creates a webhook on each repository you connect, previews merge and pull requests and, if you want, posts commit statuses. The token is stored encrypted, never shown again, and only ever sent to the connection's own host.
+
+## Create a token
+
+Create the token on the provider first. It needs:
+
+<Tabs items={["GitLab", "Gitea and Forgejo", "Bitbucket"]}>
+<Tab value="GitLab">
+
+A personal, group or project access token with the `api` scope. `api` covers reading the code, creating the webhook and posting statuses. Creating a webhook needs the Maintainer role on the project, so a group or project token needs that role, and a personal token's user needs it on every project you connect.
+
+Personal tokens: **User settings → Access tokens**. Group and project tokens: **Settings → Access tokens** on the group or project.
+
+</Tab>
+<Tab value="Gitea and Forgejo">
+
+An access token with these scopes:
+
+- **repository**: read and write. Write is what creates the webhook and posts statuses.
+- **user**: read. The panel checks who the token belongs to, and lists the repositories that user can see.
+
+Create it under **Settings → Applications** on the Gitea or Forgejo server.
+
+</Tab>
+<Tab value="Bitbucket">
+
+A workspace access token with these permissions:
+
+- **Repositories: Read**
+- **Webhooks: Read and write**
+- **Pull requests: Read**
+
+Create it in the workspace's settings, under **Access tokens**. Project and repository access tokens work too; they only see their own repositories.
+
+An app password with the same permissions and your Bitbucket user name also works. Atlassian is retiring app passwords, so prefer an access token. Atlassian's newer API tokens are not supported yet.
+
+</Tab>
+</Tabs>
+
+## Add the connection
+
+**Settings → Git providers → Add a connection**:
+
+| Field | What it is |
+| --- | --- |
+| **Provider** | **GitLab**, **Gitea or Forgejo**, or **Bitbucket** |
+| **Name** | How it shows up in the Source tab, for example `Company GitLab` |
+| **Address** | GitLab and Gitea: the server's `https://` address. GitLab starts with `https://gitlab.com`. |
+| **Workspace** | Bitbucket: the workspace whose repositories it lists |
+| **Sign in with** | Bitbucket: **Access token** or **App password** (with your **Bitbucket user name**) |
+| **Token** | The token from the step above |
+| **Post commit statuses** | Show each deploy as a check on the commit, see [Commit statuses](#commit-statuses). On by default. |
+
+**Check and save** asks the provider whether the token works before it is stored, and shows who it acts as (**Connected as ...**). In the browser, saving a token needs a sign-in from the last 15 minutes, otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first.
+
+**Connections** lists each one with its host, the account it acts as (**Acts as**), how many services use it, and a **Statuses** switch. **Check** asks the provider again, for example after the token expired. Replacing a token or renaming a connection is done through the API for now (`gitProviders.update`, see the [API reference](/api-reference)); the kind, address and workspace never change. **Delete** removes the connection and its token, and is refused while a service still uses it.
+
+Connections are panel-wide: owners and admins manage them (the **Manage GitLab, Gitea and Bitbucket connections** action). Everyone signed in sees their names and hosts, never the token. Browsing a connection's repositories needs permission to create services in the project, and connecting one needs permission to change the service. A member can only attach a connection to a project when they may manage connections, or when a service of that project already uses it.
+
+## Connect a repository
+
+On an app's **Source** tab, pick **GitLab**, **Gitea** or **Bitbucket**, then:
+
+1. **Connection**: one of the connections of that provider. Without one, the tab links to **Add a connection**.
+2. **Repository**: search the repositories the token can read, most recently active first. Private and empty ones are marked.
+3. **Branch**: the branch to deploy. It starts on the repository's default branch.
+4. **Root directory**: a folder inside the repository to build, for monorepos. Empty is the root.
+5. **Deploy on push**: deploy every push to the branch.
+
+**Connect repository** checks that the connection can read the repository, sets the source and creates the webhook. The next deploy builds it with the builder from the **Build** section, like any git source (see [Builders](/guides/github-and-git#builders)).
+
+The build node clones over HTTPS with the connection's token, and its git only offers the token to the connection's host. Bitbucket clones need a 0.2 agent on the build node: older agents clone with the wrong user name.
+
+## The webhook
+
+Each connected service gets its own webhook on the repository, with its own secret, for pushes and merge or pull requests. Its address is `https://<panel>/api/hooks/<provider>/<id>`. The **Webhook** part of the Source tab shows where it points and when it last delivered.
+
+Where it points:
+
+- At the panel domain (**Settings → General**), when there is one.
+- Otherwise at the address you opened the panel at when you connected the repository. That works for a Gitea or GitLab server on the same network.
+- GitLab sends the webhook's secret itself with every delivery, so a GitLab webhook is only created at an `https://` address. Without a panel domain, the Source tab says so and pushes are found by polling until you set one.
+- Gitea and Bitbucket sign each delivery, so they may use a plain `http://` address. The Source tab warns that deliveries then travel unencrypted.
+
+Once an hour the panel moves webhooks to the current panel domain and tries again to create the ones the provider refused. **Create webhook again** does both at once, with a new secret. When you switch the service to another source or delete it, the panel removes its webhook from the provider.
+
+### Deliveries
+
+Every delivery is checked before anything in it is read, comparing in constant time:
+
+| Provider | Check |
+| --- | --- |
+| GitLab | The `X-Gitlab-Token` header must be the webhook's secret |
+| Gitea, Forgejo | `X-Gitea-Signature` or `X-Forgejo-Signature`: HMAC-SHA256 of the body with the secret |
+| Bitbucket | `X-Hub-Signature`: `sha256=` and the HMAC-SHA256 of the body |
+
+A delivery needs the provider's delivery id. The same body sent again under another id within 3 days is refused as a replay, and an id already handled is ignored. Each webhook takes 20 deliveries at once, then one every 3 seconds; more get `429` with `Retry-After`. Bodies over 5 MiB are refused.
+
+**Recent deliveries** on the Source tab lists every delivery with what it did and why, refused ones included. **Retry failed** only works for GitHub; for the others, redeliver from the provider's webhook settings.
+
+## Deploy on push
+
+A push to the deployed branch deploys the branch head that the provider's API reports, never a commit taken from the payload alone. So a leaked GitLab secret can at most start a deploy of what is already on the branch.
+
+- A head commit message with `[skip ci]`, `[ci skip]`, `[skip cd]` or `[cd skip]` does not deploy.
+- [Watch paths](/guides/watch-paths) can limit deploys to pushes that touch certain files.
+- A push while an earlier push deploy is still queued joins it: that deploy builds the newer head, and the delivery says **A deploy was already queued**. So at most one push deploy waits behind the running one.
+
+The panel also polls the branch head, to catch missed deliveries: every minute while the service has no working webhook, every 5 minutes while it has one, and not at all while the webhook delivered within the last 5 minutes.
+
+## Merge and pull request previews
+
+The **Previews** tab works with these sources too: every open GitLab merge request or Gitea or Bitbucket pull request against the deployed branch gets its own preview, deployed on each push and removed when it closes. See [Pull request previews](/guides/github-and-git#pull-request-previews) for the settings and the shared-environment warning.
+
+- Previews come from the webhook's merge and pull request events, so they need a working webhook.
+- The panel reads each request from the provider's API (its state, head and target branch), not from the payload.
+- Requests from forks are not previewed. A title with `[skip ci]` or one of the other markers above is skipped.
+- Watch paths do not apply to previews: every push to an open request deploys its preview.
+
+## Commit statuses
+
+With **Post commit statuses** on, each deploy of a connected service shows as a check named `seylo/<service>` on its commit, and so on the merge or pull request:
+
+| State | Shown as |
+| --- | --- |
+| Queued | Deploy queued |
+| Building or rolling out | Building and deploying |
+| Live | Deployed |
+| Failed | Deploy failed |
+| Cancelled | Deploy cancelled |
+
+A commit whose queued deploy a newer push took over shows **Superseded by a newer push**. The texts are fixed and never include the deploy's error, since everyone who can see the repository sees them. With a panel domain, each status links to the service's deployments in the panel. Bitbucket requires that link, so Bitbucket statuses need a panel domain.
+
+## Limits
+
+- Bitbucket Cloud only, not Bitbucket Data Center.
+- The provider's certificate must come from a certificate authority the panel and the build nodes trust (the usual public ones). Servers with self-signed certificates do not work yet.
+- Compose stacks cannot deploy from a provider repository yet: use the **Git** source of the stack.
+- The provider's address may be a private one (a server on your network). Cloud metadata addresses and names that do not resolve are refused, and the panel follows no redirects from the provider's API.

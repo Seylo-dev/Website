@@ -1,0 +1,68 @@
+---
+title: Docker cleanup
+description: Free disk space on a node by hand, on a schedule or when a disk fills up. Only what Seylo created is ever removed.
+---
+
+Old images, build cache and stopped containers pile up on a node with every deploy. Seylo removes them in three ways:
+
+- **By hand**, on one node, with a preview first.
+- **On a schedule** the node runs by itself (from 0.2).
+- **When a disk is fuller than a line you set** (from 0.2).
+
+Every way only touches images, caches, containers, volumes and folders that Seylo created (labelled `seylo.managed`). Everything else on the machine, including other tools' images and Wings' game servers, is left alone. Cleaning the whole machine is not offered on purpose.
+
+## Clean up now
+
+**Settings → Docker cleanup** frees disk space on one node. Pick the **Node** and what to clean, **Preview** the list with sizes, then **Clean up**:
+
+| What | Notes |
+| --- | --- |
+| **Unused images** | Images no service needs any more. The newest images of each service, which rollbacks use, stay. |
+| **Build cache** | Cached build layers; the next build of each app is slower |
+| **Stopped containers** | Old containers left after deploys |
+| **Orphaned service data** | Data folders of services removed without deleting their data. Deleted for good. |
+
+## Clean up on a schedule or a full disk
+
+<Callout title="New in 0.2">
+Available from Seylo 0.2, which is not released yet, and needs a 0.2 agent on the node. The **Cleanup** view says so when a node's agent is too old.
+</Callout>
+
+On **Nodes**, open a node and its **Cleanup** view. **Scheduled cleanup** sets what the node does by itself:
+
+| Setting | What it does |
+| --- | --- |
+| **Clean up on its own** | Off until you turn it on |
+| **On a schedule** | A five-field **Cron expression** (minute, hour, day, month, weekday) in the node's own time zone, which the view names. It starts at `0 4 * * *`: every day at 04:00. **Next run** shows when it fires next. |
+| **When a disk is fuller than** | A percentage between 50 and 99, 80 to start with. The disk that holds the node's data (`/var/lib/seylo`) and Docker's disk are checked every 10 minutes; when the fuller one passes the line, the node cleans up. |
+| **What to remove** | **Old images** (past the newest 3 per service; the ones in use always stay), **Build cache** (what this panel's builders cached), **Stopped containers** (finished jobs, old generations, removed services) and **Unused volumes** |
+
+Turn on either trigger or both, then **Save schedule**.
+
+<Callout type="warn" title="Unused volumes">
+**Unused volumes** removes the Docker volumes and data folders of services removed from this node. Once cleaned up, that data is gone for good. It is off unless you tick it.
+</Callout>
+
+### How it runs
+
+- The node keeps the schedule with the rest of its settings and runs it itself, so it fires while the panel is down and after the agent restarts.
+- One cleanup runs at a time. A run the node missed while its agent was down is not caught up; a run more than 5 minutes late (after a clock jump or a suspended machine) is skipped, like [cron jobs](/guides/cron-jobs).
+- The disk trigger runs at most once an hour, and while the disk stays above the line, once every 6 hours.
+- The cron expression is read by the node, which does not take `L`, `W` or `#`, or `7` for Sunday (also not as the end of a range like `1-7` or `MON-SUN`; write `1-6,0`). The panel refuses those when you save. `@daily` and the other shortcuts work.
+
+Saving a schedule needs permission to manage nodes (owners and admins). AI tools need a person's approval to change it, since a schedule deletes things.
+
+### Recent cleanups
+
+Below the schedule, **Recent cleanups** lists the node's cleanups, newest first: scheduled ones (**Schedule**), disk-triggered ones (**Disk 87%**, with the disk's use when it started) and the ones run by hand from **Settings → Docker cleanup** (**Manual** and who ran it). Each shows whether it was **Done** or **Failed**, the space it freed and how many items it removed; **What it removed** lists them (up to 200 lines). The header adds up what the kept runs freed in the last 30 days. The panel keeps the newest 100 runs per node.
+
+## Alerts
+
+Two alert events follow cleanups the node runs by itself (see [Alerts and notifications](/features/notifications)):
+
+| Event | When |
+| --- | --- |
+| **Cleanup ran** | A node cleaned up by itself, on its schedule or a full disk. Off by default. |
+| **Cleanup failed** | A scheduled or disk-triggered cleanup did not finish |
+
+The **Disk above 85%** alert is separate: every node raises it when its data or Docker disk passes 85%, whether cleanup is on or not. A disk trigger below 85% usually cleans up before that alert comes.

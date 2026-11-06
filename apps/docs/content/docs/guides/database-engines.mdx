@@ -1,0 +1,111 @@
+---
+title: Database engines
+description: Every engine Seylo runs, with versions, connection strings, web UIs, shells, backups and limits. Postgres 18, pgvector, Valkey, KeyDB, Dragonfly and ClickHouse come in 0.2.
+---
+
+How to create, connect, expose and back up a database is the same for every engine; see [Databases](/guides/databases). This page is what differs per engine.
+
+<Callout title="New in 0.2">
+Postgres 18, pgvector, Valkey, KeyDB, Dragonfly and ClickHouse are available from Seylo 0.2, which is not released yet. Valkey, KeyDB, Dragonfly and ClickHouse also need a 0.2 agent on the node: the panel refuses to create, move or clone them onto a node with an older agent, and says the node must be updated first.
+</Callout>
+
+## Engines and versions
+
+Every image is pinned to an exact release, so a redeploy runs the same bytes. The newest version is the default.
+
+| Engine | Versions | Port | Web UI | Shell |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | 18 (0.2), 17, 16, 15 | 5432 | pgweb | `psql` |
+| PostgreSQL with pgvector (0.2) | 18, 17, 16, 15 | 5432 | pgweb | `psql` |
+| MySQL | 8.4, 8.0 | 3306 | phpMyAdmin | `mysql` |
+| MariaDB | 11.8, 11.4, 10.11 | 3306 | phpMyAdmin | `mariadb` |
+| MongoDB | 8.0, 7.0 | 27017 | mongo-express | `mongosh` |
+| Redis | 8.2, 7.4 | 6379 | Redis Commander | `redis-cli` |
+| Valkey (0.2) | 9.1, 9.0, 8.1 | 6379 | Redis Commander | `valkey-cli` |
+| KeyDB (0.2) | 6.3 | 6379 | Redis Commander | `keydb-cli` |
+| Dragonfly (0.2) | 2.0 | 6379 | Redis Commander | `redis-cli` |
+| ClickHouse (0.2) | 26.8, 26.3 | 9000 (native), 8123 (HTTP) | ClickHouse's Play page | `clickhouse-client` |
+
+The **New database** form lists them with their versions. Through the API, `databases.engines` returns the same list with the exact images (see the [API reference](/api-reference)).
+
+## Connection strings
+
+The **Connection** tab shows each part and the full URL, and `${{db.INTERNAL_URL}}` hands it to an app (see [Environment variables](/guides/environment-variables#built-in-variables)). The shapes, for a database service called `db`:
+
+| Engine | Internal URL |
+| --- | --- |
+| PostgreSQL | `postgresql://postgres:<password>@db:5432/<database>` |
+| MySQL, MariaDB | `mysql://root:<password>@db:3306/<database>` |
+| MongoDB | `mongodb://root:<password>@db:27017/<database>?authSource=admin` |
+| Redis, Valkey, KeyDB, Dragonfly | `redis://default:<password>@db:6379` |
+| ClickHouse | `clickhouse://<user>:<password>@db:9000/<database>` |
+
+These are the default users; a database created through the API or a template may name its own. The database name defaults to the service name with `-` turned into `_` (`shop-db` becomes `shop_db`). The Redis-like engines have no database name.
+
+Exposed with TLS, the URL points at the node's address or the **TLS host name** and adds what the driver needs:
+
+| Engine | Exposed URL |
+| --- | --- |
+| PostgreSQL | `postgresql://<exposed user>:<password>@<host>:<port>/<database>?sslmode=require` |
+| MySQL, MariaDB | `mysql://<exposed user>:<password>@<host>:<port>/<database>?ssl-mode=REQUIRED` |
+| MongoDB | `mongodb://<exposed user>:<password>@<host>:<port>/<database>?authSource=admin&tls=true`, plus `&tlsAllowInvalidCertificates=true` with a self-signed certificate |
+| Redis, Valkey, KeyDB, Dragonfly | `rediss://default:<password>@<host>:<port>` |
+| ClickHouse | `clickhouse://<exposed user>:<password>@<host>:<port>/<database>?secure=true`, plus `&skip_verify=true` with a self-signed certificate |
+
+With a self-signed certificate, Redis-like clients must skip verification themselves, for example `redis-cli --tls --insecure`.
+
+## PostgreSQL
+
+- **Postgres 18** is the default from 0.2. Its image keeps the data under `/var/lib/postgresql/18/docker`, so the data volume is mounted at `/var/lib/postgresql`; 15 to 17 keep it at `/var/lib/postgresql/data`. That matters when you browse the volume with **Files**.
+- **pgvector**: tick **Include pgvector** in the **New database** form. The database runs the `pgvector/pgvector` image of the same major version. The extension is installed but not turned on: run this once in each database that uses it (the **Connection** tab reminds you):
+
+  ```sql
+  CREATE EXTENSION vector;
+  ```
+
+  The pgvector images are Debian-based and the plain ones Alpine, so their data is not interchangeable: an existing database cannot switch to or from pgvector. Create a new one and restore a dump into it.
+
+## Valkey, KeyDB and Dragonfly
+
+They speak the Redis protocol, so Redis clients and drivers work unchanged. Like Redis, each has one user, `default`, with the generated password. Exposing one uses that same user over TLS (`rediss://`); the internal URL stays as it is.
+
+- **Valkey** is the open-source fork of Redis that keeps getting releases. It runs with append-only persistence, like Redis.
+- **KeyDB** has had no release since 6.3.4 (2023) and gets no security fixes, including the 2025 Redis Lua scripting advisories (CVE-2025-49844 and three more). The form says so, and the panel only exposes it to the **Allowed IPs** you list, never to every address. Prefer Valkey for anything new. KeyDB publishes no multi-arch version tag, so it is pinned by digest.
+- **Dragonfly** has no append-only file: it saves a snapshot every 5 minutes and when it stops. A crash loses up to the last 5 minutes of writes. Only Dragonfly 2.0 is offered.
+
+## ClickHouse
+
+- The admin user is generated (`ch_` and 10 letters and digits) with full access management, so it can create the exposed user.
+- Besides the native protocol on port 9000, the HTTP interface on 8123 is available inside the project. Its URL is on the **Connection** tab (**HTTP URL**, **HTTP port**) and in `${{db.INTERNAL_HTTP_URL}}` and `${{db.INTERNAL_HTTP_PORT}}`: `http://<user>:<password>@db:8123/<database>`.
+- Only the native port is exposed, with TLS from the node's agent (`clickhouse-client --secure`). The HTTP port is never exposed, so HTTP clients reach ClickHouse only from the same node.
+- The web UI is ClickHouse's own **Play** page, already signed in as the admin. Requests that carry credentials of their own (`user`, `password` or `quota_key` parameters) are refused.
+- The exposed user gets full access to the database, and must use TLS.
+
+## Backups and restores
+
+Backups run in a helper container from the database's own image and go straight to your bucket (see [Backups](/guides/backups)):
+
+| Engine | Backup | Restore |
+| --- | --- | --- |
+| PostgreSQL | `pg_dump` (or `pg_dumpall`) | `pg_restore` or `psql` |
+| MySQL, MariaDB | `mysqldump` or `mariadb-dump` | `mysql` |
+| MongoDB | `mongodump` | `mongorestore` |
+| Redis, Valkey, KeyDB | An RDB snapshot (`redis-cli`, `valkey-cli` or `keydb-cli --rdb`) | The RDB file is swapped in |
+| Dragonfly | `SAVE RDB` into its data folder, then streamed out | The RDB file is swapped in |
+| ClickHouse | `BACKUP` of every database except the system ones, as a zip in its data folder, then streamed out | `RESTORE`, see below |
+
+A restore of the Redis-like engines also replaces the append-only files. The ones it replaced stay next to them as `<name>.before-restore-<time>`, as one undo; the next restore deletes them.
+
+A ClickHouse restore replaces the databases the backup holds, like `pg_dumpall --clean`:
+
+1. Each of those databases is renamed aside to `<name>__seylo_pre_restore_<time>`.
+2. `RESTORE` runs.
+3. Once it succeeds, the renamed copies are dropped. If it fails, whatever it created is dropped and the copies get their names back, so the databases are as they were.
+
+While it runs the disk holds both copies. A database that cannot be renamed (one not on ClickHouse's default Atomic engine) stops the restore before anything changes. If putting the copies back fails too (the server went down), they stay under their `__seylo_pre_restore_` names and the restore's error says so. Users and grants in the backup are not restored over existing ones.
+
+## Limits
+
+- No engine changes its major version, or switches to or from pgvector, in place. Create a new database and restore a dump into it.
+- **Reset password** changes the password inside the running database, except for ClickHouse and Dragonfly, which read it from their environment when they start: a reset restarts them.
+- Exposure on the Redis-like engines, MongoDB and ClickHouse's native port goes through TLS from the node's agent. Postgres, MySQL and MariaDB serve TLS themselves. MariaDB always presents its own self-signed certificate.

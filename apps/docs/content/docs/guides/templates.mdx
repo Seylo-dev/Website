@@ -16,6 +16,8 @@ Before anything is created the dialog lists the exact services, ports and domain
 
 Installed templates are ordinary services afterwards: change them like anything else. There is no link back to the template.
 
+From 0.2, the **Docker Hub** tab next to the catalog sets up any single image from Docker Hub the same way; see [Deploy from Docker Hub](/guides/docker-hub).
+
 ## Template format
 
 Templates use the same shape as Easypanel's: a folder with two files.
@@ -83,7 +85,7 @@ export function generate(input: { serviceName: string; image: string }) {
 Service types:
 
 - `app`: an image with `env`, `domains`, volume and file `mounts`, extra ports and an optional `deploy.command`, which replaces the image's entrypoint and runs in `/bin/sh -c`.
-- `postgres`, `mysql`, `mariadb`, `mongo`, `redis`: a database with optional `version`, `database`, `user` and `password`, created like any database, with web UI, shell and backups.
+- `postgres`, `mysql`, `mariadb`, `mongo`, `redis`, and from 0.2 `valkey`, `keydb`, `dragonfly` and `clickhouse`: a database with optional `version`, `database`, `user` and `password`, created like any database, with web UI, shell and backups. From 0.2, `variant: "pgvector"` on a `postgres` database picks the image with the vector extension.
 
 `~templates-utils` gives:
 
@@ -96,7 +98,7 @@ Service types:
 | `ref(service, VARIABLE)` | A `${{service.VARIABLE}}` reference the panel resolves on every deploy, so a reset database password reaches the app |
 | `PRIMARY_DOMAIN` | The node's automatic domain |
 
-Databases offer `INTERNAL_URL`, `INTERNAL_HOST`, `INTERNAL_PORT`, `USER`, `PASSWORD` and `DATABASE`; apps offer `URL`, `DOMAIN` and `INTERNAL_URL`.
+Databases offer `INTERNAL_URL`, `INTERNAL_HOST`, `INTERNAL_PORT`, `USER`, `PASSWORD` and `DATABASE` (`clickhouse` also `INTERNAL_HTTP_URL` and `INTERNAL_HTTP_PORT`); apps offer `URL`, `DOMAIN` and `INTERNAL_URL`.
 
 ### Porting from Easypanel
 

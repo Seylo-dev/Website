@@ -7,12 +7,15 @@ WORKDIR /src
 COPY . .
 ARG NEXT_PUBLIC_SITE_URL=https://docs.seylo.dev
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN bun install --frozen-lockfile --filter @seylo-site/docs && bun run --cwd apps/docs build
+# public/ does not exist yet: mkdir keeps the COPY below working until it does.
+RUN bun install --frozen-lockfile --filter @seylo-site/docs && bun run --cwd apps/docs build \
+  && mkdir -p apps/docs/public
 
 FROM node:24.22.1-slim
 WORKDIR /app
 COPY --from=build --chown=node:node /src/apps/docs/.next/standalone ./
 COPY --from=build --chown=node:node /src/apps/docs/.next/static apps/docs/.next/static
+COPY --from=build --chown=node:node /src/apps/docs/public apps/docs/public
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=80
 USER node
 EXPOSE 80

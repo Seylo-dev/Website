@@ -1,0 +1,107 @@
+---
+title: Clone and move between projects
+description: Copy a service with its settings and optionally its data into any project and node, or move a service to another project with its references, network and access.
+---
+
+<Callout title="New in 0.2">
+Available from Seylo 0.2, which is not released yet. Moving a running service to another project without restarting its containers also needs a 0.2 agent on its node.
+</Callout>
+
+Both live in the **More actions** menu (the `...` button) in a service's header: **Clone** and **Move to project**. To move a service to another node instead, see [Moving services](/guides/moving-services).
+
+## Clone a service
+
+**Clone** makes a new service with the same settings, in the same or another project and on any node. Pick:
+
+| Field | What it does |
+| --- | --- |
+| **Project** | Where the clone goes. The service's own project by default. |
+| **Node** | Where it runs. The service's node by default. |
+| **Name** | `<name>-copy` by default (`-copy-2` and so on when that is taken), free in the target project |
+
+The dialog lists what comes along before anything is created.
+
+### What a clone gets
+
+- **Copied**: the source (repository, image, Dockerfile or the newest upload), build settings, container settings and ports, health check, resources, crash policy, deploy strategy, replicas, notes, and a database's or Box's settings.
+- **Volumes**: the same volumes, empty or with a copy of the data, see [Copy the data](#copy-the-data).
+- **Environment variables and config files**: copied when you can read them on the source and may edit them in the target project. Otherwise they stay behind and the dialog says so; the clone starts without any.
+- **A domain**: tick **Add the automatic domain** for the target node's automatic domain (`<name>.<wildcard>`), with the main domain's access rules (basic auth, IP allowlist, rate limit, redirects) when it has any.
+- **Not copied**: domains, deploy history, cron jobs, backups, alerts, uptime checks, deploy triggers, tunnels, exposed ports, maintenance pages and sharing.
+
+**Deploy on push** and previews are off on the clone, so a push does not deploy two services. Turn them on in the clone's **Source** and **Previews** tabs when you want them.
+
+### References in the copied variables
+
+Variables that named the source itself now name the clone: `${{web.API_KEY}}` in a service called `web` becomes `${{web-copy.API_KEY}}`, and so do host names like `web:3000` or `http://web/`. A value that is only the name (`web`) is kept as it is and listed.
+
+In another project, the dialog also lists the variables that point at nothing there (**points at nothing there**) or at a different service of the same name (**points at the target project's**). Fix those in the clone's **Environment** tab before you start it.
+
+### Copy the data
+
+Under **Volumes**, pick **Start empty** or **Copy data**. A copy reads every volume on the source's node and writes it into the clone's folders on its node, through the panel, so it works across nodes.
+
+- **Stop the service while its data is copied** is ticked by default, for a consistent copy. The source starts again when the copy ends. Files copied from a running service may be inconsistent.
+- A database always stops for its copy and starts again afterwards, because a running database's files are not a usable copy.
+- While it runs, the clone's header shows **Copying the data of ...** with the size so far. Until it is done, neither the clone nor a source the copy stopped can deploy or start, and neither the clone nor its source can move to another node. A second copy from the same source is refused until the first ends.
+- A failed copy says why under the header. The clone keeps what arrived and can still start.
+
+A database clone that starts empty gets new passwords. One with a copy of the data keeps the source's logins, since they are in the data.
+
+### Start the clone
+
+The clone is created stopped and is not deployed. Check its settings, then click **Start**: the first start deploys it (that needs permission to deploy).
+
+### What can be cloned
+
+Apps, cron services, databases, Boxes, and compose members, which become standalone apps (their references to the other members of their stack only work in the same project). Compose stacks as a whole and the panel's own service cannot be cloned. Valkey, KeyDB, Dragonfly and ClickHouse clones need a 0.2 agent on the target node.
+
+### Permissions
+
+A clone needs permission to view the source and to create services in the target project. Each extra needs its own:
+
+| What | Needs |
+| --- | --- |
+| Environment variables | Read them on the source, edit them in the target project |
+| Config files | The same, plus changing files in the target project |
+| Volume data | Reading the source's files |
+| A database's data | Seeing its credentials, and stopping it |
+| The automatic domain | Editing domains in the target project; for the access rules, also viewing domains on the source |
+
+When the source deploys with a git credential, a registry login, a GitHub App installation or a git provider connection, you must also be allowed to use it in the target project: you may manage it, or a service of that project already uses it.
+
+## Move a service to another project
+
+**Move to project** re-homes a service: it joins the new project's private network and gets the new project's shared variables, its `${{name.VAR}}` references and its host name now resolve in the new project, and access follows the new project. It stays on its node, with its domains, volumes and deploy history.
+
+Pick the **New project**. Before anything changes, the dialog lists what the move changes:
+
+- services of the old project that reference it or use its host name: **they lose access to it**,
+- services of the new project that already use its name: they **start reaching it**,
+- its own variables that change meaning: they **will point at nothing** or at the new project's service of that name,
+- shared variables of the old project it stops receiving,
+- people who lose their access to it: shares on the service itself are removed,
+- pending invites that no longer cover it.
+
+Services and names you cannot see are counted, not named. When the list has anything in it, tick **I have read what changes**, then **Move**.
+
+### What happens
+
+- **A running service** switches networks like a deploy, without a rebuild: its running containers join the new project's network, pass their health check there, traffic switches to them, and they leave the old network. On 0.2 agents the containers keep running; older agents start new ones, so databases restart once. The **Deployments** tab shows it as a deployment started by **move**. If the switch fails, the service goes back to the old project, with its shares and invite entries.
+- **A stopped or never-deployed service** changes project at once.
+
+### What blocks a move
+
+| Blocker | What to do |
+| --- | --- |
+| A compose stack or one of its members | Not supported yet |
+| The panel's own service, or a preview service | Cannot move |
+| Open previews | Close them first, or turn previews off |
+| The new project already has a service with that name | Rename one of them |
+| A deploy is running, or a clone is copying its data | Wait until it ends |
+| A service of the new project uses its name for more than an address (a password or one of its own variables) | That reference was written while nothing had the name, so nobody checked who may read it. Remove it first. |
+| You lack access | See below |
+
+A move needs every action on the service (the new project may give you more than you hold now), permission to create services in the new project, and, like a clone, the right to use its git credential, registry login, GitHub App installation or git provider connection there. The panel answers `403 FORBIDDEN` otherwise.
+
+Through the API, `services.moveProjectImpact` returns the same list as the dialog, and `services.moveProject` needs `confirm: true` when it lists anything (see the [API reference](/api-reference)). AI tools need a person's approval for a move, since others lose access.

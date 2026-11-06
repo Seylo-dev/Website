@@ -4,12 +4,12 @@ The repo behind [seylo.dev](https://seylo.dev): the landing page, the docs and t
 workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and the templates) lives in
 [Seylo-dev/App](https://github.com/Seylo-dev/App).
 
-| Folder                               | Stack                    | Serves                                                    |
-| ------------------------------------ | ------------------------ | --------------------------------------------------------- |
-| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4      | `seylo.dev`; proxies `seylo.dev/l/*` (reports) to the API |
-| [`apps/docs`](apps/docs)             | Next 16, Fumadocs        | `docs.seylo.dev`, with the API and CLI references         |
-| [`apps/api`](apps/api)               | Bun, Elysia, SQLite      | `api.seylo.dev` (telemetry, reports), `install.seylo.dev` |
-| [`tools/hero-shot`](tools/hero-shot) | Playwright (own install) | The landing's hero image, captured from a running panel   |
+| Folder                               | Stack               | Serves                                                    |
+| ------------------------------------ | ------------------- | --------------------------------------------------------- |
+| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4 | `seylo.dev`; proxies `seylo.dev/l/*` (reports) to the API |
+| [`apps/docs`](apps/docs)             | Next 16, Fumadocs   | `docs.seylo.dev`, with the API and CLI references         |
+| [`apps/api`](apps/api)               | Bun, Elysia, SQLite | `api.seylo.dev` (telemetry, reports), `install.seylo.dev` |
+| [`tools/hero-shot`](tools/hero-shot) | Playwright          | The landing's hero image, captured from a running panel   |
 
 Names, domains and the GitHub repos come from [`brand/brand.json`](brand/brand.json).
 
@@ -36,6 +36,10 @@ Dockerfile:
 | landing | `apps/landing/Dockerfile` | `seylo.dev`, `www.seylo.dev`         | a Redirect from `www.seylo.dev` to the apex |
 | docs    | `apps/docs/Dockerfile`    | `docs.seylo.dev`                     |                                             |
 | api     | `apps/api/Dockerfile`     | `api.seylo.dev`, `install.seylo.dev` | a volume mounted at `/data`                 |
+
+The api image trusts proxy headers (`cf-connecting-ip`, `X-Forwarded-For`) for its rate limits, so the api must
+only be reachable through Cloudflare: limit the Easypanel host's ports 80 and 443 to Cloudflare's IP ranges (or
+use Authenticated Origin Pulls).
 
 Every image listens on port 80, Easypanel's default, so there is nothing to type in the domain's port. No env
 is needed. Optional:
