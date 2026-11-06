@@ -18,7 +18,9 @@ export default function HomePage() {
       <SiteHeader />
       <main>
         <Hero />
-        <section aria-label="Product preview" className="relative px-4 pb-2 sm:px-6 sm:pb-8">
+        {/* The shot's negative top margin pulls this section up over the hero's buttons. It only holds
+            a picture, so it lets clicks and hovers through to them. */}
+        <section aria-label="Product preview" className="pointer-events-none relative px-4 pb-2 sm:px-6 sm:pb-8">
           <ProductShot
             {...heroShot}
             alt="The panel's dashboard: node load graphs for three servers and the projects running on them"

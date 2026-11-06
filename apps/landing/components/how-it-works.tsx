@@ -1,4 +1,5 @@
-import { installCommand } from "@/lib/site";
+import { CopyCode } from "@/components/copy-code";
+import { brand, installCommand } from "@/lib/site";
 
 const steps = [
   {
@@ -8,8 +9,8 @@ const steps = [
   },
   {
     title: "Join more servers",
-    command: "… | sudo sh -s -- join <panel> --token <token>",
-    body: "Each node dials out to the panel. No inbound port for the agent, no VPN, feels instant across continents.",
+    command: `curl -fsSL https://${brand.urls.install} | sudo sh -s -- join --panel <panel> --token <token>`,
+    body: "Copy the exact command from the panel's Add node card. Each node dials out to the panel: no inbound port for the agent, no VPN, instant across continents.",
   },
   {
     title: "Deploy",
@@ -52,9 +53,7 @@ export function HowItWorks() {
                 />
               </div>
               <h3 className="mt-1.5 text-[17px] font-semibold text-ink">{step.title}</h3>
-              <code className="hairline overflow-x-auto rounded-lg bg-code px-3.5 py-3 font-mono text-[13.5px] whitespace-nowrap text-ink-code">
-                {step.command}
-              </code>
+              <CopyCode command={step.command} label={`Copy the command: ${step.title}`} />
               <p className="text-[14.5px] leading-[1.6] text-ink-card">{step.body}</p>
             </li>
           );
