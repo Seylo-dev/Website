@@ -40,6 +40,10 @@ databases:
 The tables are created at boot if they are missing. Timestamps are unix milliseconds in BIGINT
 columns, days are `YYYY-MM-DD` text, so the same SQL runs on both.
 
+Nothing is copied from an older `site.db`: an API that ran with a `/data` volume before starts on
+Postgres with no telemetry history and no reports, so the report links it handed out show the
+404 page. Export the rows first if they matter.
+
 `bun test` runs on SQLite in memory and needs nothing. To run the same tests on Postgres as well,
 point `SITE_API_PG_URL` at a server where the tests may create and drop throwaway databases:
 

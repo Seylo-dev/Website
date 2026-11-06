@@ -61,7 +61,7 @@ for (const backend of backends) {
     test("round-trips the body and the timestamps as numbers", async () => {
       const { reports } = await open(backend);
       const now = Date.UTC(2026, 10, 7, 12, 0, 0, 123);
-      const body = `# Report\n\nשלום, 🙂 and a NUL-free tail\n${"x".repeat(512 * 1024 - 100)}`;
+      const body = `# Report\n\nשלום, 🙂 and a long tail\n${"x".repeat(512 * 1024 - 100)}`;
       const created = await reports.create(body, now);
       expect(created.deleteToken).toMatch(/^[A-Za-z0-9_-]{32}$/);
       expect(await reports.get(created.id, now)).toEqual({
@@ -70,6 +70,13 @@ for (const backend of backends) {
         createdAt: now,
         expiresAt: now + REPORT_TTL_MS,
       });
+    });
+
+    test("stores a NUL byte as U+FFFD (Postgres TEXT refuses NUL)", async () => {
+      const { reports } = await open(backend);
+      const created = await reports.create("a\u0000b\u0000");
+      expect(created.body).toBe("a\uFFFDb\uFFFD");
+      expect((await reports.get(created.id))?.body).toBe("a\uFFFDb\uFFFD");
     });
 
     test("expires after 30 days and the sweep removes only expired reports", async () => {

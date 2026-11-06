@@ -47,6 +47,8 @@ The api keeps telemetry and reports in Postgres and needs no volume. Add a Postg
 Easypanel project and set `DATABASE_URL` on the api to that service's internal connection URL
 (`postgres://...@<project>_<service>:5432/...`), not an exposed one, so the database never leaves the
 private network. The api creates its tables on first start, and refuses to start without `DATABASE_URL`.
+An api that already ran with the `/data` volume keeps nothing from it: its telemetry rows and live report links
+are not copied to Postgres. Export them first if they matter, then remove the volume.
 
 Nothing else is needed. Optional:
 

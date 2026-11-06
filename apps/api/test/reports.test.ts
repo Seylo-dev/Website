@@ -48,6 +48,15 @@ describe.each(backends)("troubleshoot reports ($name)", (backend) => {
     expect(JSON.stringify(body)).not.toContain("hunter2");
   });
 
+  test("a NUL byte in the logs is kept as U+FFFD instead of failing the upload", async () => {
+    const { app } = await testApp({ backend });
+    const created = await app.handle(upload("# log\n\u0000tail \u0000\u0000"));
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    expect(await (await app.handle(request(`/l/${id}/raw`))).text()).toBe("# log\n\uFFFDtail \uFFFD\uFFFD");
+    expect(await (await app.handle(request(`/l/${id}`))).text()).toContain("\uFFFDtail");
+  });
+
   test("refuses an oversized report", async () => {
     const { app } = await testApp({ backend });
     const response = await app.handle(upload("a".repeat(MAX_REPORT_BYTES + 1)));

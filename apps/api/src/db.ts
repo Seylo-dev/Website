@@ -25,6 +25,8 @@ export interface DatabaseOptions {
   dataDir: string;
   /** In production the data must not end up in a file inside the container. */
   production: boolean;
+  /** How long boot waits for Postgres to come up, 30 s by default. */
+  bootWaitMs?: number;
 }
 
 // Two small tables, so plain SQL with idempotent CREATEs instead of a migration tool. If a table
@@ -55,7 +57,7 @@ const POOL_MAX = 4;
 const IDLE_TIMEOUT_SECONDS = 60;
 const CONNECT_TIMEOUT_SECONDS = 10;
 // At boot Postgres may still be starting (a node reboot starts both services at once).
-const BOOT_WAIT_MS = 30_000;
+const DEFAULT_BOOT_WAIT_MS = 30_000;
 const BOOT_RETRY_MS = 2_000;
 const CLOSE_TIMEOUT_SECONDS = 5;
 
@@ -67,7 +69,7 @@ export async function openDatabase(options: DatabaseOptions): Promise<Database> 
   const db = options.databaseUrl ? connectPostgres(options.databaseUrl) : connectSqlite(options);
   try {
     if (db.kind === "postgres") {
-      await waitForPostgres(db);
+      await waitForPostgres(db, options.bootWaitMs ?? DEFAULT_BOOT_WAIT_MS);
     } else {
       await db.sql.unsafe("PRAGMA journal_mode = WAL");
       await db.sql.unsafe("PRAGMA busy_timeout = 5000");
@@ -75,7 +77,10 @@ export async function openDatabase(options: DatabaseOptions): Promise<Database> 
     for (const statement of SCHEMA) await db.sql.unsafe(statement);
   } catch (error) {
     await db.close().catch(() => {});
-    throw new Error(`Could not open the database at ${db.location}: ${errorMessage(error)}`, { cause: error });
+    const hint = UNREACHABLE_CODES.has((error as { code?: string } | null)?.code ?? "") ? UNREACHABLE_HINT : "";
+    throw new Error(`Could not open the database at ${db.location}: ${errorMessage(error)}${hint}`, {
+      cause: error,
+    });
   }
   return db;
 }
@@ -134,8 +139,15 @@ const RETRYABLE_CODES = new Set([
   "ERR_POSTGRES_CONNECTION_CLOSED",
 ]);
 
-async function waitForPostgres(db: Database) {
-  const deadline = Date.now() + BOOT_WAIT_MS;
+// Bun reports a host name that doesn't resolve with the same code and message ("Failed to connect")
+// as a closed port, so the message after the last retry says what to check for both.
+const UNREACHABLE_CODES = new Set(["ERR_POSTGRES_CONNECTION_REFUSED", "ERR_POSTGRES_CONNECTION_TIMEOUT"]);
+const UNREACHABLE_HINT =
+  ". No Postgres answered at that host and port: on Easypanel the host is the Postgres service's " +
+  "internal name (<project>_<service>), the port 5432, and that service must be running.";
+
+async function waitForPostgres(db: Database, bootWaitMs: number) {
+  const deadline = Date.now() + bootWaitMs;
   for (let attempt = 1; ; attempt++) {
     try {
       await db.sql`SELECT 1`;

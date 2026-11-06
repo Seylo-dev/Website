@@ -35,6 +35,19 @@ describe("database choice", () => {
     expect(invalid?.message).not.toContain("hunter2");
   });
 
+  test("a host where no Postgres answers says what to check, without the password", async () => {
+    // A closed port and a name that doesn't resolve (a typo, a service not created yet) fail the same way.
+    for (const host of ["127.0.0.1:1", "site-db.invalid:5432"]) {
+      const options = { dataDir: ":memory:", production: true, bootWaitMs: 0 };
+      const error = await failure(openDatabase({ ...options, databaseUrl: `postgres://u:hunter2@${host}/site` }));
+      expect(error?.message).toStartWith(
+        `Could not open the database at postgres://${host}/site: Failed to connect. No Postgres answered`,
+      );
+      expect(error?.message).toContain("(<project>_<service>)");
+      expect(error?.message).not.toContain("hunter2");
+    }
+  });
+
   test("outside production a missing DATABASE_URL means SQLite", async () => {
     const db = await openTestDatabase({ databaseUrl: null, dataDir: ":memory:", production: false });
     expect(db.kind).toBe("sqlite");
