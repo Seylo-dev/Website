@@ -1,0 +1,73 @@
+---
+title: Deploy from Docker Hub
+description: Search Docker Hub from the panel, pick a tag, and get an app with the image's port, volumes and settings already filled in.
+---
+
+<Callout title="New in 0.2">
+Available from Seylo 0.2. A 0.1 panel deploys Docker Hub images through the **Docker image** source only (see [Images and uploads](/guides/images-and-uploads)).
+</Callout>
+
+Any image already runs as an app with the **Docker image** source. Docker Hub in the panel adds the two steps before that: finding the image, and reading what it needs (its port, volumes, settings and command), so the app form comes filled in.
+
+## Find an image
+
+Three ways in:
+
+- **Templates** in the sidebar, then the **Docker Hub** tab.
+- **Add a service → From Docker Hub** in a project.
+- The command palette: **New service from a Docker Hub image**.
+
+Type in **Search Docker Hub**. Each result shows the publisher, the description, pulls, stars and a badge: **Official** (a Docker Official Image), **Verified** (a Verified Publisher) or **Open source** (Docker-Sponsored Open Source).
+
+Images named exactly what you typed come first (the official one, then by pulls), then official images and verified publishers, then the rest in Docker Hub's own order. Several words are also looked up as one hyphenated name, so `uptime kuma` finds `louislam/uptime-kuma`. **Show more** loads 25 more results, up to 500.
+
+Before you type, **Popular images** lists a few apps that need only one image (nginx, Uptime Kuma, n8n, Gitea, Metabase, Grafana and more), with their port and volumes preset.
+
+Only Docker Hub is searched. Images on GHCR, Quay or your own registry go through the **Docker image** source.
+
+## Set it up
+
+Picking an image opens its setup dialog (**Set up louislam/uptime-kuma**). The panel reads the image's config from Docker Hub's registry and fills the form from it:
+
+| Field | What it does |
+| --- | --- |
+| **Project** | Where the app goes. Not shown when you started from a project. |
+| **Service name** | Defaults to the last part of the image name. |
+| **Node** | Where it runs. The image is read for this node's CPU (amd64 or arm64). |
+| **Tag** | Newest tags first. The one marked **suggested** is the most specific version tag that points at the same image as `latest` (for example `2.1.4` rather than `latest` or `2`), so the app stays on that version until you pick another. |
+| **Main port** | One of the TCP ports from the image's `EXPOSE` lines, or **No port** for workers. When the image exposes none, type the port the app listens on. |
+| **Pull with** | Shown when the panel has a Docker Hub login: **No login (public image)**, or that login, see [Pull limits and private images](#pull-limits-and-private-images). |
+| **Reachable from outside** | Shown when there is a main port. On: the node's automatic domain, or an IP:port address until you add a domain. Off: the port is only reachable on the project network. On by default for web ports, off for SSH, mail, DNS, database and queue ports. |
+| **Volumes** | One volume per `VOLUME` path of the image, so its data survives deploys. Untick the ones you do not want. An image without any can get volumes later on the **Storage** tab. |
+| **Command (optional)** | Replaces the image's command (`CMD`); its entrypoint stays. For images that need arguments, such as `server /data`. The hint shows the command the image runs by default. |
+| **Environment** | The image's `ENV` defaults as a `.env`, in the same editor as the **Environment** tab. Names that look like secrets are left empty for you to fill in, and variables every image sets for itself (`PATH`, `*_VERSION`, checksums) are left out. |
+
+Next to the form, **From the image** shows the digest the tag points at, its platforms, the command it runs, the user it runs as, its health check and its labels. When the tag has no image for the node's CPU, the dialog says which platform the node will run instead.
+
+**Deploy right away** is on by default, so the button is **Create and deploy**. Untick it to only **Create**.
+
+The result is an ordinary app with a **Docker image** source, for example `louislam/uptime-kuma:2.1.4`. Change it like any other service; there is no link back to Docker Hub. Like every image source, each node pulls the image by digest, so all replicas run the same bytes.
+
+## Pull limits and private images
+
+Docker Hub limits how often an address may pull without signing in. Without a login, each node pulls with its own address's limit, and reading image configs in the panel counts against the panel's address.
+
+A Docker Hub login is a registry login with the server `docker.io`. Adding one is done through the API for now (`registries.create`, see [Images and uploads](/guides/images-and-uploads#private-registries)). With one:
+
+- The oldest Docker Hub login is the panel's own. The panel reads image configs with it, so they count against that account's limit, not the panel's address.
+- **Pull with** offers it. Nodes then pull that app's image with the login.
+- People who may manage registry logins can also read that account's private repositories, through the API (`dockerHub.tags`, `dockerHub.inspect` and `dockerHub.create`, see the [API reference](/api-reference)). Search lists public images only. For a private image the form picks the login it was read with, since the nodes need it to pull.
+
+When Docker Hub rate limits the panel, the page says **Docker Hub is rate limiting this panel.** and the panel asks nothing more of that limit until it lifts. Answers are cached: searches for 10 minutes, tag lists for 30 minutes and image configs (by digest) for 7 days.
+
+## Which hosts the panel contacts
+
+Only Docker Hub's own hosts, over HTTPS: `hub.docker.com` (search and tags), `auth.docker.io` (tokens), `registry-1.docker.io` (image configs), and the download hosts it redirects to (`production.cloudflare.docker.com`, `production.cloudfront.docker.com` and Docker's R2 bucket). A login is never sent anywhere else. If the panel's server only reaches allowed hosts, allow these.
+
+When Docker moves its downloads to a new host, reading an image fails with **Docker Hub sent this panel to** and the host name, and the panel's log has a `docker hub request failed` line naming it.
+
+## Good to know
+
+- Searching and reading images needs only a sign-in, like the template catalog. Creating the app needs permission to create services in the project, and is in the activity log with its environment values redacted.
+- AI tools can search and set up images too (`dockerHub_search`, `dockerHub_tags`, `dockerHub_inspect`, `dockerHub_create`); see [MCP and AI](/features/mcp-and-ai).
+- An image config is read for linux/amd64 or linux/arm64. Other CPUs are listed under platforms but not read.
