@@ -1,0 +1,30 @@
+---
+title: Uptime checks
+description: The panel requests a URL on an interval and alerts after several misses in a row.
+---
+
+An uptime check watches a service from the outside: the panel requests a URL on an interval, records whether it answered and how fast, and raises the **Uptime check down** alert after a number of misses in a row. When it answers again, the alert is resolved.
+
+## Add a check
+
+On a service's **Alerts** tab, under **Uptime checks**, click **Add check**:
+
+| Field | What it does |
+| --- | --- |
+| **Name** | Shown in the list and in alerts |
+| **URL** | The address to request, usually one of the service's domains |
+| **Every (seconds)** | How often to request it, from 30 seconds to a day |
+| **Expected status** | The status code that counts as up. 0 accepts any 2xx or 3xx. |
+| **Misses before alert** | How many failures in a row raise the alert (1 to 10) |
+
+The first request runs right away. Each check shows its status (**Up**, **Down**, **Pending**, **Paused**), its uptime over 24 hours, its average response time, its incidents and a response-time history. **Pause** stops a check without deleting its history.
+
+The dashboard counts how many checks are up and down across everything you can see.
+
+## Where checks run from
+
+Checks run from the panel, not from the service's node, so they test the whole path a visitor takes. Redirects are not followed: a redirect counts by its own status code.
+
+To keep checks from being used to probe your private network, the panel refuses targets on loopback, private and link-local addresses and cloud metadata endpoints, when you save the check and again before every request. Each request goes to the address the panel just checked, so a name server cannot answer one address to the check and another to the request. The nodes' own public addresses are always allowed; a domain is judged by the address it resolves to, like any other name. An admin can allow internal targets in **Settings → General → Uptime checks → Allow checks of internal addresses**.
+
+A check on a name that does not resolve yet can be saved. Until the name resolves, the panel sends nothing and the check records "Not checked: the name did not resolve".

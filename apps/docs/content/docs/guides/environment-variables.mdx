@@ -1,0 +1,74 @@
+---
+title: Environment variables
+description: The .env editor, references between services with ${{service.VAR}}, shared project variables and the warnings for addresses that will not work.
+---
+
+## The editor
+
+A service's **Environment** tab is a `.env` file in an editor: one `KEY=value` per line, `#` for comments, quotes for values with spaces or newlines. Values are hidden until you click **Show values**.
+
+The editor checks the file as you type and underlines problems:
+
+- syntax: a line without `=`, an invalid name, a quote that is never closed,
+- a key set twice (the last value wins),
+- a reference to a service or variable that does not exist, to the service itself, or one that loops back on itself,
+- an internal address of a service that runs on another node, or that is not exposed (see below).
+
+Syntax problems block saving; the others are saved and shown as warnings.
+
+The environment is stored encrypted. When two people edit at once, the second save is refused with **Someone else saved meanwhile** instead of silently overwriting the first.
+
+## When new values apply
+
+An app's deployment keeps the environment it started with. Saving new values does not touch the running version: they apply on the next deploy. That way a half-finished edit, or a failed deploy, never reaches the running app. Databases and Boxes take the new values on their next restart.
+
+From the command line, `seylo env set` and `seylo env unset` save and deploy in one step (`--no-deploy` only saves). See [Command line](/guides/command-line).
+
+## References
+
+Point at another service's values instead of copying them:
+
+```bash
+DATABASE_URL=${{db.INTERNAL_URL}}
+API_BASE=${{api.URL}}
+STRIPE_KEY=${{project.STRIPE_KEY}}
+```
+
+A reference is `${{<service>.<VARIABLE>}}`, where `<service>` is a service name in the same project and `<VARIABLE>` is one of its built-in variables or a key from its own `.env`. References are resolved on every deploy, so when a database password is reset or a domain changes, the next deploy picks it up. `${{project.<NAME>}}` reads the project's shared variables.
+
+Hover a reference to see the value it becomes. The **References** panel lists everything this service can reference; click an entry to insert it.
+
+A reference hands its value to your container, so you can only save one whose value you may see yourself: a member with access to one service can't read a sibling's API key or a database password by referencing it. The same rule applies to compose files and templates; a stack's or template's own services count as yours. A push to a compose stack's repository has no person behind it, so outside the stack it can only add references to other services' addresses, never to their secrets.
+
+### Built-in variables
+
+Every service offers these besides its own keys:
+
+| Service | Variables |
+| --- | --- |
+| Apps, compose members and Boxes | `URL` (public URL of the primary domain), `DOMAIN` (its host), `INTERNAL_URL` (`http://<service>:<port>` on the project network), `INTERNAL_HOST`, `INTERNAL_PORT` |
+| Databases | `INTERNAL_URL` (connection URL on the project network), `INTERNAL_HOST`, `INTERNAL_PORT`, `EXPOSED_URL` (connection URL from anywhere, with TLS), `EXPOSED_HOST`, `EXPOSED_PORT`, `USER`, `PASSWORD`, `DATABASE` |
+
+`URL` and `DOMAIN` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed.
+
+## Secret variables
+
+Every value reaches the container the same way. Whether a variable is a secret matters where a value could be kept: crash reports and troubleshoot uploads strip secret values, Dockerfile builds never pass them as build args, and Nixpacks builds (which write their variables into the image) do not get them at all. A variable is a secret when its name contains `SECRET`, `TOKEN`, `PASS`, `KEY`, `PRIVATE`, `CREDENTIAL` or `DSN`, when its value is a URL with a password or a long random token, or when it references a secret (a database's `PASSWORD`, `INTERNAL_URL` or `EXPOSED_URL`, or another service's secret). A comment on the line above, or after the value, overrides the guess:
+
+```bash
+# @public
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+SIGNUP_CODE=spring-2026 # @secret
+```
+
+## Shared variables
+
+A project's **Shared environment** tab holds variables every service of the project gets, in the same `.env` format. A service's own keys win over shared ones with the same name. Databases do not get shared variables. Shared variables cannot reference services, but services can reference them as `${{project.NAME}}`.
+
+## Addresses on other nodes
+
+A project's private network exists on each node separately. An `INTERNAL_*` address only works for services on the same node. When a reference or a typed address points at a service on another node, the editor underlines it in red and offers fixes:
+
+- **Use** the exposed address instead (`${{db.EXPOSED_URL}}`), when the target is exposed,
+- **Expose** the target, for databases with TLS (see [Databases](/guides/databases)),
+- **Move** this service to the target's node (see [Moving services](/guides/moving-services)).

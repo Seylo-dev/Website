@@ -1,0 +1,59 @@
+---
+title: Backups
+description: Database dumps and volume archives on a schedule to S3, R2 or MinIO, and how to restore them.
+---
+
+Backups run on the node the service is on and upload straight to an S3-compatible bucket; they never pass through the panel. To back up the panel itself, see [Backing up the panel](/self-hosting/backups).
+
+## Add a destination
+
+**Settings → Backups → Add destination**:
+
+| Field | What it is |
+| --- | --- |
+| Provider | AWS S3, Cloudflare R2, MinIO or Other S3 |
+| Endpoint, Region | Where the bucket lives |
+| Bucket | The bucket name |
+| Folder | Optional folder inside the bucket |
+| Access key ID, Secret access key | Keys that can write, read and delete in the bucket. Stored encrypted. |
+| Use path-style URLs | MinIO and some other providers need this |
+
+**Test** writes, reads and deletes a small object, and says which step failed if one does. Add destinations once; every service can use them.
+
+## Schedule backups
+
+On a service's **Backups** tab, **Add schedule**:
+
+| Setting | What it does |
+| --- | --- |
+| **What** | **Database** (a dump) for databases, or **Volume** for one of the service's volumes |
+| **Destination** | One of the buckets from Settings |
+| **When** | A preset, or **Custom (cron expression)**. Times are UTC. |
+| **Keep newest** | How many backups this schedule keeps; older ones are deleted from the bucket |
+| **Stop the service while copying** | For files that change while being copied, like SQLite databases. The service is down for the length of the backup. |
+
+**Back up now** runs one at once. Backups made by hand are kept until you delete them.
+
+### What a backup contains
+
+| Service | Backup |
+| --- | --- |
+| PostgreSQL | `pg_dump` of the database (or `pg_dumpall`) |
+| MySQL, MariaDB | `mysqldump` or `mariadb-dump` |
+| MongoDB | `mongodump` |
+| Redis | An RDB snapshot (`redis-cli --rdb`) |
+| Volume | A `.tar.gz` of the volume's folder |
+
+Dumps run in a helper container from the database's own image, so the dump tool always matches the server version.
+
+## Restore
+
+In **Backups and restores**, pick a backup and click **Restore**. It replaces the service's current data: databases are restored with their engine's own tool, volumes are unpacked into a fresh folder and swapped in. Tick **Back up the current data first** to keep a copy of what is there now. You type the service name to confirm.
+
+<Callout type="warn" title="A restore replaces the current data">
+Without **Back up the current data first**, the data in the service before the restore cannot be recovered.
+</Callout>
+
+## Alerts
+
+A failed backup raises the **Backup failed** alert. Pick where it goes in **Settings → Notifications** or on the service's **Alerts** tab; see [Alerts and notifications](/features/notifications).

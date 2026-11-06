@@ -1,0 +1,33 @@
+---
+title: Crash policy and alerts
+description: What happens when a container exits, what you are told about it, and how to stop a crash loop.
+---
+
+## Crash policy
+
+Docker's own restart policy is off for every container Seylo runs. Each exit reaches the node's agent, which applies the service's crash policy itself, so it works while the panel is down.
+
+**Advanced → Crash policy**:
+
+| Setting | Behaviour |
+| --- | --- |
+| **Restart after a crash** | On (default): start it again after 5 seconds. Off: the service stays stopped after its first crash. |
+| **Stop after crashes in a row** | With restarts on, give up after this many crashes in a row and leave the service stopped. 0 (default) never gives up. |
+
+The 5 second wait is fixed. It keeps a crash loop from burning CPU while still bringing a service back quickly after a one-off crash. A streak ends once the container has stayed up for five minutes. Changes apply to running containers right away.
+
+## What you are told
+
+The agent reports every crash to the panel with the exit code, whether the kernel killed the container for running out of memory, and the last 100 log lines. Reports wait on the node's disk while the panel is unreachable, so none are lost.
+
+- The **Crash** alert fires once per streak, not once per restart. It says what happened and what comes next, for example "api crashed: Exit code 1, restarting in a few seconds." or "Out of memory, left stopped."
+- The **Stopped after repeated crashes** alert fires when the agent gives up.
+- The service's **Logs** keep the lines before the exit, followed by a system line saying which generation exited with which code.
+
+Where alerts go is set per event and channel; see [Alerts and notifications](/features/notifications).
+
+## Memory numbers
+
+Memory graphs and limits use the number the kernel uses to decide on out-of-memory kills: usage minus inactive file cache. Docker's raw usage includes cache the kernel would drop first, which makes healthy apps look like they are about to run out.
+
+Seylo sets no memory limit by default. Set one under **Advanced → Resource limits** (**Memory limit (MB)**); a container over it is killed by the kernel and shows "Out of memory" in its crash alert.

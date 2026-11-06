@@ -1,0 +1,106 @@
+---
+title: Command line
+description: Use the seylo command from your laptop or CI to deploy, read logs, change environment variables and open temporary access.
+---
+
+The same `seylo` binary that runs on your nodes is also a command line for your laptop and CI. On a laptop it talks to the panel's API with an API key; the node commands (`status`, `health`, `panel ...`) only work on a Linux server. All commands and flags are in the [CLI reference](/reference/cli).
+
+## Install
+
+Each [release on GitHub](https://github.com/Seylo-dev/App/releases) has the binary for every platform: `seylo_darwin_arm64` and `seylo_darwin_amd64` for macOS, `seylo_linux_amd64` and `seylo_linux_arm64`, and `seylo_windows_amd64.exe` and `seylo_windows_arm64.exe`, with a `checksums.txt`.
+
+```bash
+curl -fsSLo seylo https://github.com/Seylo-dev/App/releases/latest/download/seylo_darwin_arm64
+chmod +x seylo && sudo mv seylo /usr/local/bin/
+seylo version
+```
+
+## Sign in
+
+```bash
+seylo login https://panel.example.com
+```
+
+`login` asks the panel for a sign-in code, prints it and opens the approval page in your browser:
+
+```text
+Your sign-in code: WDJB-MJHT
+Approve it at https://panel.example.com/cli/approve?code=WDJB-MJHT
+(opened in your browser)
+Waiting for the approval...
+```
+
+On the approval page (you need to be signed in to the panel), type the code your terminal shows, even when you opened the page from the link: the link alone never signs anyone in. Never type a code someone sent you, because it signs their computer in as you. The page shows the computer's name, which the computer picks itself, and warns when the request came from a different address than your browser. Then choose, with nothing picked in advance:
+
+- **What the key can do**: **Everything you can do**, or **Read only**,
+- **Projects**: **All projects** (including ones you get later), or **Some projects**,
+- **Key expires after**: 7 days by default. A script that approves through the API (`cliLogin.approve`) without a lifetime gets 7 days too.
+
+Click **Approve** (if you signed in to the panel more than 15 minutes ago, it asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first) and the terminal finishes by itself: `Signed in to https://panel.example.com as you@example.com (profile "default").` The request expires after 10 minutes. The key is named "CLI on `<computer>`" and shows up under **Settings → API keys**, where you can revoke it. Every approval raises a **Security change** alert and is in **Activity** with the computer's name and address.
+
+Other ways to sign in:
+
+- `--no-browser` prints the link instead of opening a browser, for SSH sessions.
+- `--token <key>` or `--token-stdin` saves an API key you created yourself (see [API keys](/people/api-keys)).
+- `--profile <name>` saves the login under a name, for several panels. Pick one later with `--profile <name>` on any command.
+
+Logins are saved in `~/.config/seylo/config.json` (mode 0600), or `$XDG_CONFIG_HOME/seylo/config.json`, or the file in `$SEYLO_CONFIG`. `seylo logout` forgets the saved key.
+
+## Naming services
+
+Commands take a service as `<project>/<service>` (`acme-shop/web`), a bare service name when only one project has it, or the service's id.
+
+## Deploy
+
+```bash
+seylo deploy acme-shop/web
+```
+
+Deploys the service from its configured source and follows the deploy log until it is live or fails; the command exits with an error when the deploy fails. `--wait=false` returns right after the deploy starts.
+
+## Logs
+
+```bash
+seylo logs acme-shop/web            # the last 200 lines
+seylo logs acme-shop/web -n 1000    # the last 1000 lines
+seylo logs acme-shop/web -f         # keep following
+```
+
+On a node, `seylo logs` without a service shows the agent's own log instead.
+
+## Environment variables
+
+```bash
+seylo env list acme-shop/web > .env                     # the environment as a .env file
+seylo env set acme-shop/web LOG_LEVEL=debug FEATURE_X=1  # set and deploy
+seylo env unset acme-shop/web FEATURE_X                  # remove and deploy
+seylo env set --no-deploy acme-shop/web LOG_LEVEL=info   # only save
+```
+
+`set` and `unset` deploy the service so the new values apply, unless you pass `--no-deploy`. Problems the panel finds (for example an internal address of a service on another node) are printed as warnings.
+
+## Temporary access
+
+```bash
+seylo tunnel expose acme-shop/db --port 5432 --for 1h   # open a port to your IP
+seylo tunnel cloudflare acme-shop/web on                 # start a Cloudflare tunnel, print its URL
+seylo tunnel cloudflare acme-shop/web off
+```
+
+See [Dev access and tunnels](/features/dev-access-and-tunnels).
+
+## In CI
+
+Set two environment variables instead of signing in:
+
+```bash
+export SEYLO_PANEL_URL=https://panel.example.com
+export SEYLO_TOKEN=seylo_key_...   # an API key that may deploy the service
+seylo deploy acme-shop/web
+```
+
+They take precedence over saved logins.
+
+## Everything else
+
+The command line covers the everyday tasks above. Every other action is available through the [HTTP API](/api-reference) with the same API key.

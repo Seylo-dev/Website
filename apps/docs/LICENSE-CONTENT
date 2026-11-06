@@ -1,0 +1,22 @@
+Seylo documentation content
+
+Copyright (c) 2026 The Seylo authors
+
+The documentation text in this folder (apps/docs), everything under content/,
+is licensed under the Creative Commons Attribution 4.0 International License
+(CC BY 4.0).
+
+To view a copy of this license, visit
+https://creativecommons.org/licenses/by/4.0/
+or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+
+You may share and adapt it for any purpose, including commercially, as long as
+you give appropriate credit ("Seylo documentation, https://docs.seylo.dev"),
+link to the license and say whether you made changes.
+
+Exception: content/docs/reference/cli.mdx is generated from the help text of
+the seylo binary and, like openapi.json in this folder, comes from the app
+repository (https://github.com/Seylo-dev/App) under its license, AGPL-3.0.
+
+The code (the site, components and scripts) is licensed under the MIT
+License, see LICENSE at the repository root.

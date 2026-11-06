@@ -1,0 +1,64 @@
+---
+title: Concepts
+description: Panel, nodes, projects, services, deployments and domains, and how they relate.
+---
+
+## Panel
+
+The web app, the HTTP API and the MCP server, in one container. It keeps its state in SQLite on the node it runs on and runs as a service in a protected project called **Panel**, managed by that node's agent like any other service.
+
+The panel decides what should run where. Nodes do not need it to keep working: they keep running, restarting and routing their services while it is down.
+
+## Node
+
+A Linux server with Docker and the Seylo agent. The agent is one static binary, `seylo`, that is also the node's command line (`seylo status`). It dials out to the panel over one WebSocket, signs in with its own Ed25519 key, and then:
+
+- receives the full desired state of the node and applies it: containers, routes, networks, crash policy, cron jobs,
+- runs one-off jobs the panel asks for: builds, commands, file access, backups, cleanup,
+- streams logs, metrics and events back, and keeps important events (crashes, deploy results, cron runs, backups) on disk until the panel has them.
+
+A node can be allowed to build images (**Can build**) or only run images built elsewhere.
+
+## Project
+
+A group of services with its own private Docker network. Services in a project reach each other by service name (`db:5432`); services in other projects can't reach them at all.
+
+<Callout title="Private networks are per node">
+A project's network exists on each node separately; no network spans nodes. If a service points at an internal address of a service on another node, the environment editor underlines it in red. Expose the target (databases get TLS) and use its exposed address, or move the two services onto one node.
+</Callout>
+
+## Service
+
+Something that runs in a project:
+
+| Kind | What it is |
+| --- | --- |
+| App | Your code or image: from GitHub, any Git host, a Docker image, a Dockerfile typed in the panel or an uploaded archive |
+| Database | PostgreSQL, MySQL, MariaDB, MongoDB or Redis, with a web UI, a shell, TLS exposure and backups |
+| Compose stack | A compose file; each of its services becomes a member with its own logs, domains and deploys |
+| Cron service | A command that runs on a schedule in a one-off container |
+| Box | VS Code in the browser (code-server) on the project network |
+
+Every service gets logs that survive deploys, metrics with history, a console, a shell, a **Files** browser for its volumes, notes, alert rules and a crash policy.
+
+## Deployment
+
+One version of a service: its source (a commit, an image or an upload), where it was built, its build and deploy log, its health check result and who or what started it (manual, push, API, rollback, preview, template, webhook or move). Each deployment also keeps the environment it started with, so saving a variable never changes a running version by surprise.
+
+The images of the last five successful deployments are kept, so rolling back is a switch, not a rebuild.
+
+## Domain
+
+A hostname (and optionally a path) routed to a service by Traefik on the service's node, with a Let's Encrypt certificate or one you upload. A service can have many domains; one is **primary** and is what `${{service.URL}}` and IP:port redirects point to. Each domain can add basic auth, an IP allowlist, a rate limit and redirects.
+
+## People
+
+Everyone signs in to the panel with a role:
+
+| Role | Can do |
+| --- | --- |
+| Owner | Everything, including managing other owners |
+| Admin | Everything except changing owners |
+| Member | Only the projects and services shared with them, with the actions picked when sharing |
+
+See [Users and access](/people/users-and-access).

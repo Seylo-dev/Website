@@ -1,0 +1,29 @@
+---
+title: Metrics
+description: CPU, memory, network and disk for every node and service, live and with 30 days of history.
+---
+
+Agents sample their node and every service about every 10 seconds and send the samples to the panel, which keeps the history in its own `metrics.db` next to `panel.db`.
+
+## Where to look
+
+- **Dashboard**: CPU, memory and network of every node.
+- **Nodes**: each node's CPU, RAM and disk use, and in its sheet the **Usage** graphs with network in and out.
+- A service's **Metrics** tab: CPU, memory and network, with the average and peak in the range, and the current numbers per node. The usage strip at the top of the service page shows the last 30 minutes of memory.
+
+| Range | Resolution |
+| --- | --- |
+| Live | The last 5 minutes, every sample |
+| 1 hour, 24 hours | 1-minute buckets |
+| 7 days | 5-minute buckets |
+| 30 days | Hourly buckets, grouped by 6 hours |
+
+## Reading the numbers
+
+- **CPU**: 100% is one full core, so a busy service on a 4-core node can show up to 400%.
+- **Memory**: real use without file cache (usage minus inactive file cache), the number the kernel uses to decide on out-of-memory kills. For a service it is summed over its replicas and nodes. Docker's own number includes cache the kernel would free first.
+- **Network**: received and sent per second.
+
+Service limits, when set under **Advanced → Resource limits**, show next to the usage. They are off by default, and there is no hard CPU cap on purpose: **CPU weight** (default 100) decides who gets more CPU when the node is busy.
+
+Each node also checks its disks every 10 minutes: when the disk holding `/var/lib/seylo` or Docker's data is more than 85% full, it raises the **Disk above 85%** alert (see [Alerts and notifications](/features/notifications#events)). A nearly full disk also fails the node's **Disk space** health check (under 2 GiB or 5% free), which raises **Node health check failed**; see [Node health checks](/guides/node-health).

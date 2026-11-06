@@ -1,0 +1,113 @@
+---
+title: Templates
+description: Install ready-made services from the catalog, and write your own templates in Easypanel's format.
+---
+
+## Install from the catalog
+
+**Templates** in the sidebar lists ready-made services by category: analytics (Umami, Plausible, Metabase), automation (n8n), CMSes (Ghost, Directus), monitoring (Grafana, Prometheus, Uptime Kuma), developer tools (Gitea, Appsmith, code-server, IT Tools), Vaultwarden, Meilisearch, listmonk, Mattermost and more.
+
+Pick one, choose the project, the node and the service name, and fill in the few fields it asks for:
+
+- password fields left empty are generated,
+- domain fields left empty use the node's automatic domain (the node needs a wildcard domain).
+
+Before anything is created the dialog lists the exact services, ports and domains the template makes. Nothing runs until you confirm. Databases a template creates are deployed before the apps that need them.
+
+Installed templates are ordinary services afterwards: change them like anything else. There is no link back to the template.
+
+## Template format
+
+Templates use the same shape as Easypanel's: a folder with two files.
+
+<Files>
+  <Folder name="templates/umami" defaultOpen>
+    <File name="meta.yaml" />
+    <File name="index.ts" />
+  </Folder>
+</Files>
+
+### meta.yaml
+
+The card and the install form:
+
+```yaml title="meta.yaml"
+name: "Umami"
+description: "Simple, privacy-friendly website analytics without cookies."
+category: "Analytics"
+tags: ["analytics", "privacy"]
+creates: "App + Postgres"
+links:
+  - label: "Docs"
+    url: "https://umami.is/docs"
+body: |
+  Markdown shown in the install dialog.
+schema:
+  type: object
+  required: ["image"]
+  properties:
+    image:
+      type: "string"
+      title: "Image"
+      default: "ghcr.io/umami-software/umami:postgresql-v2.15.1"
+```
+
+Form fields are `string`, `number`/`integer` and `boolean`. `format: password` is generated when left empty, `format: domain` asks for a hostname, and `enum` makes a select. The panel always asks for the service name and the node itself; `generate` receives `input.serviceName` and `input.projectName` next to the form values.
+
+### index.ts
+
+`generate(input)` returns the services to create:
+
+```ts title="index.ts"
+import { env, PRIMARY_DOMAIN, randomHex, ref } from "~templates-utils";
+
+export function generate(input: { serviceName: string; image: string }) {
+  const db = `${input.serviceName}-db`;
+  return {
+    services: [
+      { type: "postgres", data: { serviceName: db, version: "16", database: "umami" } },
+      {
+        type: "app",
+        data: {
+          serviceName: input.serviceName,
+          source: { type: "image", image: input.image },
+          env: env({ DATABASE_URL: ref(db, "INTERNAL_URL"), APP_SECRET: randomHex(32) }),
+          domains: [{ host: PRIMARY_DOMAIN, port: 3000 }],
+        },
+      },
+    ],
+  };
+}
+```
+
+Service types:
+
+- `app`: an image with `env`, `domains`, volume and file `mounts`, extra ports and an optional `deploy.command`, which replaces the image's entrypoint and runs in `/bin/sh -c`.
+- `postgres`, `mysql`, `mariadb`, `mongo`, `redis`: a database with optional `version`, `database`, `user` and `password`, created like any database, with web UI, shell and backups.
+
+`~templates-utils` gives:
+
+| Helper | What it returns |
+| --- | --- |
+| `randomPassword(n)` | Letters and digits, 32 by default |
+| `randomString(n)` | Lowercase letters and digits, 16 by default |
+| `randomHex(bytes)`, `randomBase64(bytes)` | Random bytes, 32 by default |
+| `env({...})` | `KEY=value` lines; `null` and `undefined` are left out |
+| `ref(service, VARIABLE)` | A `${{service.VARIABLE}}` reference the panel resolves on every deploy, so a reset database password reaches the app |
+| `PRIMARY_DOMAIN` | The node's automatic domain |
+
+Databases offer `INTERNAL_URL`, `INTERNAL_HOST`, `INTERNAL_PORT`, `USER`, `PASSWORD` and `DATABASE`; apps offer `URL`, `DOMAIN` and `INTERNAL_URL`.
+
+### Porting from Easypanel
+
+The structure is the same, so porting is mostly renaming. A domain host of `$(EASYPANEL_DOMAIN)` is read as the automatic domain. Other Easypanel placeholders, such as `$(PROJECT_NAME)`, are not replaced: use `input.projectName` and `ref()` instead.
+
+## How templates run
+
+`generate()` never runs in the panel's own JavaScript engine. The panel compiles `index.ts` and runs it in a QuickJS WebAssembly sandbox with no network, files, timers or host objects, 32 MiB of memory and a 1 second time limit. The result is checked against a schema before you see the list of services, so a broken template fails with a message instead of creating half a project.
+
+## Your own templates
+
+Templates of your own are saved on the panel with the `templates.saveCustom` operation (see the [API reference](/api-reference)): the slug, `meta.yaml` and `index.ts`. The files are checked first: the form must parse and `generate()` must run with the form's defaults. They need the **templates.manage** permission (owners and admins).
+
+To add one to the built-in catalog, open a pull request on the [app repository](https://github.com/Seylo-dev/App) with a folder in `templates/`. Pin image tags; the template tests run every template and install it.

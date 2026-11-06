@@ -1,0 +1,47 @@
+---
+title: Zero-downtime deploys
+description: A new version only gets traffic after it passes its health check. Until then, the old one keeps serving.
+---
+
+## How a deploy works
+
+1. **Clone and build.** For repository and upload sources: Railpack, Nixpacks or your Dockerfile, on a node that can build. Image sources skip this.
+2. **Ship.** The node that runs the service pulls the image by digest from the panel's registry, through its own connection to the panel.
+3. **Start.** The new version starts next to the old one, as a new container.
+4. **Health check.** The check runs until it passes or the health timeout runs out.
+5. **Switch traffic.** The route moves to the new container in one atomic step, the agent confirms the domain answers through the proxy, then stops the old container.
+
+If the new version never passes within the health timeout, it is removed and the deploy is marked failed with the reason and the last log lines. The previous version stays live; nothing changes for your visitors.
+
+The node also checks the new settings before it starts anything, for example that volume names are valid and that an image from the panel's registry belongs to this service. When it refuses them, the deploy fails at once with the node's reason ("The node refused the new settings: ...") and a **Deploy failed** alert, instead of waiting for the health timeout. The previous version keeps running, and the other services on that node are not affected.
+
+Deploys of one service run one at a time; a deploy started while another runs waits in line. **Cancel deploy** in the service header stops one that has not switched yet.
+
+## Health checks
+
+**Advanced → Health check and deploys → Check**:
+
+| Check | Healthy when |
+| --- | --- |
+| **Default: TCP on the first port** | The app accepts connections on its first port. A service without ports counts as healthy once it runs. |
+| **TCP port** | A chosen port accepts connections |
+| **HTTP request** | A request to a port and path answers with the **Expected status** (0 accepts any 2xx or 3xx). **Host header** is sent when set. |
+| **Command in the container** | A command exits with code 0 |
+
+For a custom check, also set **Every (s)**, **Timeout (s)**, **Grace after start (s)** (failures in this time do not count) and **Failures before unhealthy**. The same check keeps running after the deploy: a replica that turns unhealthy leaves the rotation while another replica is healthy, and the **Health checks fail** alert fires.
+
+**Health timeout (s)** (default 300) is how long a new version may take to become healthy before the deploy fails.
+
+<Callout type="warn">
+Both versions run together for a few seconds. If your app migrates the database on start, keep migrations backward compatible, so the old version still works against the new schema until it stops.
+</Callout>
+
+## Stop the old version first
+
+Both versions mount the same volumes while they overlap. Apps that cannot run twice, such as ones holding a file lock (SQLite in rollback-journal mode, some search indexes), should use **Deploy strategy → Stop the old version first**. It trades the zero-downtime switch for a short gap.
+
+## Rolling back
+
+The images of the last 5 successful deployments are kept. On the **Deployments** tab, pick one and click **Roll back**: its image runs again with the current settings and environment. Nothing is built, so it takes seconds.
+
+A rollback is a deploy like any other: same health check, same switch. From a script, call `deployments.rollback` (see the [API reference](/api-reference)).

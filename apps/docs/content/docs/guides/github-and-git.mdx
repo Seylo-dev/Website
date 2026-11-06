@@ -1,0 +1,98 @@
+---
+title: Deploy from GitHub or Git
+description: Build apps from a repository with Railpack, Nixpacks or a Dockerfile, deploy on push, and get a preview per pull request.
+---
+
+An app's **Source** tab says where its code comes from. Changes there apply on the next deploy.
+
+| Source | What it is |
+| --- | --- |
+| **GitHub** | A repository through the panel's own GitHub App |
+| **Git** | Any git URL, with a credential for private repositories |
+| **Docker image** | A ready image from a registry, see [Images and uploads](/guides/images-and-uploads) |
+| **Dockerfile** | A Dockerfile typed in the panel, see [Images and uploads](/guides/images-and-uploads) |
+| **Upload** | A `.tar.gz` of your code, see [Images and uploads](/guides/images-and-uploads) |
+
+## GitHub
+
+### Create the panel's GitHub App
+
+**Settings → GitHub → Create on GitHub** creates a GitHub App that belongs to you, through GitHub's manifest flow: the panel prepares the App with the permissions it needs and a webhook URL, you confirm it on github.com, and GitHub sends you back with the App's keys. Pick an **Organization** to create the App under an organization you own instead of your personal account.
+
+Then install the App on the accounts and organizations whose repositories you want to deploy (**Install on another account**). The **Installations** list shows where it can read; **Change on GitHub** changes which repositories it sees.
+
+The panel needs an address GitHub can reach: set a panel domain in **Settings → General** first. The App's webhook delivers pushes and pull requests to `https://<panel>/api/hooks/github`; every delivery is signature-checked.
+
+### Connect a repository
+
+On the app's **Source** tab pick **GitHub**, then the account, the repository and the branch, and click **Connect repository**. **Root directory** builds a folder inside the repository instead of its root, for monorepos.
+
+### Private repositories without the App
+
+**Settings → GitHub → Private repositories without the App** connects a GitHub account whose token clones private repositories, through the same device flow as `gh auth login`. It is opt-in, and the App is the better choice: it only sees the repositories you pick. This option needs the panel's GitHub sign-in to be set up; otherwise the page says so.
+
+## Any other Git host
+
+Pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. **Check access** lists the branches it can see. For a private repository, pick a **Credential**:
+
+- an HTTPS access token for the host, or
+- an SSH key: the panel can generate an Ed25519 deploy key and give you the public half to add as a read-only deploy key on the repository.
+
+A credential is tied to its host. The panel refuses a repository URL on another host for it, when you save the source and again at every deploy, and the build node's git only offers it to that host. A token never goes over plain `http://`. A member can only attach a credential (or a registry login, or a GitHub App installation) to a project when they may manage it, or when a service of that project already uses it.
+
+<Callout title="Adding credentials">
+The Source tab lets you pick stored credentials. Adding one is done through the API for now (`git.createCredential`, `git.generateSshKey`, see the [API reference](/api-reference)); a screen for it in Settings is coming later.
+</Callout>
+
+## Builders
+
+The **Build** section on the Source tab picks how the image is built:
+
+| Builder | What it does |
+| --- | --- |
+| **Railpack** | Detects the language and builds a small image. The default. |
+| **Nixpacks** | The older detector, in maintenance mode upstream. |
+| **Dockerfile** | Builds the Dockerfile in the repository. Set **Dockerfile path** and, for a multi-stage file, the **Target stage**. |
+
+With Railpack and Nixpacks you can override the detected **Install command**, **Build command** and **Start command**; empty keeps the detected one.
+
+The service's variables are available while it builds. Railpack and Dockerfile builds get every variable as a BuildKit secret (`RUN --mount=type=secret,id=NAME` in a Dockerfile), so no value ends up in the image; Dockerfile builds also get the variables that are not secret as build args (`ARG NAME`). Nixpacks writes the variables it builds with into the image, so it only gets the ones that are not secret. See [Secret variables](/guides/environment-variables#secret-variables) for how a variable counts as secret.
+
+### Where builds run
+
+Images are built once, on a node that can build, and pushed to a registry that runs on the panel's node. Every node pulls through its own connection to the panel, so the registry is never published on a port. The deploy log says where each image was built and where it was shipped.
+
+**Build node** picks the node. **Automatic** uses the service's own node when it can build, otherwise the least busy one that can. Allow builds per node with **Build images on this node** in the node's settings, and limit **Builds at once** there; extra builds wait in a queue.
+
+From the **Deployments** tab, a deployment's menu has **Redeploy this commit** and **Deploy without build cache**.
+
+## Deploy on push
+
+Turn on **Deploy on push** on the Source tab and every push to the branch deploys. With the GitHub App this comes from the webhook. When GitHub cannot reach the panel (no domain, or a missed delivery), the panel also asks GitHub for the head of each followed branch once a minute. **Recent deliveries** on the Source tab lists what GitHub sent, and **Retry failed** asks GitHub to send failed ones again.
+
+Deploys of one service run one at a time: a push while a deploy is running waits in line and starts when it is done.
+
+### Deploy trigger URL
+
+For other Git hosts and CI, **Deploy trigger** creates a secret URL that deploys the service on `POST`:
+
+```bash
+curl -X POST "https://panel.example.com/api/hooks/deploy/<token>?commit=<sha>"
+```
+
+`commit` is optional. The URL is shown once; **New URL** replaces it and the old one stops working.
+
+## Pull request previews
+
+On the **Previews** tab, turn on **Previews** and every open pull request against the deployed branch gets its own copy of the service, deployed on each push to the pull request and removed when it closes. Previews are for services that deploy from GitHub.
+
+| Setting | What it does |
+| --- | --- |
+| **Domain pattern** | The preview's host name. `{pr}` and `{service}` are replaced. Empty uses the node's wildcard domain. |
+| **Most at once** | How many previews may exist (default 5). The oldest goes first. |
+
+Turning previews off removes the open ones.
+
+<Callout type="warn" title="Same environment, same database">
+Previews use the service's environment, so they talk to the same database, cache and APIs. Point them at test data before you turn previews on; the panel asks you to confirm this.
+</Callout>

@@ -1,0 +1,95 @@
+---
+title: Troubleshooting
+description: The first commands to run, a shareable report, and fixes for the problems people hit most.
+---
+
+## Start here
+
+On the node with the problem:
+
+```bash
+seylo status
+```
+
+It shows the node and agent version, the panel it belongs to and whether it is connected (with the last connection error and when it retries), whether the node is behind on the panel's changes, reports waiting to be sent, every service on the node with its state, and recent errors.
+
+```bash
+seylo health
+```
+
+runs the [node health checks](/guides/node-health): Docker, disk, clock, ports, DNS, the proxy and the panel connection, each with a fix. The same checks run from the heart icon on **Nodes**.
+
+```bash
+seylo logs -f          # the agent's own log
+seylo panel logs -f    # the panel's output, on the panel's node
+```
+
+## Share a report
+
+```bash
+seylo troubleshoot
+```
+
+Collects what someone helping you would ask for (versions, health check results, the agent's state and logs, Docker and Seylo's containers, the node's config), removes secrets and uploads it. You get a link like `https://seylo.dev/l/<id>` to paste into an issue or a chat, and when it expires.
+
+- Tokens, keys, passwords (also inside URLs and `KEY=value` lines), setup links, private keys and email addresses are replaced with `[REDACTED]` before anything leaves the node. `--redact-ips` also replaces public IP addresses; `--keep-emails` keeps email addresses.
+- `--include-service-logs` adds the last lines of every service's logs.
+- `--dry-run` (or `--print`) prints the report instead of uploading it, so you can read it first.
+- The upload is refused if the report still contains something that looks like a secret. Nothing is stored in that case.
+- Anyone with the link can read the report. It is not indexed by search engines and is deleted after 30 days.
+
+## Common problems
+
+<Accordions>
+<Accordion title="The setup link expired">
+The link from the installer is valid for one hour and works once. On the panel's node, `seylo panel setup-link` writes a new one and prints it. Once the owner account exists, sign in instead.
+</Accordion>
+
+<Accordion title="A node shows as offline">
+Run `seylo status` on the node. If the agent runs but is not connected, the error line says why. Check that the node can reach the panel's address (`curl -I https://panel.example.com/api/health`). The address the node uses is `panel_url` in `/var/lib/seylo/config.yml`. Services on an offline node keep running; only changes wait.
+</Accordion>
+
+<Accordion title="The certificate for a domain is not issued">
+The domain must point at the node that runs the service, and port 80 must reach the node from the internet, because Let's Encrypt checks over HTTP. Behind Cloudflare's proxy, set SSL/TLS to Full (strict). The domain's row on the **Domains** tab shows the DNS status and the last error from Let's Encrypt.
+</Accordion>
+
+<Accordion title="A deploy fails its health check">
+The deploy log shows the check that failed and the app's last log lines. The usual causes: the app listens on a different port than the one set under **Advanced → Container → Ports**, it listens on `127.0.0.1` instead of `0.0.0.0`, or it needs longer to start than **Health timeout** allows. Your old version keeps serving while you fix it.
+</Accordion>
+
+<Accordion title="An app can't reach a database on another node">
+Private networks don't span nodes. Expose the database with TLS and use `${{db.EXPOSED_URL}}`, or move the app to the database's node. The environment editor underlines internal addresses that point at another node.
+</Accordion>
+
+<Accordion title="Ports 80 or 443 are already in use">
+Another web server (nginx, Apache, Caddy) holds them. The installer stops a panel install in that case and names the program; a join only warns. Stop and disable it (for example `systemctl disable --now nginx`), or move its sites into Seylo as services. On a Wings node that runs its own Traefik, Seylo shares it instead; see [Running next to Wings](/guides/running-next-to-wings). If Traefik keeps failing to start, the node raises a **Node health check failed** alert with Docker's error.
+</Accordion>
+
+<Accordion title="The join command says the panel is plain HTTP">
+The agent refuses to join a panel at `http://` on another server, because its traffic (environment values, registry logins, shells) would be readable on the way. Copy the join command from **Add node** again: without a panel domain it uses `https://<panel IP>:3443` with `--pin`. If the panel was installed with `--agent-tls-port 0`, set a panel domain, or add `--insecure` to join over plain HTTP anyway.
+</Accordion>
+
+<Accordion title="A node did not move to the panel domain">
+Look at the node's **Connects to** on **Nodes** and at its alerts. A node that joined over plain HTTP (`--insecure`) never moves by itself: run a new join command from **Add node** on it with `--force`. A node that could not move raises **Node health check failed** with the reason and tries again after an hour. When the reason is the certificate, the node does not trust the domain's certificate authority: use a public certificate (Let's Encrypt), or add the authority to the node's trust store and run `systemctl restart seylo`. See [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain).
+</Accordion>
+
+<Accordion title="An IP:port address does not answer">
+With ufw or firewalld on, open the port: the panel shows the command next to the address, and the node health check lists every closed one. Cloud firewalls need the same port. See [Firewalls](/installation#firewalls).
+</Accordion>
+
+<Accordion title="The database web UI or a Box does not open">
+Both are opened through the node's wildcard domain. Set a **Wildcard domain** on the node and point the wildcard record at it.
+</Accordion>
+
+<Accordion title="Maintenance pages or tool links fail after turning on ufw">
+Traefik reaches the agent's edge listener on port 5756 over the `seylo-edge` Docker network. The installer allows it when ufw is active at install time; if you turned ufw on later, run `ufw allow in on seylo-edge to any port 5756 proto tcp`.
+</Accordion>
+
+<Accordion title="Pushes to GitHub don't deploy">
+Check that **Deploy on push** is on (**Source** tab) and look at **Recent deliveries**. GitHub must reach the panel to deliver webhooks, which needs a panel domain. Without one, the panel still finds new commits by asking GitHub once a minute.
+</Accordion>
+</Accordions>
+
+## Still stuck
+
+[Open an issue on GitHub](https://github.com/Seylo-dev/App/issues) with the link from `seylo troubleshoot`.

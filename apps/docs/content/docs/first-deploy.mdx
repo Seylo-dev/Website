@@ -1,0 +1,75 @@
+---
+title: Your first deploy
+description: Connect GitHub, deploy an app from a repository, give it a domain and push a change.
+---
+
+This walks through the common case: a web app in a GitHub repository, built by Seylo and served on a domain. It assumes the panel is [installed](/installation).
+
+## Connect GitHub
+
+Open **Settings → GitHub** and click **Create on GitHub**. Seylo uses GitHub's manifest flow: GitHub creates an App that belongs to you, with the permissions the panel needs and a webhook pointing at your panel. You confirm it on github.com and come back. Then install the App on the account or organization that owns your repositories.
+
+Give the panel a domain first (**Settings → General**): GitHub has to reach the panel to deliver push and pull request events. Without one, the panel still notices new commits by asking GitHub once a minute, but pull request previews need the webhook.
+
+Other Git hosts work too; see [Deploy from GitHub or Git](/guides/github-and-git).
+
+## Create the app
+
+<Steps>
+<Step>
+
+### Make a project
+
+On the dashboard, create a project, for example `acme-shop`. A project is a group of services that share a private network.
+
+</Step>
+<Step>
+
+### Add an app
+
+In the project, click **Add a service**, pick **App**, give it a name (it becomes the host name on the project network) and the node to run on. Choose **Set up later** as the source, then open the app's **Source** tab, pick **GitHub**, the repository and the branch, and click **Connect repository**.
+
+The **Build** section picks the builder. [Railpack](https://railpack.com) is the default and detects the language without configuration. **Dockerfile** builds the Dockerfile in the repository; Nixpacks is there too.
+
+</Step>
+<Step>
+
+### Set the port and environment
+
+On the **Advanced** tab, under **Container**, add the port your app listens on. Domains, IP:port access and the default health check use it.
+
+Add environment variables on the **Environment** tab. To point at another service in the project, reference its variables instead of copying them:
+
+```bash
+DATABASE_URL=${{db.INTERNAL_URL}}
+```
+
+Hover a reference to see its value. The **References** panel lists everything you can reference. See [Environment variables](/guides/environment-variables).
+
+</Step>
+<Step>
+
+### Deploy
+
+Click **Deploy**. The deploy log shows the clone, the build and which node built the image, the ship to the node that runs it, the health check and the switch.
+
+Until the app has a domain it answers on the node's IP and a port, shown under **IP and port access** on the **Domains** tab.
+
+</Step>
+</Steps>
+
+## Add a domain
+
+If the node has a wildcard domain, the **Domains** tab offers an automatic one, such as `web.de1.example.com`: click **Add** and it works right away, with HTTPS. For your own hostname, click **Add domain**, enter `shop.example.com` and create the DNS record shown on its row. The certificate is issued as soon as the record points at the node.
+
+Once the primary domain is live, the IP:port address switches to a redirect to the domain and closes after 24 hours. See [Domains and HTTPS](/guides/domains-and-https).
+
+## Push a change
+
+With **Deploy on push** on (the **Source** tab), every push to the branch deploys. The new version starts next to the old one and only gets traffic once its health check passes; if it fails, the old version keeps serving and the deploy is marked failed with the reason. See [Zero-downtime deploys](/features/zero-downtime-deploys).
+
+Turn on **Previews** to get a separate copy of the app for each pull request.
+
+<Callout type="warn" title="Previews share the app's environment">
+A preview gets the same environment variables as the app. If they point at your production database, so does the preview. Point them at test data before you turn previews on.
+</Callout>

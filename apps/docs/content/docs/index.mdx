@@ -1,0 +1,37 @@
+---
+title: Introduction
+description: Seylo is a self-hosted panel that deploys apps, databases and compose stacks to your own Linux servers. One panel controls any number of nodes.
+---
+
+## How the pieces fit
+
+- **The panel** is the web app, the HTTP API and the MCP server, in one container. It runs as a protected service in a project called "Panel" on one of your servers.
+- **Nodes** are the servers your services run on. Each runs the `seylo` agent, which dials out to the panel over one WebSocket and signs in with its own key. A node needs no open ports besides 80 and 443 for your sites.
+- **Your containers** run on the nodes, behind Traefik, on a private network per project.
+
+The panel's server is a node too, so one server is enough to start. Add more whenever you like: a node in Germany and one in the US are managed from the same panel, and each keeps running, restarting and routing its services while the panel is down.
+
+## What you get
+
+- Deploys from GitHub, any Git host, a Docker image, a Dockerfile you type in the panel or an uploaded archive. Builds use Railpack, Nixpacks or your Dockerfile.
+- Health-checked deploys: a new version gets traffic only after it passes, and rolling back to one of the last five versions takes seconds.
+- Domains with automatic HTTPS, per-domain basic auth, IP allowlists, rate limits and redirects.
+- Postgres, MySQL, MariaDB, MongoDB and Redis with web UIs, shells, TLS exposure and backups to S3 or R2.
+- Compose stacks, cron jobs, a template catalog and Box, a VS Code in the browser.
+- Logs kept across deploys, metrics with 30 days of history, a console, a shell and a file browser for every volume.
+- Crash restarts with reports, alerts to email, webhooks, Discord, Slack, Telegram, ntfy, Pushover and Gotify, and uptime checks.
+- Several nodes per service with replicas and load balancing, and moving a service to another node.
+- People with roles and per-project or per-service access, 2FA, passkeys, scoped API keys and an activity log.
+- A command line, an HTTP API, an MCP server and an AI assistant, all built from the same list of actions with the same permissions.
+- It runs next to Pterodactyl or Pelican Wings on a game node, without a VM.
+
+Seylo is [open source](https://github.com/Seylo-dev/App) under AGPL-3.0 and runs entirely on servers you own. Anonymous usage reports are off unless you turn them on.
+
+## Next steps
+
+<Cards>
+  <Card title="Installation" description="One command on a fresh server." href="/installation" />
+  <Card title="Your first deploy" description="Deploy an app from GitHub and give it a domain." href="/first-deploy" />
+  <Card title="Concepts" description="Panel, nodes, projects, services and deployments." href="/concepts" />
+  <Card title="Running next to Wings" description="Share a game node without a VM." href="/guides/running-next-to-wings" />
+</Cards>

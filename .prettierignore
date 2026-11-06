@@ -1,5 +1,8 @@
 node_modules
 .next
+.source
 dist
 bun.lock
 *.svg
+apps/docs/content
+apps/docs/openapi.json

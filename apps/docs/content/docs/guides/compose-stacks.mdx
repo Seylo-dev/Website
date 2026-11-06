@@ -1,0 +1,53 @@
+---
+title: Compose stacks
+description: Run a docker-compose file as a stack of services, each with its own logs, domains and deploys.
+---
+
+## Create a stack
+
+In a project, click **Add a service → Compose stack** and paste a compose file, or point at one in a repository (GitHub or any Git URL, a branch and the file path). **Preview** shows what the file becomes before anything is created.
+
+The node's agent reads the file with compose-go, the parser Docker Compose itself uses, and the panel turns every compose service into a **member**: a service of its own with logs, domains, deploys, metrics, a console and a shell. There is no `docker compose` process on the node to look after.
+
+```yaml title="compose.yml"
+services:
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-v2.15.1
+    environment:
+      DATABASE_URL: postgres://umami:change-me@db:5432/umami
+    depends_on: [db]
+    ports:
+      - "3000:3000"
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - db:/var/lib/postgresql/data
+volumes:
+  db:
+```
+
+Members are named `<stack>-<service>` in the panel and keep their compose name on the project network, so `db:5432` works as it does in Compose. All members of a stack run on one node, because they can share volumes.
+
+## Changing the file
+
+The stack's **Compose file** tab holds the file. **Preview changes** lists what applying it would do to each member (**New**, **Changed**, **Deleted**, **Same**); **Apply** creates, updates and deletes members to match and deploys the changed ones. Deleting a member deletes its volumes, so the panel asks you to type the stack name first.
+
+A member's environment comes from its `environment:` section. Change it in the file: edits on a member's **Environment** tab are replaced the next time the file is applied.
+
+`${VAR}` in the file is filled from the stack's own variables. The panel has no screen for those yet; set them with the API (`env.set` on the stack), or write the values into the file. A variable that is not set becomes empty, with a warning.
+
+## What is different from plain Compose
+
+The preview warns about everything that does not run as written:
+
+- `ports:` are not published on the host. A published TCP port becomes IP:port access that closes once a domain is live; add domains per member on its **Domains** tab. UDP ports are not supported yet.
+- `build:` works for stacks from a repository, built like any app on a node that can build. Pasted files need `image:`.
+- Named volumes live under `/var/lib/seylo/services/<id>/volumes` with the rest of the node's data, so they show up in **Files** and can be backed up.
+- Custom and external networks are replaced by the project's private network.
+- Not supported: bind mounts (including the Docker socket), `env_file`, external volumes, secrets and configs read from files, `network_mode: host`, `privileged`, devices and GPUs, `volumes_from`.
+- `cap_add`, `sysctls`, volume drivers and host namespaces are ignored.
+
+Moving a stack to another node is coming later.

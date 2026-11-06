@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+@import "fumadocs-openapi/css/preset.css";
+
+/*
+ * The panel's look on top of Fumadocs' neutral theme: white page,
+ * a near-white sidebar, hairline borders, the panel blue #2563EB as the only accent, Geist.
+ * Dark mode borrows the landing page's navy so the two sites feel related.
+ */
+@theme {
+  --font-sans: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-fd-background: #ffffff;
+  --color-fd-foreground: #0f172a;
+  --color-fd-muted: #f3f5f9;
+  --color-fd-muted-foreground: #556072;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #0f172a;
+  --color-fd-card: #f6f8fb;
+  --color-fd-card-foreground: #0f172a;
+  --color-fd-border: #eef0f4;
+  --color-fd-primary: #2563eb;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #f1f3f7;
+  --color-fd-secondary-foreground: #0f172a;
+  --color-fd-accent: #e6ecfc;
+  --color-fd-accent-foreground: #1f4fd1;
+  --color-fd-ring: #2563eb;
+  --color-fd-overlay: rgba(15, 23, 42, 0.3);
+}
+
+.dark {
+  --color-fd-background: #070b18;
+  --color-fd-foreground: #e6ecf5;
+  --color-fd-muted: #0e1528;
+  --color-fd-muted-foreground: #9aa8c2;
+  --color-fd-popover: #0e1528;
+  --color-fd-popover-foreground: #e6ecf5;
+  --color-fd-card: #0b1226;
+  --color-fd-card-foreground: #e6ecf5;
+  --color-fd-border: #1a2338;
+  --color-fd-primary: #6b97ff;
+  --color-fd-primary-foreground: #070b18;
+  --color-fd-secondary: #121b31;
+  --color-fd-secondary-foreground: #e6ecf5;
+  --color-fd-accent: rgba(37, 99, 235, 0.16);
+  --color-fd-accent-foreground: #c7d7ff;
+  --color-fd-ring: #6b97ff;
+  --color-fd-overlay: rgba(2, 6, 23, 0.6);
+}
+
+/* The sidebar is a shade off the page (#FCFCFD). */
+#nd-sidebar {
+  --color-fd-card: #fcfcfd;
+}
+.dark #nd-sidebar {
+  --color-fd-card: #0a1022;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}

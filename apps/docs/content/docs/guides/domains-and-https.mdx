@@ -1,0 +1,90 @@
+---
+title: Domains and HTTPS
+description: Automatic domains from a per-node wildcard, custom domains with Let's Encrypt, paths, access rules, IP:port access and maintenance pages.
+---
+
+Each node runs Traefik on ports 80 and 443 (or shares the one Wings runs, see [Running next to Wings](/guides/running-next-to-wings)). A service's **Domains** tab decides which hostnames reach it.
+
+## Automatic domains
+
+Give each node a wildcard DNS record once:
+
+```text
+*.de1.example.com   A   203.0.113.10
+```
+
+and set `de1.example.com` as the node's **Wildcard domain** in its settings on **Nodes**. From then on the **Domains** tab of a service on that node offers `<service>.de1.example.com`: click **Add** and it works right away, with no DNS change. Templates add one by themselves.
+
+Certificates come from Let's Encrypt over HTTP, one per hostname, so the panel never needs a DNS provider token.
+
+## Custom domains
+
+Click **Add domain**, enter the hostname and pick the **Container port**. The row shows the record to create where the domain's DNS is managed: an `A` record (and `AAAA` when the node has IPv6) pointing at the node. When the zone is on Cloudflare, **Open Cloudflare DNS** opens Cloudflare with the record filled in; the panel never asks for a Cloudflare API token.
+
+The panel checks the record through public resolvers and shows one of:
+
+| Status | Meaning |
+| --- | --- |
+| DNS ok | The domain points at the node |
+| Waiting for DNS | No record yet |
+| DNS points elsewhere | The record points at another address |
+| Behind Cloudflare proxy | Proxied by Cloudflare, so the panel cannot see the origin. It works once Cloudflare reaches the node. |
+
+As soon as the domain reaches the node, Traefik requests a certificate and the route goes live. A certificate that cannot be issued shows **Certificate failed** with the reason from Let's Encrypt, and raises an alert.
+
+<Callout type="warn" title="Cloudflare proxy">
+With Cloudflare's proxy (orange cloud) on, set SSL/TLS to **Full (strict)**. Flexible mode sends plain HTTP to the node, which redirects to HTTPS, which loops.
+</Callout>
+
+### Domain options
+
+| Option | What it does |
+| --- | --- |
+| **Path** | Only requests under this path reach the service. `/` is the whole domain. |
+| **Strip the path before forwarding** | `example.com/api/users` reaches the service as `/users` |
+| **HTTPS** | Let's Encrypt (default), a custom certificate, or plain HTTP only |
+| **Redirect HTTP to HTTPS** | Send plain HTTP visitors to HTTPS |
+| **Redirect only** | Send every request to another URL instead of the service, for example `www` to the bare domain. Choose **Permanent** and **Keep the path and query**. |
+| **Make it the primary domain** | The primary domain is what `${{service.URL}}` and IP:port redirects point to |
+
+A service can have any number of domains, and each can route a path: `example.com/api` to the API and `example.com` to the web app.
+
+### Who may use a hostname
+
+A hostname belongs to the service that routes it. Adding it, or a path under it, to another service needs the right to edit the service that already has it, so a member can't take traffic (and its cookies) from someone else's service with a longer path. Nobody can put a service on the panel's own domain or on the hosts the nodes use for database web UIs and Boxes (`seylo-db-...` and `seylo-box-...`), and a custom certificate may not name hosts that belong elsewhere. The agent on each node enforces the same rules again.
+
+### Custom certificates
+
+**Upload certificate** in a domain's menu takes a PEM certificate chain and its private key; the domain switches to it. Use it for a certificate from your own CA, or a wildcard certificate you already have. It may only name hosts of this service or hosts no other service uses.
+
+## Access rules
+
+**Access rules** in a domain's menu add, per domain:
+
+| Rule | What it does |
+| --- | --- |
+| Basic auth | Browsers ask for a user name and password before anything loads. Passwords need at least 8 characters and are stored hashed. |
+| IP allowlist | One IP or CIDR per line. Everyone else gets 403. Empty lets everyone in. |
+| Rate limit | Requests per source IP: an average, a burst, per number of seconds. Over the limit, visitors get 429. |
+| Redirects | A regular expression on the full URL and its replacement; `$1` inserts a group |
+
+## IP and port access
+
+A new service with a port answers on the node's IP and a port the agent picks, until a domain works. The agent relays that port itself instead of publishing it through Docker, because Docker's published ports bypass ufw and similar firewalls. The **IP and port access** section on the Domains tab shows the address.
+
+With **Close IP:port once a domain is live** on (the default), the address switches to a redirect to the primary domain once that domain is live, and closes 24 hours later. **Redirect visitors to the primary domain, keeping their session** carries cookies over through a short handoff link, so visitors stay signed in; cookie expiry and flags are set fresh by the app. **Open again** and **Close now** change it by hand.
+
+IP:port access and other public ports relay TCP. UDP ports are coming later.
+
+## Maintenance and down pages
+
+Visitors see a page from the node's agent while a service is stopped, deploying for the first time or unreachable, and while maintenance mode is on.
+
+- Per service, in **Maintenance and down pages** on the Domains tab: turn on **Maintenance mode**, set a **Message**, or **Upload custom HTML**. Without its own page, the service uses the global one.
+- For everything, in **Settings → Maintenance pages**: **Maintenance mode for every service** makes every service answer with the maintenance page (HTTP 503) while the panel stays reachable. The global page is the built-in page with your message, or your own HTML.
+
+Custom pages are full HTML documents up to 512 KB, served with a strict Content-Security-Policy: scripts do not run on them.
+
+## Certificate limits
+
+Let's Encrypt issues at most 50 certificates per registered domain per week. Many services and pull request previews under one domain can reach that. Spread them over more than one domain, or upload a wildcard certificate you already have to the domains that need it.

@@ -6,14 +6,17 @@ the docs host.
 
 ```bash
 bun run dev      # :$PORT, default 3000 (or `bun run dev:landing` from the repo root)
-bun run build
-bun run start
+bun run build    # standalone output, what the Dockerfile ships
+bun run start    # serves the build (Next warns about standalone; it still works)
 ```
 
 | Var            | Default                 | What                                                                    |
 | -------------- | ----------------------- | ----------------------------------------------------------------------- |
 | `PORT`         | `3000`                  | Port for `dev` and `start`                                              |
 | `SITE_API_URL` | `http://localhost:4000` | The site API. `/l` and `/l/*` (troubleshoot reports) are proxied there. |
+
+`SITE_API_URL` is read at build time (the rewrite is baked into the build). The Dockerfile defaults it to
+`https://api.seylo.dev`.
 
 Names, URLs and the GitHub repo come from `brand/brand.json` through `lib/site.ts`.
 

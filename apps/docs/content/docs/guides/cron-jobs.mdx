@@ -1,0 +1,33 @@
+---
+title: Cron jobs
+description: Run commands on a schedule, either next to a service with its image and environment, or as a service of their own.
+---
+
+Schedules run on the node itself, not in the panel, so they keep firing while the panel is down. Each run is a fresh one-off container that runs to completion.
+
+## Cron jobs of a service
+
+A service's **Cron jobs** tab runs commands in one-off containers from that service's image, on its node, with its environment, volumes and project network. Use it for a nightly cleanup, a queue flush or a report that needs the app's code.
+
+**Add cron job**:
+
+| Field | What it does |
+| --- | --- |
+| **Name** | Shown in the list and in alerts |
+| **Command** | Runs as `sh -c <command>` |
+| **Schedule** | A standard 5-field cron expression, or `@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly` |
+| **Time zone** | The IANA zone the schedule is read in, for example `Europe/Berlin` |
+| **Time limit (seconds)** | The run is stopped after this long and marked **Timed out** |
+| **If the last run is still going** | **Skip the new run**, **Run both**, or **Stop the old run** |
+
+**Run now** starts a run at once. **Runs** lists every run with its result (**Succeeded**, **Failed**, **Timed out**, **Skipped**), exit code, duration and the end of its output: the last 100 lines are kept, with secrets removed.
+
+## Cron services
+
+For a job that is not tied to an app, create a service of its own: **Add a service → Cron job**, with an image, a schedule and a command. It runs to completion on its schedule in a one-off container, and it can build from a repository like an app (**Source** tab). Change the schedule on its **Advanced** tab.
+
+## Good to know
+
+- Runs missed while the node's agent was down are not caught up.
+- A stopped service's cron jobs do not fire.
+- A failed run raises the **Cron job failed** alert; see [Alerts and notifications](/features/notifications).

@@ -1,0 +1,83 @@
+---
+title: Alerts and notifications
+description: Notification channels defined once, the events that raise alerts, default and per-service rules, and mutes.
+---
+
+Things that need attention raise an **alert**: a crash, a failed deploy, a node going offline. Every alert is recorded in the panel's alert feed (the dashboard and each service's **Alerts** tab show the recent ones). Rules decide which alerts also go to a **channel**.
+
+## Channels
+
+Create a channel once in **Settings → Notifications**, then pick it in any alert rule:
+
+| Channel | What it needs |
+| --- | --- |
+| Email | SMTP host, port and security, user name and password, from and to addresses |
+| Webhook | A URL and an optional signing secret |
+| Discord | A Discord webhook URL |
+| Slack | A Slack incoming webhook URL |
+| Telegram | A bot token and a chat ID |
+| ntfy | Server URL, topic and an optional access token |
+| Pushover | User key and app token |
+| Gotify | Server URL and app token |
+
+**Send test** sends a test message and says if it did not arrive. Secrets are stored encrypted. **Pick for new alert rules** adds the channel to new rules by default. The email channel is also what the panel uses to send invites.
+
+Deliveries are retried when the receiver is down.
+
+### Webhook format
+
+A webhook channel `POST`s JSON:
+
+```json
+{
+  "type": "alert",
+  "event": "deploy_failed",
+  "severity": "error",
+  "title": "Deploy of api failed",
+  "message": "The new version never became healthy. The previous version is still serving.",
+  "link": "https://panel.example.com/p/...",
+  "alertId": "...",
+  "projectId": "...",
+  "serviceId": "...",
+  "nodeId": "...",
+  "panel": { "name": "Seylo", "url": "https://panel.example.com" },
+  "createdAt": "2026-11-05T10:00:00.000Z"
+}
+```
+
+Every request carries `x-seylo-timestamp` (Unix seconds). With a signing secret it also carries `x-seylo-signature: sha256=<hex>`, the HMAC-SHA256 of `<timestamp>.<body>` with the secret. Check it before you trust the request.
+
+## Events
+
+| Event | When |
+| --- | --- |
+| Crash | A service crashed: exit code or out of memory, once per crash streak |
+| Stopped after repeated crashes | The crash policy gave up |
+| Deploy failed | A build error, a failed health check, or a node refused the new settings (see [Zero-downtime deploys](/features/zero-downtime-deploys#how-a-deploy-works)) |
+| Deploy succeeded | A new version is live |
+| Build failed | The image could not be built |
+| Health check failing | A service runs but its health check fails |
+| Domain or certificate problem | A certificate could not be issued or renewed |
+| Uptime check down | An [uptime check](/features/uptime-checks) failed |
+| Backup failed | A scheduled or manual backup did not finish |
+| Cron job failed | A cron run exited with an error |
+| Node offline | A node lost its connection to the panel for more than a minute |
+| Node health check failed | A [node health check](/guides/node-health) found a problem |
+| Disk above 85% | The disk that holds a node's data (`/var/lib/seylo`) or Docker's data is more than 85% full. Each node checks every 10 minutes and alerts once until use drops back to 85% or below; the line is fixed. |
+| Update available | A new release, when auto-update is off |
+| Update failed | The panel or a node could not update |
+| Approval requested | An MCP client or the assistant asks to run something |
+| Security change | Someone approved a command line sign-in, created an API key, added a passkey, linked GitHub for sign-in, set or changed a password, or turned off two-factor sign-in; or many wrong passwords arrived for one account. See [Sign-in and security](/people/sign-in-and-security#security-alerts). |
+
+The **Node health check failed** alert also covers what a node reports between checks: Docker not answering, Traefik failing to start (for example because another program holds port 80 or 443), low memory, a clock that drifted from the panel's, and a node that could not move to the panel's domain (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)).
+
+When the problem goes away (the service stays up, the check passes again), the alert is resolved.
+
+## Rules
+
+- **Default alerts** in **Settings → Notifications** set, per event, which channels are told, or **Feed only**. Every service uses these unless it has its own.
+- A service's **Alerts** tab: turn off **Use the panel's default rules** to choose events and channels for that service only.
+
+## Mutes
+
+A mute stops notifications for everything, a project, a service or a node, optionally for one event only and until a time. Muted alerts are still recorded in the feed, marked muted. Mutes are set through the API (`alerts.mute`, see the [API reference](/api-reference)) or by an AI assistant you allow to.

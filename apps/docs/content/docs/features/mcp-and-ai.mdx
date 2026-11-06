@@ -1,0 +1,84 @@
+---
+title: MCP and AI
+description: Let Claude Code or another MCP client work with your panel, and use the built-in assistant, with read-only defaults and approvals for anything that deletes something.
+---
+
+Every action the panel can do is defined once, and that one definition becomes the HTTP API route, the MCP tool and the assistant's tool, with the same permission check and the same activity log entry. An AI tool can do exactly what its token allows, and never more than the person behind it.
+
+## The MCP server
+
+The MCP server is off until you turn it on: **Settings → API keys and MCP → MCP server on**. Turning it off later refuses every token and sign-in from AI tools but keeps them, so turning it back on restores access.
+
+The server URL is your panel's address plus `/mcp`, for example `https://panel.example.com/mcp` (Streamable HTTP). The settings page shows it with ready-made snippets:
+
+<Tabs items={["Claude Code", "Claude Desktop", "Cursor"]}>
+<Tab value="Claude Code">
+
+```bash
+claude mcp add --transport http seylo https://panel.example.com/mcp
+```
+
+</Tab>
+<Tab value="Claude Desktop">
+
+```json
+{
+  "mcpServers": {
+    "seylo": { "command": "npx", "args": ["-y", "mcp-remote", "https://panel.example.com/mcp"] }
+  }
+}
+```
+
+</Tab>
+<Tab value="Cursor">
+
+```json
+{
+  "mcpServers": {
+    "seylo": { "url": "https://panel.example.com/mcp" }
+  }
+}
+```
+
+</Tab>
+</Tabs>
+
+### Connecting
+
+- **OAuth** (recommended): add the URL in a client that supports MCP's OAuth sign-in. The client registers itself, opens the panel in your browser, and you choose what it may do: **read only** (the default) or read and change. If you signed in more than 15 minutes ago, the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) before it shows that page. Its access tokens last 24 hours and refresh by themselves; the connection lasts up to 90 days. **Connected tools** lists every client; revoking one ends all of its tokens.
+- **Token**: **Create token** under **MCP tokens** makes a token for clients that take a bearer token. Pick its projects, actions and expiry; it is read-only unless you turn that off. Send it as `Authorization: Bearer <token>`.
+
+MCP tokens start with `seylo_mcp_`. A regular API key does not work on the MCP server.
+
+### Tools
+
+Tools are the panel's actions with dots replaced by underscores: `services_list`, `logs_search`, `deployments_deploy`. A client sees only the tools its token can use, and a read-only token sees only the ones that read. Account security actions (passwords, 2FA, passkeys, API keys) are never available to AI tools.
+
+Tool results leave secrets out the same way the assistant's do: environment values, database passwords, tokens and file contents read through `files_read` come back as `[redacted]`, so a read-only token never hands them to the model's host.
+
+## Approvals
+
+An action that deletes something or cannot be undone (deleting a service, restoring a backup over current data, removing a domain, resetting a database password, and similar) never runs straight from an AI tool, even with a read-and-change token. It waits in **Approvals** with the exact input and the tool's reason. A person who could run it themselves clicks **Approve and run**, and it runs with that person's permissions; or **Deny**, with an optional note for the tool. Requests expire after 24 hours. The **Approval requested** alert can notify you. Approving needs a browser session; an API key can deny a request but never approve one.
+
+The tool gets an approval id back and can check later whether it ran (`approvals_get`).
+
+## The AI assistant
+
+The panel also has a built-in assistant that uses the same tools, on your own Anthropic API key: **Settings → AI assistant**.
+
+| Setting | What it does |
+| --- | --- |
+| **Assistant on** | Shows the assistant in the panel |
+| **Members can use it** | Otherwise only owners and admins see it |
+| **Anthropic API key** | Stored encrypted and checked with a small request before it is saved |
+| **Models** | **Automatic** routes Haiku for quick lookups, Sonnet by default and Opus for hard multi-step work; or **Always the same model** for predictable cost |
+| **Let automatic routing use Opus** | Off keeps the bill predictable |
+| **Monthly budget** | In US dollars; the assistant stops answering for the rest of the month once it is spent |
+
+**Usage** shows the spend so far, the projected bill for the month, and usage per day, model and person.
+
+The assistant acts with the permissions of the person talking to it. It reads on its own, but every change it wants to make, not only deletions, waits in **Approvals** until a person approves it. Secrets are left out of what it sees.
+
+## The activity log
+
+Everything an AI tool does, and every refused attempt, is in **Activity** with the client's name and the person it acts for. Passwords, tokens and other secrets are replaced with `[redacted]` before anything is stored.

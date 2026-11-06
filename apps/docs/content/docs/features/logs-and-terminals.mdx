@@ -1,0 +1,49 @@
+---
+title: Logs, console, shell and files
+description: Logs kept across deploys with search, the console and shell in the browser, and a file browser for every volume.
+---
+
+All of these go through the node's agent over its connection to the panel. Nothing extra is exposed on the node, and each needs its own permission (view logs, console, shell, read or write files), so you can share logs with someone without giving them a shell.
+
+## Logs
+
+A service's **Logs** tab follows its output live: new lines appear as they are written, across restarts and deploys, with a marker where each new generation started. **Pause** holds the view while you read.
+
+The node keeps the logs on disk, not the panel, so they survive deploys and restarts. How much it keeps is set per node: **Logs per service (MB)** and **Keep logs (days)** in the node's settings.
+
+**Search** looks through every deploy's logs on the node, as plain text or, with the regex switch, as a regular expression. On a service that runs on several nodes, pick one node or **All nodes**; lines of an offline node are missing until it is back.
+
+From a terminal, after [`seylo login`](/guides/command-line):
+
+```bash
+seylo logs acme-shop/web -f        # follow
+seylo logs acme-shop/web -n 1000   # the last 1000 lines
+```
+
+Build and deploy logs are on the **Deployments** tab, in each deployment's log.
+
+## Console
+
+The **Console** tab attaches to the container's main process: you see its recent output and then everything it writes, and what you type goes to its standard input. That is what REPLs and game-style servers expect. You can search, pause, clear and download the output.
+
+## Shell
+
+The **Shell** tab opens a new shell inside the running container, as `docker exec -it` would, and shows which user and working folder it runs as.
+
+Databases have a **Database shell** instead, already signed in to `psql`, `mysql`, `mongosh` or `redis-cli` (see [Databases](/guides/databases)).
+
+Console and shell sessions end after 30 minutes without input or output.
+
+## Volumes and files
+
+The **Storage** tab lists the service's volumes. **Add volume** takes a name, a mount path in the container and an optional **Read only**; volumes are mounted on the next deploy. A volume lives at `/var/lib/seylo/services/<id>/volumes/<name>` on the node and stays across deploys. Removing a volume deletes its data on every node.
+
+**Files** on a volume opens a file browser:
+
+- list folders, open and edit text files, create folders,
+- upload (up to 20 GiB per file) and download,
+- rename or move, change permissions (octal, like `0644`),
+- compress a selection to `.tar.gz` or `.zip`, and extract archives,
+- delete files and folders.
+
+Changes are live for the running service. Paths cannot escape the volume: `..` and symlinks pointing outside it are refused. On a service that runs on several nodes, each node keeps its own copy of every volume; pick the node in the file browser.

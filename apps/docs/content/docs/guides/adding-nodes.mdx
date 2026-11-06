@@ -1,0 +1,90 @@
+---
+title: Adding nodes
+description: Join more servers to the panel, set where builds run, and manage a node's settings, updates, reboots and disk space.
+---
+
+## Join a server
+
+On **Nodes**, click **Add node**, then **Create join command** (if you signed in more than 15 minutes ago, the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first). The command has a single-use token that is valid for one hour. Run it as root on the new server:
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>'
+```
+
+The installer checks the server, installs Docker if you agree, installs the agent as the `seylo.service` systemd unit and joins the panel. The agent creates its own Ed25519 key pair; the panel stores the public key, and every later connection is a signed challenge, so the token is useless after the first use. The node shows up on **Nodes** a few seconds later.
+
+A node only needs outbound access to the panel, plus inbound ports 80 and 443 for the sites it serves. The panel never connects to a node, so a node behind NAT works. Load balancing between nodes adds port 5757, and the IP:port addresses the panel hands out need their own ports; see [Firewalls](/installation#firewalls).
+
+<Callout title="The agent's connection is always encrypted">
+With a panel domain, the join command uses `https://<panel domain>` and its public certificate. Without one, it uses the panel's agent port, `https://<panel IP>:3443`, with `--pin sha256:...`: the panel's own key, made once at install, which the agent then trusts and nothing else. The panel server needs port 3443 open to your nodes (the installer opens it in ufw or firewalld). The agent refuses a plain `http://` panel on another server unless you add `--insecure`.
+</Callout>
+
+Then add a wildcard DNS record for the node so its services get automatic domains:
+
+```text
+*.de2.example.com   A   <node IP>
+```
+
+and set `de2.example.com` as the node's **Wildcard domain** in its settings.
+
+## When the panel gets a domain
+
+Nodes that joined over `https://<panel IP>:3443` move to the [panel domain](/self-hosting/the-panel#give-the-panel-a-domain) by themselves once it is active. The panel asks each of them to reconnect; the agent connects to `https://<panel domain>`, checks the certificate against the server's trusted certificate authorities and that the same panel answers there, and only then saves the new address in `/var/lib/seylo/config.yml`. The old pinned address stays as a fallback: if the domain stops answering for 5 minutes (removed, or its DNS changed), the node reconnects through it and moves on to the next domain by itself. The node's sheet on **Nodes** shows the address it uses under **Connects to**. The panel's own node keeps connecting over the server's loopback.
+
+A move that fails (for example because the node does not trust the domain's certificate) keeps the old address, raises a **Node health check failed** alert with the reason, and is tried again after an hour or when the agent restarts. After adding a certificate authority to a node's trust store, run `systemctl restart seylo` there: the agent reads the trust store when it starts.
+
+Two kinds of node do not move by themselves:
+
+- Nodes that joined over plain HTTP (`--insecure`) never move: nothing on a plain connection proves the new address comes from your panel. Run a new join command from **Add node** on them with `--force` added. The node keeps its key, so the panel keeps the same node and its services.
+- Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too.
+
+## Latency
+
+All traffic between a node and the panel goes over one WebSocket that the node keeps open. Reads in the panel come from the panel's own copy of each node's state, and an action is one round trip with progress pushed back, so a panel in Germany managing a node in the US feels close to a local one.
+
+If the connection drops, the agent reconnects with backoff. Its services keep running, restarting and routing meanwhile, and anything it has to report (crashes, deploy results, cron runs, backups) waits on its disk until the panel has it.
+
+## Node settings
+
+The **Settings** action on a node:
+
+| Setting | What it does |
+| --- | --- |
+| **Name**, **Location**, **Tags** | How the node shows up in the panel |
+| **Public address** | Where people and other nodes reach this server, when it is not the detected address: for example the public IP of a cloud server (AWS, Google Cloud, Azure, Oracle) whose network interface only has a private one. Used for IP:port links, exposed databases, load balancing and join commands. The panel server's is filled in from the address you opened the setup link at, when it knows no public address of its own. The node health check warns while no public address is known. |
+| **Wildcard domain** | New services on this node get `<name>.<this domain>`. Point the wildcard `A` record at the node first. |
+| **Build images on this node** | Allow builds here. Images built here run on every node; small nodes usually leave this off. |
+| **Builds at once** | How many builds run in parallel; the rest wait in a queue |
+| **Logs per service (MB)**, **Keep logs (days)** | How much service log history the node keeps |
+| **Game servers first** | Only on nodes with Wings, see [Running next to Wings](/guides/running-next-to-wings) |
+
+Builds and where they run are described in [Deploy from GitHub or Git](/guides/github-and-git#where-builds-run).
+
+## Health, updates and reboots
+
+The actions on a node's row:
+
+- **Health** runs the node's health checks: Docker, disk, clock, ports 80 and 443, DNS, the proxy, Wings and more, each with a fix. See [Node health checks](/guides/node-health).
+- **Update now** updates the node's agent to the panel's version; see [Updates](/self-hosting/updates).
+- **Update Docker** upgrades Docker Engine with the system's package manager (apt, dnf or yum) and shows the versions first. With Docker's live-restore on (the installer turns it on, see [Docker live-restore](/installation#docker-live-restore)), containers keep running while the daemon restarts. When it is off, the dialog warns that every service on the node stops until the agent starts it again.
+- **Reboot** reboots the machine. Services on the node are down until the machine and Docker are back; Seylo moves nothing away for you. The agent reconnects by itself.
+- **Agent logs** shows what the agent wrote: connects, deploys and errors.
+
+On the node itself, `seylo status`, `seylo health` and `seylo logs` show the same from the command line; see the [CLI reference](/reference/cli).
+
+## Disk cleanup
+
+**Settings → Docker cleanup** frees disk space on one node. Pick what to clean, **Preview** the list with sizes, then **Clean up**:
+
+| What | Notes |
+| --- | --- |
+| Unused images | Images no service needs any more. The newest images of each service, which rollbacks use, stay. |
+| Build cache | Cached build layers; the next build of each app is slower |
+| Stopped containers | Old containers left after deploys |
+| Orphaned service data | Data folders of services removed without deleting their data. Deleted for good. |
+
+Only images, caches, containers and data that Seylo created are touched. Everything else on the machine, including other tools' images and Wings' game servers, is left alone.
+
+## Remove a node
+
+**Remove node** in the node's settings forgets the node and its key. Containers on the machine are not touched, so move its services away first. The node that runs the panel cannot be removed. To clean up the machine itself, see [Uninstall](/self-hosting/uninstall).

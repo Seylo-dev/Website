@@ -1,0 +1,45 @@
+---
+title: Running next to Wings
+description: Share a Pterodactyl or Pelican game node with Seylo without a VM, and keep game servers first in line for CPU.
+---
+
+Game nodes often have spare memory and CPU for a website, a bot or a database. Seylo is built to share a node with Wings without getting in its way.
+
+## Install
+
+Join the Wings node like any other node, with the command from **Nodes → Add node**:
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>'
+```
+
+Nothing about Wings or your game servers changes. The agent finds Wings by its config (`/etc/pelican/config.yml` or `/etc/pterodactyl/config.yml`) and asks the local Wings API for its version. The node shows **Wings detected** on **Nodes**.
+
+## What changes on a Wings node
+
+- **One proxy on 80 and 443.** If the node runs a Wings build with its own Traefik on ports 80 and 443, Seylo writes its routes as `seylo-*.yml` files into that Traefik's dynamic folder instead of starting a second proxy, and reconnects its network to that Traefik whenever Wings recreates it. The node shows **Shared proxy**. Load balancing between nodes then runs on a small second Traefik of Seylo's own, on port 5757 only.
+- **No hijacked hostnames.** Every container Seylo creates is labelled `traefik.enable=false`, so an image can't claim a hostname through Docker labels.
+- **Hands off game containers.** Seylo only lists, cleans up or restarts containers, networks and volumes that carry its own `seylo.*` labels. Docker cleanup never touches Wings' images or servers.
+- **Firewall respected.** Ports are relayed by the agent, not published through Docker, so ufw rules on the node keep working.
+
+Stock Wings has no proxy on 80 and 443. In that case Seylo runs its own Traefik there, as on any other node.
+
+<Callout type="warn" title="Wings builds that clean up route files">
+A Wings build that removes route files it does not own deletes Seylo's. The agent writes them back within 15 seconds, and the node's **Pelican Wings** health check warns about it. Use a Wings build that leaves `seylo-*` files alone.
+</Callout>
+
+## Game servers first
+
+On nodes where Wings is detected, the node's settings show **Game servers first**. It puts every Seylo container in the `seylo.slice` cgroup with a low CPU weight, so when the CPU is busy the game servers get it first and a large build can't cause lag. When the CPU is idle, Seylo's containers can still use all of it: this is a priority, not a cap.
+
+## Memory
+
+Seylo sets no memory limits by default. On a game node, set a **Memory limit** on each service (**Advanced → Resource limits**) so a leaking app can't push game servers into the out-of-memory killer.
+
+## Ports
+
+Seylo relays TCP ports only; UDP ports for services are coming later. Game servers' own ports stay with Wings.
+
+<Callout title="Tested so far">
+Shared mode has been tested with a stand-in Traefik and the games-first CPU weight on test machines, not yet next to a production Wings install with game servers. Try it on a test node first.
+</Callout>

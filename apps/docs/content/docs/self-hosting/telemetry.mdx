@@ -1,0 +1,32 @@
+---
+title: Telemetry
+description: The anonymous usage report a panel can send, everything in it, and how to turn it on or off.
+---
+
+A panel can send one small, anonymous report a day so we know roughly how many panels run which version. It is **off** until an owner or admin turns it on in **Settings → Telemetry → Send anonymous usage reports**. Nodes never send anything.
+
+## What is sent
+
+```json
+{
+  "installId": "Xb3kQ2...",
+  "version": "0.1.0",
+  "nodes": 3,
+  "services": 12
+}
+```
+
+| Field | What it is |
+| --- | --- |
+| `installId` | A random id the panel generates once. It is not derived from anything on the panel, and the receiving end hashes it before storing it. |
+| `version` | The panel's version |
+| `nodes` | How many nodes the panel manages |
+| `services` | How many services exist in total |
+
+That is all: no hostnames, domains, IP addresses, emails, project or service names, or anything about what you deploy. **What is sent** on the Telemetry page shows the exact report the next send would carry, whether telemetry is on or not, along with the install id, where it goes, how often, and when the last and next reports are.
+
+## How often and where
+
+With telemetry on, the panel sends the report every 24 hours, at a time spread over the day so panels don't all report at once. It goes to `https://api.seylo.dev/telemetry`. The receiving end keeps one row per install per day and drops any other field, so even the exact send times are not stored.
+
+Turning telemetry off stops the reports at once.

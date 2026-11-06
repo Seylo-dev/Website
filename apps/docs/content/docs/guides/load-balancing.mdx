@@ -1,0 +1,31 @@
+---
+title: Load balancing and replicas
+description: Run an app on several nodes with several replicas each, and spread its traffic over all of them.
+---
+
+An app runs on one node by default, as one container. On its **Advanced** tab, **Replicas and nodes** lets you add nodes and set **Replicas** per node (1 to 32). The new replicas deploy right away.
+
+The image is built once and shipped to every node, so all replicas run the same image.
+
+## How traffic is spread
+
+Each node's Traefik spreads requests over every healthy replica of the service, on its own node and on the others, so a domain pointed at any of the service's nodes reaches all of them. A replica whose health check fails leaves the rotation while another replica is healthy.
+
+| Setting | What it does |
+| --- | --- |
+| **Entry node** | The node that takes the public traffic: point the service's domains at it, and its Traefik spreads requests over every node. Without one, each node balances the traffic that reaches it. |
+| **Sticky sessions** | A visitor keeps reaching the same replica, with a cookie |
+
+Nodes forward traffic to each other over HTTPS on port **5757**, at the other node's **Public address** setting, else its public IPv4 address (else its public IPv6, else its private IPv4 when the nodes share a private network). The connection is mutual TLS: the panel issues each node a certificate from its own CA, and a node only accepts forwarded traffic from another node of the same panel. During an update run, a node whose agent is still on an older version can't present a certificate yet, so its `GET`, `HEAD` and `OPTIONS` requests fall back to the balancing node's own replicas until it updates. Allow 5757 between your nodes only:
+
+```bash
+ufw allow from <other node IP> to any port 5757 proto tcp
+```
+
+When a replica on another node fails mid-request with a 502, 503 or 504, `GET`, `HEAD` and `OPTIONS` requests are sent once more to the balancing node's own replicas (with up to 1 MiB of body). Other methods are never replayed, so a `POST` to a node that just went down fails once. Nodes do not yet check each other's health ahead of time.
+
+## What does not spread
+
+- **Volumes.** A service with volumes runs on one node, because each node would keep its own copy of the data. Use **Move** to change which node; see [Moving services](/guides/moving-services).
+- **Private networks.** A project's network exists on each node separately. Replicas on several nodes need a database they can all reach: expose it with TLS and use `${{db.EXPOSED_URL}}` (see [Databases](/guides/databases)), not its internal address.
+- **Compose stacks** stay on one node.

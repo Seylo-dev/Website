@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import brand from "../../brand/brand.json";
 
@@ -5,10 +6,16 @@ import brand from "../../brand/brand.json";
 // proxied there instead of being pages of this app.
 const apiUrl = (process.env.SITE_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 const docsUrl = brand.urls.docs.replace(/\/$/, "");
+// The repo root: one bun.lock and node_modules for every app. `output: "standalone"` writes a
+// self-contained server (apps/landing/server.js) for the Dockerfile.
+const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  output: "standalone",
+  turbopack: { root },
+  outputFileTracingRoot: root,
   // No AGENTS.md: `next dev` should not write one into this folder.
   agentRules: false,
   // Early builds printed <site>/docs; the docs live on their own host.

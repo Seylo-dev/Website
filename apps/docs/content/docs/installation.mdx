@@ -1,0 +1,203 @@
+---
+title: Installation
+description: Install the panel and the first node on one server with one command. Add more nodes later with a join command.
+---
+
+## Requirements
+
+| What | Needs |
+| --- | --- |
+| System | Linux with systemd, x86-64 (amd64) or ARM64. Ubuntu 22.04 and 24.04 and Debian 12 are tested; RHEL, Rocky, AlmaLinux and CentOS 9 and Fedora 40 or newer should work. |
+| Kernel | Linux 5.6 or newer, with cgroup v2 |
+| Docker | Docker Engine 23 or newer (25 or newer recommended), installed from Docker's packages with a `docker.service` unit. The snap package does not work. The installer can install Docker for you. |
+| Ports | 80 and 443 for your sites, 3000 for the panel until it has a domain, and 3443 on the panel server for other nodes' agents. See [Firewalls](#firewalls) for the rest. |
+| Tools | OpenSSL 3 or `minisign`, to check the release signature. Current distributions ship OpenSSL 3. |
+| Memory | 1 GB works for a small panel node; 2 GB or more is recommended once you build images on it |
+
+Run the installer as root on a server you reach over SSH. A fresh VPS is the easy case. A server that already runs other containers is fine too: Seylo only lists, changes or removes what it created itself.
+
+## Install
+
+<Steps>
+<Step>
+
+### Run the installer
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh
+```
+
+Without arguments the installer sets up the panel and makes this server its first node. It:
+
+1. checks the system (Linux, systemd, CPU architecture),
+2. checks that ports 80 and 443, the panel's port (3000) and the agents' TLS port (3443) are free, and stops if another program holds one of them (nginx or Apache, for example), before it changes anything,
+3. downloads the release manifest and checks its signature with OpenSSL 3 or `minisign`; it stops if the signature is wrong or neither tool is there,
+4. checks Docker and offers to install it with the official script from get.docker.com if it is missing. It refuses snap Docker, Docker without a `docker.service` unit and Docker older than 23, and turns on Docker's live-restore so services keep running while Docker restarts (see below),
+5. downloads the `seylo` binary, checks its SHA-256 against the signed manifest and installs it to `/usr/local/bin/seylo`,
+6. writes the `seylo.service` systemd unit,
+7. opens ports 80, 443, the panel's port and the agents' TLS port in ufw or firewalld when one of them is active,
+8. starts the panel container, pinned to the image digest in the signed manifest, and joins this server to it as a node.
+
+It ends with the link to create the owner account:
+
+```text
+==> Starting the panel
+Starting the panel (ghcr.io/seylo-dev/seylo:0.1.0@sha256:...)...
+
+The panel is running. Open this link within an hour to create the owner account:
+
+  http://203.0.113.10:3000/setup?t=seylo_setup_...
+
+If 203.0.113.10 is not this server's public address, use the public one with the same path.
+```
+
+</Step>
+<Step>
+
+### Create the owner account
+
+Open the link. It works once and expires after one hour. Create the owner with an email and a password (at least 10 characters), or with **Continue with GitHub** when the panel offers it: GitHub sign-in uses the device flow, like `gh auth login`, so you type a short code on github.com and nothing has to be configured on the panel first.
+
+Setup then asks for a few optional things, each of which you can skip and change later in **Settings**:
+
+- **Panel domain**: a hostname for the panel itself, with HTTPS. Without one, the panel stays on `http://<server-ip>:3000`.
+- **Node wildcard domain**: see the next step.
+- **First project**: a group for your first services.
+
+If the link expired before you used it, run this on the server to get a new one:
+
+```bash
+seylo panel setup-link
+```
+
+</Step>
+<Step>
+
+### Point a wildcard at the node
+
+One DNS record lets every service on this node get its own domain with HTTPS, with no further DNS work:
+
+```text
+*.de1.example.com   A   203.0.113.10
+```
+
+Then set `de1.example.com` as the node's **Wildcard domain** (on **Nodes**, or in the setup step). See [Domains and HTTPS](/guides/domains-and-https).
+
+</Step>
+</Steps>
+
+<Callout title="Already running Wings?">
+The agent detects Pelican or Pterodactyl Wings on the node. If that Wings build runs Traefik on ports 80 and 443, Seylo shares it instead of starting its own. See [Running next to Wings](/guides/running-next-to-wings).
+</Callout>
+
+## Installer options
+
+Pass options after `sh -s --`:
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docker
+```
+
+| Option | What it does |
+| --- | --- |
+| `panel` | Install the panel and a node on this server (the default) |
+| `join --panel <url> --token <t>` | Add this server to an existing panel; the panel's **Add node** dialog gives you the full command. See [Adding nodes](/guides/adding-nodes). |
+| `uninstall [--purge]` | Remove the agent; see [Uninstall](/self-hosting/uninstall) |
+| `--version <v>` | Install this release instead of the latest |
+| `--port <n>` | Port for the panel until it has a domain (default 3000) |
+| `--agent-tls-port <n>` | Port where other nodes' agents reach the panel over TLS with a pinned key until it has a domain (default 3443; `0` turns it off) |
+| `--image <ref>` | Panel image (default: the release's image, pinned by the digest in its signed manifest) |
+| `--allow-unsigned` | Install a release without checking its signature, for development builds that have no release key |
+| `--name <name>` | Node name shown in the panel (default: the hostname) |
+| `--can-build` | Allow builds on a joining node (the panel node always can) |
+| `--pin <sha256:...>` | Panel certificate pin, for joining (the Add node command carries it) |
+| `--insecure` | Join a panel at a plain `http://` URL on another server; the agent's traffic is then unencrypted |
+| `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node); install the panel although another program holds 80 or 443 |
+| `--install-docker` | Install Docker without asking if it is missing |
+| `--no-docker-install` | Never install Docker; stop if it is missing |
+| `--yes`, `-y` | Answer yes to questions (implies `--install-docker`) |
+| `--data-dir <dir>` | Data folder (default `/var/lib/seylo`) |
+| `--release-url <url>` | Download releases from a mirror of the GitHub releases page |
+| `--binary <path>` | Install this binary instead of downloading one |
+| `--dry-run` | Print what would be done and change nothing |
+| `-h`, `--help` | Print the installer's help |
+
+Running the installer again is safe: it updates the binary and the systemd unit and keeps the node's data and identity.
+
+## Firewalls
+
+When ufw or firewalld is active, the installer opens what Seylo needs and prints what is left to you:
+
+| Port | Who needs it | Opened by the installer |
+| --- | --- | --- |
+| 80, 443 | Everyone: your sites | Yes |
+| 3000 (panel port) | You, until the panel has a domain | Yes, on the panel server |
+| 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | Yes, on the panel server |
+| 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | Yes (ufw) |
+| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | A joining node allows it from the panel's address; allow it from your other nodes yourself |
+| IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | No: open each port you want reachable |
+
+The IP:port addresses the panel shows are served by the agent itself, not published through Docker, so the host firewall applies to them. Docker's own published ports bypass ufw, which is why Seylo does not use them. When a node's firewall is on, the panel shows the command that opens each port next to the address, and the node health check names the ones that are still closed.
+
+Cloud firewalls (security groups) are not touched: allow the same ports there.
+
+## Docker live-restore
+
+Seylo runs every container with Docker's restart policy off, because the agent owns the crash policy. Without Docker's `live-restore`, restarting Docker (an update, unattended upgrades) stops every service and the panel until the agent starts them again. The installer turns it on in `/etc/docker/daemon.json` and reloads Docker, which restarts nothing, and keeps the old file as `daemon.json.before-seylo`.
+
+It leaves Docker alone when `daemon.json` sets `"live-restore": false`, when Docker is in swarm mode, and on servers that run Wings. The **Docker live-restore** node health check warns while it is off.
+
+## Where things live
+
+Everything Seylo keeps on a node is in one folder:
+
+<Files>
+  <Folder name="/var/lib/seylo" defaultOpen>
+    <File name="config.yml" />
+    <File name="agent.key" />
+    <Folder name="panel">
+      <File name="panel.db" />
+      <File name="metrics.db" />
+      <File name="master.key" />
+    </Folder>
+    <Folder name="services">
+      <Folder name="<id>">
+        <Folder name="volumes" />
+        <Folder name="files" />
+      </Folder>
+    </Folder>
+    <Folder name="logs" />
+    <Folder name="builds" />
+    <Folder name="registry" />
+    <Folder name="state" />
+    <Folder name="traefik" />
+    <Folder name="tools" />
+  </Folder>
+</Files>
+
+| Path | What it is |
+| --- | --- |
+| `config.yml` | The node's config: panel URL, node id, panel certificate pin |
+| `agent.key` | The node's private key; it signs every connection to the panel |
+| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history) and `master.key` |
+| `services/<id>/volumes/<name>` | Service volumes |
+| `services/<id>/files` | File mounts |
+| `logs/<service id>/` | Service logs, kept across deploys |
+| `builds/` | Build workspaces and uploaded sources |
+| `registry/` | Image registry storage (panel node only) |
+| `state/` | The last desired state from the panel and reports waiting to be sent |
+| `traefik/` | Traefik's config, route files and certificates |
+| `tools/` | Pinned helper binaries (Railpack, Nixpacks) |
+
+Keep a copy of `master.key` somewhere other than the server: it decrypts the secrets in `panel.db` (see [Backing up the panel](/self-hosting/backups)).
+
+## If something goes wrong
+
+```bash
+seylo status          # the agent, its panel connection and the services on this node
+seylo health          # the node health checks, with a fix for each failure
+seylo panel status    # the panel's state, version and URL
+seylo troubleshoot    # upload a redacted report and get a link to share
+```
+
+More in [Troubleshooting](/troubleshooting).

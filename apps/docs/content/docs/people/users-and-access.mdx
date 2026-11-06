@@ -1,0 +1,55 @@
+---
+title: Users and access
+description: Roles, invites, sharing projects and services with members, and the activity log.
+---
+
+## Roles
+
+Everyone who signs in has a role:
+
+| Role | Can do |
+| --- | --- |
+| **Owner** | Everything, including managing other owners and the custom CSS |
+| **Admin** | Everything except changing owners |
+| **Member** | Only the projects and services shared with them, with the actions picked when sharing |
+
+The person who created the panel is its first owner. Only owners change owner roles, the last active owner cannot be demoted, disabled or removed, and nobody changes their own role.
+
+## Invite someone
+
+**Settings → People → Invite**: enter the email, pick the role and, for members, which projects or single services they get, with which actions. The link is valid for 1 to 30 days (7 by default) and works once. With an email channel set up in **Settings → Notifications**, the panel emails it; otherwise copy it and send it yourself. It is shown only once.
+
+The person opens the link and creates their account. **Invites** lists links that were not used yet; **Revoke** makes one stop working.
+
+Inviting an admin, and making someone an admin or owner, hands out lasting access, so in the browser it needs a sign-in from the last 15 minutes: otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first. Member invites, sharing and lowering a role do not ask.
+
+## Sharing projects and services
+
+A member sees only what is shared with them. Share from a project's **People** tab (**Share**) with one of three presets:
+
+| Preset | Allows |
+| --- | --- |
+| **View** | See services, logs, metrics, domains and environment |
+| **Deploy** | View, plus deploy, start, stop, restart and the console |
+| **Full access** | Everything you can do in this project, including sharing it |
+
+For finer control, open the person in **Settings → People** and **Add access** to a whole project or a single service, then **Choose actions**: for example, read logs but not open a shell, or edit domains but not variables. A project grant covers all of the project's services; a service grant covers that service only. Panel-wide actions (nodes, settings, people) are never shared this way; they come with the owner and admin roles.
+
+You can only share actions you hold yourself on that project or service.
+
+## Changing a person
+
+In **Settings → People**, open a person to:
+
+- change their role,
+- see and change their access,
+- **Disable** them: they are signed out everywhere and their API keys stop working. Their access and history stay, and **Enable** lets them sign in again (their old API keys stay revoked).
+- **Remove** them: deletes the account with its sessions, sign-in methods, API keys and access. The activity log keeps their entries. You type the email to confirm.
+
+The list also shows each person's 2FA and passkeys and their last sign-in. People change their own name, password and sign-in methods themselves, see [Sign-in and security](/people/sign-in-and-security).
+
+## Activity log
+
+**Activity** lists every change made through the panel, the API, MCP or the assistant, and every refused attempt: who, what, on which project or service, from where and with which credential, and the result. Filter by person, area, result and time, search, and **Export** as CSV or JSON Lines. A project's **Activity** tab shows its own entries.
+
+Passwords, tokens and other secrets are replaced with `[redacted]` before anything is stored. Members see their own entries; seeing everyone's needs the activity log permission.

@@ -1,0 +1,30 @@
+---
+title: Uninstall
+description: Remove the agent from a node, with or without its containers and data.
+---
+
+Run the installer with `uninstall` on the node, as root:
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh -s -- uninstall
+```
+
+This stops and disables `seylo.service`, removes its systemd units and the `/usr/local/bin/seylo` binary. Your services keep running until they stop or the server reboots, and `/var/lib/seylo` is kept, so nothing is lost if you change your mind and install again.
+
+## Remove everything
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh -s -- uninstall --purge
+```
+
+`--purge` also removes every container, network and volume that carries the `seylo.managed=true` label, and the whole `/var/lib/seylo` folder. Containers and volumes Seylo did not create are left alone. Docker itself, and firewall rules the installer added, stay.
+
+<Callout type="warn" title="On the panel's node, --purge deletes the panel">
+The panel's database and `master.key` live in `/var/lib/seylo/panel/`. Purging the panel's node deletes the panel with every project, person and setting. Take a [backup](/self-hosting/backups) first if you might need it.
+</Callout>
+
+## In the panel
+
+Uninstalling does not tell the panel. Remove the node on **Nodes** (the node's settings, **Remove node**) so the panel forgets it and its key. Move its services to another node first if you want to keep them; see [Moving services](/guides/moving-services).
+
+`--dry-run` prints what `uninstall` would do without changing anything.

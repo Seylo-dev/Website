@@ -1,0 +1,66 @@
+---
+title: Sign-in and security
+description: Passwords, two-factor authentication with an authenticator app, passkeys, GitHub sign-in and sessions.
+---
+
+Each person manages their own sign-in methods in **Settings → Security** (under **Your account**).
+
+## Password
+
+Passwords need at least 10 characters. Changing yours signs you out everywhere else. If you signed up with GitHub, you can set a password to also sign in with your email; setting that first password needs a recent sign-in (see [Confirm it's you](#confirm-its-you)).
+
+After five wrong passwords or codes in a row from one address, sign-in for that email from that address pauses for 30 seconds, doubling up to 15 minutes; 15 quiet minutes forgive the streak. The pause is per address, so a stranger guessing at your email only locks themselves out, never you. Past 50 wrong passwords for one email within 15 minutes, from any addresses, every sign-in for that email waits a few seconds first and the account's owner gets a **Security change** alert. That brake never locks anyone out. An admin who enables a person again in **Settings → People** clears both.
+
+## Confirm it's you
+
+Anything that adds a way into your account needs a sign-in from the last 15 minutes, so a browser left signed in somewhere is not enough on its own:
+
+- adding a passkey, linking GitHub for sign-in, setting up an authenticator app or setting a first password,
+- creating an API key or an MCP token,
+- approving a [command line sign-in](/guides/command-line#sign-in),
+- allowing an AI tool through MCP's OAuth sign-in (see [MCP and AI](/features/mcp-and-ai#connecting)).
+
+Admins and owners also need it, when they work in the browser, for the actions that hand lasting access to someone else: an admin invite, making someone an admin or owner, and creating a node join command (see [Users and access](/people/users-and-access#invite-someone) and [Adding nodes](/guides/adding-nodes#join-a-server)).
+
+When your last sign-in is older, the panel shows **Confirm it's you** and then makes the change by itself. Confirm with whichever you have:
+
+- your **Password**,
+- a code from your **Authenticator** app, or an unused recovery code (it is used up),
+- a **Passkey** (needs the panel domain, like passkey sign-in).
+
+The confirmation counts for 15 minutes in that browser only. Five wrong answers in a row from one address pause it for 30 seconds, doubling up to 15 minutes, like wrong sign-ins. An account with none of the three (GitHub sign-in only) gets **Sign in again** instead, and comes back to the same page afterwards. Closing the dialog cancels the change.
+
+API keys and MCP tokens never get this dialog: they cannot change sign-in methods or make keys at all. An admin's API key can still invite admins, change roles and create join commands without it, because the key itself was made under a recent sign-in. Through the API, a stale browser session gets `403 FORBIDDEN` with `details.reason` set to `reauth`; confirm with `auth.reauth` (see the [API reference](/api-reference)) and repeat the call.
+
+## Security alerts
+
+The **Security change** alert (see [Alerts and notifications](/features/notifications)) is raised when someone approves a [command line sign-in](/guides/command-line#sign-in), creates an API key, adds a passkey, links a GitHub account for sign-in, sets or changes a password or turns off two-factor sign-in, and when many wrong passwords arrive for one account. Send it to a channel you read, so a sign-in method you did not add does not go unnoticed.
+
+## Authenticator app (2FA)
+
+**Authenticator app → Set up**: scan the QR code with an app such as 1Password, Authy or Google Authenticator (or type the setup key), then enter the 6-digit code it shows. From then on the panel asks for a code after your password.
+
+You get recovery codes once, right after turning it on. Each signs you in once if you lose your authenticator; save them somewhere safe. The page tells you how many are left and makes new ones on request (the old ones stop working). Turning the authenticator off needs a current code or an unused recovery code, and deletes the recovery codes.
+
+## Passkeys
+
+**Passkeys → Add a passkey** lets you sign in with Touch ID, Windows Hello, your phone or a security key instead of a password. Passkey sign-in checks that it is really you on the device, so it does not ask for a 2FA code on top.
+
+Passkeys need the panel to have a domain (**Settings → General**), because browsers tie a passkey to one.
+
+## GitHub
+
+**GitHub → Link GitHub** links your GitHub account so you can sign in with it, through the device flow (like `gh auth login`): you enter a short code on github.com. Tick **Also let the panel clone my private repositories** to also give the panel a token with the `repo` scope; leave it off if the panel's GitHub App already reaches your repositories.
+
+GitHub sign-in needs the panel's GitHub OAuth client to be set up. When it is not, the page says "Sign-in with GitHub is not set up on this panel" and you sign in with email and password instead. Signing in with GitHub only works for accounts that linked it first.
+
+## Sessions
+
+**Sessions** lists the browsers where you are signed in, with their address and when they were last active. **Sign out** ends one, **Sign out everywhere else** ends all but this one.
+
+A browser session lasts 30 days after it was last used, and at most 90 days after you signed in. The session cookie is HttpOnly, `Secure` on every HTTPS request, and only a hash of it is stored. Over HTTPS the panel also sends HSTS, and no page of the panel can be shown in a frame.
+
+## For admins
+
+- **Settings → People** shows who has 2FA and passkeys. Disabling a person ends all of their sessions and API keys at once; see [Users and access](/people/users-and-access).
+- API keys and MCP tokens never change sign-in methods, passwords or other keys: those actions need a browser session.

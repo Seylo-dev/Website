@@ -1,64 +1,50 @@
 # Seylo website
 
-The repo behind [seylo.dev](https://seylo.dev): the landing page, the small site API behind telemetry,
-troubleshoot reports and the installer, and the tool that captures the landing's hero screenshot.
+The repo behind [seylo.dev](https://seylo.dev): the landing page, the docs and the small site API. One Bun
+workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and the templates) lives in
+[Seylo-dev/App](https://github.com/Seylo-dev/App).
 
-The rest of Seylo lives in two public repos:
-
-- [Seylo-dev/App](https://github.com/Seylo-dev/App): the panel, the agent, the installer and the templates.
-- [Seylo-dev/Docs](https://github.com/Seylo-dev/Docs): the docs at [docs.seylo.dev](https://docs.seylo.dev),
-  with the API and CLI references.
-
-| Folder                               | Stack               | Serves                                                                             |
-| ------------------------------------ | ------------------- | ---------------------------------------------------------------------------------- |
-| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4 | `seylo.dev`                                                                        |
-| [`apps/api`](apps/api)               | Bun, Elysia, SQLite | `api.seylo.dev`, `install.seylo.dev`, and `seylo.dev/l/*` through the landing page |
-| [`tools/hero-shot`](tools/hero-shot) | Playwright          | The landing's hero image, captured from a running panel                            |
+| Folder                               | Stack                    | Serves                                                    |
+| ------------------------------------ | ------------------------ | --------------------------------------------------------- |
+| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4      | `seylo.dev`; proxies `seylo.dev/l/*` (reports) to the API |
+| [`apps/docs`](apps/docs)             | Next 16, Fumadocs        | `docs.seylo.dev`, with the API and CLI references         |
+| [`apps/api`](apps/api)               | Bun, Elysia, SQLite      | `api.seylo.dev` (telemetry, reports), `install.seylo.dev` |
+| [`tools/hero-shot`](tools/hero-shot) | Playwright (own install) | The landing's hero image, captured from a running panel   |
 
 Names, domains and the GitHub repos come from [`brand/brand.json`](brand/brand.json).
 
-## Setup
+## Dev
 
-Needs Bun 1.4 (Node 24 is only used by Next's tooling).
+Needs Bun 1.4 (Node 24 for Next's tooling).
 
 ```bash
-bun install            # landing + api (workspaces)
+bun install
+bun run dev            # all three: landing :3000, docs :3001, api :4000
+bun run dev:landing    # or dev:docs, dev:api
+bun run build          # landing + docs
+bun run test           # the API's tests
+bun run typecheck      # all three
 ```
 
-`tools/hero-shot` has its own install; see its README.
+## Deploy on Easypanel
 
-## Scripts
+Three App services, each from GitHub `Seylo-dev/Website` (branch `main`), Build Path `/`, build type
+Dockerfile:
 
-| Script                                | What                                      |
-| ------------------------------------- | ----------------------------------------- |
-| `bun run dev`                         | Both apps: api on :4000, landing on :3000 |
-| `bun run dev:api` / `dev:landing`     | One app                                   |
-| `bun run build`                       | Builds both                               |
-| `bun run build:api` / `build:landing` | One app                                   |
-| `bun run start:api` / `start:landing` | Run a production build                    |
-| `bun run test`                        | The API's tests                           |
-| `bun run typecheck`                   | Type-check both apps                      |
+| Service | Dockerfile                | Domains                              | Extra                                       |
+| ------- | ------------------------- | ------------------------------------ | ------------------------------------------- |
+| landing | `apps/landing/Dockerfile` | `seylo.dev`, `www.seylo.dev`         | a Redirect from `www.seylo.dev` to the apex |
+| docs    | `apps/docs/Dockerfile`    | `docs.seylo.dev`                     |                                             |
+| api     | `apps/api/Dockerfile`     | `api.seylo.dev`, `install.seylo.dev` | a volume mounted at `/data`                 |
 
-## How the pieces connect
+Every image listens on port 80, Easypanel's default, so there is nothing to type in the domain's port. No env
+is needed. Optional:
 
-- `curl -fsSL https://install.seylo.dev | sudo sh` hits the API, which serves `install.sh` from the latest release
-  of the app repo (`https://github.com/Seylo-dev/App/releases/latest/download/install.sh`, cached). Outside
-  production it falls back to `installer/install.sh` in a checkout of the app repo next to this one
-  (`../seylo`).
-- Panels whose owner turned telemetry on (it is off by default) send one anonymous report a day to
-  `api.seylo.dev/telemetry` (documented in the docs under Telemetry).
-- `seylo troubleshoot` uploads a redacted report to `seylo.dev/l`, which the landing page proxies to the API, and
-  prints `seylo.dev/l/<id>`.
-- The landing links to the docs at `docs.seylo.dev` and redirects old `seylo.dev/docs/*` links there.
+- `STATS_TOKEN` on the api: enables `GET /telemetry/summary` (see `apps/api/.env.example` for the rest).
+- `SITE_API_URL` on the landing and `NEXT_PUBLIC_SITE_URL` on the docs, only if the domains change. They are
+  baked in at build time (Easypanel passes env to the build), so redeploy after changing them.
 
-## Deploy
-
-- Landing: Vercel project on this repo with Root Directory `apps/landing`, env `SITE_API_URL=https://api.seylo.dev`,
-  domains `seylo.dev` and `www.seylo.dev` (redirect to the apex).
-- Site API: a Seylo App service built from this repo with `deploy/api.Dockerfile` (build context: the repo root),
-  port 4000, a volume at `/data`, env from `apps/api/.env.example` (`DATA_DIR=/data`, `SITE_URL=https://seylo.dev`,
-  `TRUST_PROXY=true` behind Seylo's Traefik, a random `STATS_TOKEN`), domains `api.seylo.dev` and
-  `install.seylo.dev`, health check `GET /healthz`.
+To try an image locally: `docker build -f apps/docs/Dockerfile -t seylo-docs . && docker run -p 3001:80 seylo-docs`.
 
 ## Conventions
 
@@ -68,5 +54,6 @@ bun install            # landing + api (workspaces)
 
 ## License
 
-The code is under the [MIT License](LICENSE). The Seylo name and logo are not covered by it: please don't use
-them for your own product.
+The code is under the [MIT License](LICENSE). The docs' text is under CC BY 4.0
+([`apps/docs/LICENSE-CONTENT`](apps/docs/LICENSE-CONTENT)). The Seylo name and logo are not covered by
+either: please don't use them for your own product.

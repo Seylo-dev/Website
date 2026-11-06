@@ -1,0 +1,48 @@
+---
+title: Dev access and tunnels
+description: Open a port to your IP for a limited time, give a service a Cloudflare Tunnel, and work in a Box in the browser.
+---
+
+**Dev access** on a service's **Domains** tab is for local development: reaching a port that has no domain, or sharing a service from behind NAT. For logs, the console, the shell and files, see [Logs, console, shell and files](/features/logs-and-terminals).
+
+## Timed expose
+
+**Timed expose → Open a port**: pick the container port, how long (**For**, 5 minutes to 24 hours) and who may connect (**Only from**: IPs or CIDRs; empty uses your own address). The agent opens a port on the node that only accepts those addresses and closes it by itself when the time is up, even while the panel is unreachable.
+
+The list shows each open port with who opened it (a person, an API key, an MCP client or the assistant) and when it closes. **+1 hour** extends it; **Close now** ends it.
+
+This is the safe way to point a desktop database client or a debugger at a production service for an hour. From a terminal:
+
+```bash
+seylo tunnel expose acme-shop/db --port 5432 --for 2h
+```
+
+`--from` sets the allowed address (default: your public IP). The command prints the host and port, and when it closes.
+
+## Cloudflare Tunnel
+
+**Cloudflare Tunnel** gives a service a public HTTPS address through Cloudflare without opening any port on the node, which helps when the node is behind NAT or a strict firewall. The agent runs `cloudflared` next to the service, on the project network.
+
+| Tunnel mode | What you get |
+| --- | --- |
+| **Quick** | A temporary `trycloudflare.com` address, no Cloudflare account needed. It turns itself off after 2 hours unless you choose otherwise (at most 24). |
+| **Token** | A permanent hostname on your own domain, from a Cloudflare tunnel token: the service's own token, or the global one from **Settings → Cloudflare** |
+
+Get a token in Cloudflare Zero Trust under **Networks → Tunnels**, from your tunnel's install command. Tokens are stored encrypted.
+
+The global token is the panel owner's tunnel, so only owners and admins can run a service on it, and only one service at a time: Cloudflare would treat a second `cloudflared` on the same token as a replica and send it part of the traffic. Members give their service its own token.
+
+```bash
+seylo tunnel cloudflare acme-shop/web on    # prints the tunnel's URL
+seylo tunnel cloudflare acme-shop/web off
+```
+
+## From AI tools
+
+MCP clients and the AI assistant can open and close timed exposes and tunnels too, within their permissions. The built-in assistant always asks for approval first. See [MCP and AI](/features/mcp-and-ai).
+
+## Box
+
+A **Box** is VS Code in the browser (code-server) that runs as a service in a project, with a persistent home volume. It joins the project network, so it reaches the project's services on its node by name, which makes it a good place to run migrations or poke at a database.
+
+**Add a service → Box** creates one; give it a repository URL (HTTPS) to clone into the workspace on first start. **Open editor** signs you in with a one-time link and wakes the Box if it was asleep. It goes to sleep after a set number of idle minutes and its files stay. Like database web UIs, a Box is opened through the node's wildcard domain, so the node needs one.

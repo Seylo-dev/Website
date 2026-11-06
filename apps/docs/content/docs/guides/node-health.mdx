@@ -1,0 +1,49 @@
+---
+title: Node health checks
+description: The checks a node runs on itself, what each one looks at, and how to run them from the panel or the node.
+---
+
+Every node can check itself: Docker, disk, clock, ports, DNS, the proxy, the panel connection and Wings. Each check passes, warns or fails, and a failed or warning check says how to fix it.
+
+## Running the checks
+
+- In the panel: the **Health** action (the heart icon) on **Nodes**, then **Run checks now**. The node's row shows a badge when checks failed or warned.
+- On the node: `seylo health`. It prints the same list and exits with an error when a check failed.
+
+The agent also runs the checks every hour in the background. When a check that passed starts failing, it raises the **Node health check failed** alert, and resolves it once the check passes again; see [Alerts and notifications](/features/notifications). `seylo troubleshoot` includes the results in its report.
+
+## The checks
+
+| Check | Passes when | Warns or fails |
+| --- | --- | --- |
+| Kernel and architecture | Linux 5.6 or newer on amd64 or arm64 | Fails on older kernels (volume file access needs Linux 5.6) and other architectures |
+| Operating system | Ubuntu 22.04+, Debian 12+, RHEL, Rocky, AlmaLinux or CentOS 9+, Fedora 40+ | Warns on other or older distributions; Ubuntu 22.04 and 24.04 and Debian 12 are tested |
+| Memory | At least 1 GiB in total and 10% available | Warns below either |
+| Disk space | Enough free space on the file system of `/var/lib/seylo` | Warns under 10 GiB or 15% free, fails under 2 GiB or 5% |
+| Free inodes | Enough free inodes on that file system | Warns under 10% free, fails under 2% |
+| Docker Engine | Docker answers, version 25 or newer, overlay2 storage driver | Fails when Docker is unreachable or older than 23; warns on 23 and 24 and on other storage drivers |
+| Control groups | cgroup v2 with the cpu, memory and pids controllers | Fails on cgroup v1; warns when a controller is missing (limits and **Game servers first** need them) |
+| Docker live-restore | Docker's `live-restore` is on, so containers keep running while Docker restarts | Warns when it is off: every service and the panel stop while Docker restarts. See [Docker live-restore](/installation#docker-live-restore). |
+| Ports 80 and 443 | Free, or held by Seylo's Traefik or the Traefik Wings runs | Fails when another program or container holds them |
+| Proxy | The `seylo-traefik` container runs, or routes go to Wings' Traefik | Fails when the container is not running |
+| Route files | Every `seylo-*.yml` route file parses | Fails and names the files that do not |
+| DNS resolution | `github.com`, `ghcr.io`, `registry-1.docker.io` and the panel's host resolve | Fails and names what did not resolve |
+| Firewall | No host firewall, or ufw or firewalld allow 80, 443 and every IP:port address the agent serves | Warns when the firewall blocks 80, 443, or a first-run, timed expose or exposed database port, with the command for each; also warns when ufw allows the `seylo-edge` bridge but no interface has that name |
+| Clock | Synchronized with NTP and within 5 seconds of the panel's clock | Warns when not synchronized or more than 5 seconds off; fails at more than a minute off |
+| Panel connection | `GET <panel>/api/health` answers in under 800 ms (over the pinned key when the node joined with `--pin`) | Warns when slower; fails when the panel cannot be reached or is not healthy |
+| Pelican Wings | Not installed, or installed with a Traefik Seylo can share | Warns when the Traefik folder is missing or the Wings build removes route files it does not own |
+| Public address | The panel knows where people and other nodes reach this server: a detected public IP or the node's **Public address** setting | Warns when none is known, so IP:port links, exposed databases and load balancing fall back to a private address. This one is the panel's own check, so the panel shows it and `seylo health` does not. |
+
+## Common fixes
+
+| Problem | Fix |
+| --- | --- |
+| Clock is off | `timedatectl set-ntp true`. Sign-in tickets and TLS fail with a wrong clock. |
+| Ports 80 or 443 in use | Stop nginx, Apache or Caddy, or move their sites into Seylo as services |
+| Firewall blocks 80 or 443 | `ufw allow 80/tcp && ufw allow 443/tcp`, or the matching firewalld services |
+| Firewall blocks an IP:port address | `ufw allow <port>/tcp`, or `firewall-cmd --permanent --add-port=<port>/tcp && firewall-cmd --reload` |
+| Live-restore is off | Add `"live-restore": true` to `/etc/docker/daemon.json`, then `systemctl reload docker` (restarts nothing) |
+| No public address | Set it as the node's **Public address** on **Nodes** |
+| Disk almost full | **Settings → Docker cleanup** (see [Adding nodes](/guides/adding-nodes#disk-cleanup)), or grow the disk. Between checks, the node raises **Disk above 85%** on its own when its data or Docker disk passes 85% |
+| Docker too old | **Update Docker** on the node's row, or your package manager |
+| Docker unreachable | `systemctl start docker`, then check `journalctl -u docker` |

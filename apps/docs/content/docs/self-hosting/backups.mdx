@@ -1,0 +1,36 @@
+---
+title: Backing up the panel
+description: What to copy so you can rebuild the panel, and why master.key matters.
+---
+
+Service data (databases and volumes) is backed up per service to S3 or R2; see [Backups](/guides/backups). This page is about the panel itself.
+
+## What to keep
+
+Everything the panel knows is in `/var/lib/seylo/panel/` on its node:
+
+- `panel.db`: projects, services, environment, domains, people, settings and the activity log,
+- `master.key`: the key that decrypts the secrets inside `panel.db`,
+- `metrics.db`: metric history. Optional; without it you lose graphs, nothing else.
+
+<Callout type="warn" title="Keep master.key">
+Secrets in `panel.db` (environment variables, tokens, database passwords, backup credentials) are encrypted with `master.key`. A copy of `panel.db` without `master.key` restores everything except those secrets, which are lost. Store the key somewhere other than the server, for example in a password manager.
+</Callout>
+
+## Taking a copy
+
+`panel.db` is a SQLite database in WAL mode, so copying the file while the panel writes to it can catch it half-written. Use SQLite's own backup command, which takes a consistent copy of a live database:
+
+```bash
+apt install sqlite3   # once, if it is missing
+sqlite3 /var/lib/seylo/panel/panel.db ".backup '/root/panel-backup.db'"
+cp /var/lib/seylo/panel/master.key /root/panel-backup.master.key
+```
+
+Then move both files off the server. A cron job on the panel's node can do this every night. There is no built-in schedule for the panel's own backup yet.
+
+Before every panel update, the update itself also copies `panel.db` and `metrics.db` to `/var/lib/seylo/update/panel-snapshots/`, so a failed update can roll back.
+
+## Each node's data
+
+Each node keeps its own data under `/var/lib/seylo/`: service volumes, logs, its key and config. Back up what matters in volumes with service backups. A node's key and config are easy to replace: a new server joins with a new join command.

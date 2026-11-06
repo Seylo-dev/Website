@@ -1,0 +1,46 @@
+---
+title: Updates
+description: One switch keeps the panel and every node current. How an update runs, how releases are verified, and how it rolls back.
+---
+
+## Auto-update
+
+**Settings → Updates → Update automatically** is one switch for the panel and all nodes. It is off until you turn it on. The panel looks for a new release every 6 hours (**Check now** looks right away), and with the switch on it rolls a new release out in this order:
+
+1. The panel updates first.
+2. Then each node, one at a time. A node that fails its update rolls itself back and the rollout stops, so one problem doesn't spread.
+
+A node that was offline during a rollout updates itself when it reconnects. **History** lists every update run with its steps, who or what started it and how it ended.
+
+With the switch off, **Updates** shows **Update available** with the new version and its changelog, and **Update to `<version>`** runs the same steps when you choose. The **Update available** alert can tell you. On **Nodes**, **Update now** updates a single node's agent to the panel's version.
+
+## Signed releases
+
+Every release has a manifest (`manifest.json`) signed with the project's minisign key, listing the panel image by digest and the agent binaries with their SHA-256 checksums and sizes. The panel checks the signature before it offers an update, and each agent checks it again itself before it installs anything: an agent never takes the panel's word for it. An agent also refuses a version that is not newer than its own, or one the manifest says it cannot upgrade to directly.
+
+The panel works with agents up to two minor versions older than itself. An agent that is too old is refused at connect and installs the newest signed release by itself.
+
+## How the panel updates
+
+Two panels can't share one SQLite file, so a panel update is a short stop, not a swap:
+
+1. Pull the new image.
+2. Stop the running panel.
+3. Copy `panel.db` and `metrics.db` to `/var/lib/seylo/update/panel-snapshots/`.
+4. Start the new version and wait until it runs.
+5. If it does not come up, stop it, restore the copy and start the old version again.
+
+The panel shows an updating page for those seconds. Apps are not affected: they run on the nodes, not in the panel. A journal on disk lets the agent finish or undo a swap that was interrupted, for example by a reboot.
+
+## How a node updates
+
+1. The agent downloads its new binary, checks its size and SHA-256 against the signed manifest, and makes sure it runs.
+2. It keeps the old binary as `/var/lib/seylo/update/agent.prev` and arms a systemd timer as a guard.
+3. It swaps the binary in and restarts. Containers keep running through the restart; the agent adopts them when it comes back.
+4. The new agent confirms once it has reconnected to the panel. If it does not within 3 minutes, the guard puts the old binary back and restarts it.
+
+Either way the panel gets exactly one result for the node.
+
+## Docker
+
+Docker Engine is not updated with the rest. Update it per node with **Update Docker** on **Nodes**, which uses the system's package manager (apt, dnf or yum) and shows the version change first. With Docker's live-restore on, which the installer sets up, containers keep running while the daemon restarts; when it is off, the dialog warns first (see [Docker live-restore](/installation#docker-live-restore)).

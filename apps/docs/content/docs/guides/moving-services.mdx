@@ -1,0 +1,27 @@
+---
+title: Moving services
+description: Move a service to another node, with or without volumes, and what happens to its traffic and data.
+---
+
+**Advanced → Move to another node** moves a service that runs on one node to another node. Follow the move on the **Deployments** tab, where it shows as a deployment started by **move**.
+
+## What happens
+
+- **Without volumes**, the move is a normal zero-downtime rollout: the service starts on the new node, passes its health check, traffic switches, then the old copy goes.
+- **With volumes**, the old copy stops first, every volume is copied to the new node through the panel (nodes share no network), and then the new node starts the service. The service is down while the volumes copy, so large volumes take a while.
+
+If anything fails, the service stays on the old node. With volumes, the old node keeps its stopped copy and its data until the new node is live, so a failed move loses nothing.
+
+Both nodes must be online, and the service must have been deployed at least once.
+
+## After the move
+
+- **Custom domains** must point at the new node: update their `A` records. The **Domains** tab shows the record to create.
+- **Automatic domains** come from a node's wildcard record. One from the old node's wildcard keeps pointing at the old node; add the new node's automatic domain on the Domains tab.
+- **References** to the service from other services follow it, but an internal address only works for services on the same node. The environment editor underlines internal addresses that now point at another node.
+
+## What cannot move
+
+- Compose stacks and their members: moving them is coming later.
+- The panel's own service.
+- A service on several nodes: change its nodes under **Replicas and nodes** instead (see [Load balancing and replicas](/guides/load-balancing)).

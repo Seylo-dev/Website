@@ -1,0 +1,35 @@
+---
+title: API keys
+description: Scoped keys for scripts, CI and the command line, and how they are limited.
+---
+
+An API key lets a script, a CI job or the `seylo` command line use the panel's [HTTP API](/api-reference) as you. Create one in **Settings → API keys and MCP → Create API key**:
+
+| Field | What it does |
+| --- | --- |
+| **Name** | What uses it, for example `github-actions` |
+| **Read-only** | It can look at things but never change them |
+| **Projects** | **All projects** (everything you can reach, including panel settings if you can change them) or **Only some projects** (just the ones you tick; panel-wide actions are left out) |
+| **What it can do** | The actions it may run. Never more than you can do yourself. |
+| **Expires after** | A number of days, or **Never** |
+
+The key is shown once; only a hash of it is stored. Keys start with `seylo_key_`. Send it as a bearer token, here from the `SEYLO_TOKEN` variable:
+
+```bash
+curl https://panel.example.com/api/v1/projects.list \
+  -H "Authorization: Bearer $SEYLO_TOKEN"
+```
+
+## How a key is limited
+
+A key acts as the person who made it, narrowed by its actions, its projects and read-only. If that person loses access to a project, or is disabled, the key loses it too.
+
+Keys cannot manage sign-in: changing passwords, 2FA, passkeys, sessions or other keys needs a browser session. Only a browser session can create a key, and only one that signed in within the last 15 minutes: otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first.
+
+## Managing keys
+
+The **API keys** table shows each key's name, what it can do, its projects, when it was last used and when it expires. **Revoke** stops a key at once and cannot be undone; create a new one instead. Owners and admins can switch to **Everyone's** to see and revoke other people's keys.
+
+Keys the command line created through `seylo login` are named "CLI on `<computer>`" and show up here too; see [Command line](/guides/command-line).
+
+MCP tokens for AI tools are made on the same page, under **MCP tokens**; see [MCP and AI](/features/mcp-and-ai).

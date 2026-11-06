@@ -1,0 +1,51 @@
+---
+title: Images, Dockerfiles and uploads
+description: Run a ready Docker image, build a Dockerfile typed in the panel, or upload an archive of your code.
+---
+
+Besides [GitHub and Git](/guides/github-and-git), an app's **Source** tab takes three other sources.
+
+## Docker image
+
+Pick **Docker image** and enter the image, for example `ghcr.io/acme/api:1.4.2`. Nothing is built: the image is pulled and run. Every node pulls it by digest, so all replicas run exactly the same image even if the tag moves later.
+
+When you create an app you can also pick **Docker image** in the **New app** dialog and deploy right away.
+
+### Private registries
+
+For a private image, pick a **Registry login**. A login is a server (`ghcr.io`, `registry.example.com:5000`, or `docker.io` for Docker Hub), a user name and a password or access token. The panel tries the login before it stores it and keeps the password encrypted. Each node that runs the service pulls the image itself with that login. A login only works for images on its own server: the panel refuses an image on another registry with it.
+
+An image may not come from `localhost`, `127.0.0.1` or the node's internal registry address (`127.0.0.1:5755`), which only carries images the panel built for that service.
+
+<Callout title="Adding registry logins">
+The Source tab lets you pick stored logins. Adding one is done through the API for now (`registries.create`, see the [API reference](/api-reference)); a screen for it in Settings is coming later.
+</Callout>
+
+## Dockerfile
+
+Pick **Dockerfile** and type the Dockerfile in the editor. It is built with an empty context: there are no files to `COPY`, so write files with heredocs or download them in `RUN` steps.
+
+```dockerfile
+FROM nginx:1.27-alpine
+COPY <<EOF /usr/share/nginx/html/index.html
+<h1>Hello</h1>
+EOF
+```
+
+It builds like any other app: on a node that can build, pushed to the panel's registry, then shipped to the node that runs it.
+
+## Upload
+
+Pick **Upload** and choose a `.tar.gz` of your code, up to 512 MB. Each archive you upload becomes a new deploy, built with the builder set in the **Build** section (Railpack by default, or a Dockerfile in the archive).
+
+From a script or CI, send the archive as the request body with an API key that may deploy the service:
+
+```bash
+tar -czf app.tar.gz --exclude node_modules --exclude .git .
+curl -X POST "https://panel.example.com/api/uploads/services/<service id>" \
+  -H "Authorization: Bearer $SEYLO_TOKEN" \
+  -H "x-file-name: app.tar.gz" \
+  --data-binary @app.tar.gz
+```
+
+The service id is in the address bar of the service's page. App and cron services take uploads; compose members build from their stack.

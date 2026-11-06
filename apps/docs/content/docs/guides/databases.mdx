@@ -1,0 +1,61 @@
+---
+title: Databases
+description: Postgres, MySQL, MariaDB, MongoDB and Redis on the project's private network, with web UIs, shells, TLS exposure and backups.
+---
+
+## Create a database
+
+In a project, click **Add a service**, pick **Database**, then the engine and, optionally, the version (empty takes the newest supported one):
+
+| Engine | Versions |
+| --- | --- |
+| PostgreSQL | 17, 16, 15 |
+| MySQL | 8.4, 8.0 |
+| MariaDB | 11.8, 11.4, 10.11 |
+| MongoDB | 8.0, 7.0 |
+| Redis | 8.2, 7.4 |
+
+Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name.
+
+## Connect from an app
+
+The database's **Connection** tab shows the **Internal connection**: URL, host, port, database, user and password, for services on the same node in this project.
+
+Reference it from the app's environment instead of copying it, so a password reset reaches the app on its next deploy:
+
+```bash
+DATABASE_URL=${{db.INTERNAL_URL}}
+```
+
+See [Environment variables](/guides/environment-variables) for the other variables a database offers.
+
+## Web UI and shell
+
+The **Tools** section on the Connection tab has:
+
+- **Web UI**: pgweb for Postgres, phpMyAdmin for MySQL and MariaDB, mongo-express for MongoDB and Redis Commander for Redis. It starts when you open it, already signed in, and sleeps again after a few idle minutes, so it costs nothing while unused. It is opened through the node's wildcard domain with a one-time ticket from the panel and never gets a port of its own, so the node needs a wildcard domain.
+- **Database shell**: `psql`, `mysql`/`mariadb`, `mongosh` or `redis-cli`, already signed in, in the browser.
+
+## Expose with TLS
+
+To reach the database from your laptop or from another node, turn on **Exposed**. The agent opens a port on the node and the panel creates a separate user that must use SSL; the internal URL and user do not change.
+
+**Exposure settings**:
+
+| Setting | What it does |
+| --- | --- |
+| **Allowed IPs** | Only these IPs or CIDRs may connect. Empty allows anywhere. |
+| **TLS host name** | A name that points at the node gets a Let's Encrypt certificate. Empty uses a self-signed certificate. |
+| **Port** | The public port. Empty keeps the current one or picks a free port. |
+
+Postgres, MySQL and MariaDB serve TLS themselves and refuse plain logins for the exposed user. For MongoDB and Redis the agent terminates TLS on the exposed port. MariaDB always uses its own self-signed certificate, even with a TLS host name.
+
+The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. With a self-signed certificate, tell the client to require TLS without checking the certificate (for Postgres, `sslmode=require`).
+
+## Reset a password
+
+**Reset password** (the admin user) and **Reset the exposed password** create a new password inside the running database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting. You type the service name to confirm.
+
+## Backups
+
+On the database's **Backups** tab, schedule dumps to an S3-compatible bucket. Each run uses the engine's own dump tool. See [Backups](/guides/backups).

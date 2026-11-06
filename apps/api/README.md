@@ -19,7 +19,7 @@ Reports expire 30 days after upload: reads hide them right away and an hourly sw
 ```bash
 bun run dev      # from this folder, or `bun run dev:api` from the repo root
 bun test
-bun run build    # single-file bundle in dist/, run with `bun dist/index.js`
+bun run start    # what the Docker image runs: src/index.ts, no build step
 ```
 
 Settings are environment variables, all optional. See `.env.example`.

@@ -6,16 +6,13 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -n api,landing -c blue,magenta \"bun run dev:api\" \"bun run dev:landing\"",
+    "dev": "concurrently -n api,landing,docs -c blue,magenta,green \"bun run dev:api\" \"bun run dev:landing\" \"bun run dev:docs\"",
     "dev:api": "bun run --cwd apps/api dev",
     "dev:landing": "bun run --cwd apps/landing dev",
-    "build": "bun run build:api && bun run build:landing",
-    "build:api": "bun run --cwd apps/api build",
-    "build:landing": "bun run --cwd apps/landing build",
-    "start:api": "bun run --cwd apps/api start",
-    "start:landing": "bun run --cwd apps/landing start",
+    "dev:docs": "bun run --cwd apps/docs dev",
+    "build": "bun run --cwd apps/landing build && bun run --cwd apps/docs build",
     "test": "bun run --cwd apps/api test",
-    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/landing typecheck"
+    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/landing typecheck && bun run --cwd apps/docs typecheck"
   },
   "devDependencies": {
     "concurrently": "10.0.6",
