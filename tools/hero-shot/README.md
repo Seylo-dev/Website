@@ -73,3 +73,32 @@ cd ../../tools/hero-shot && bun run preview.ts http://localhost:3917
 
 `preview.ts` fails when the page scrolls sideways. Tune the frame in `apps/landing/app/globals.css`
 (`.product-shot*`: tilt, fade, glow, the phone layout that runs the shot wider than the screen).
+
+## Section captures
+
+The landing's seven sections (templates, settings, nodes, databases, logs and alerts, access, white label) use
+crops of single screens, taken from the panel's demo mode rather than a fleet: the panel runs from source on
+an empty data dir, the web app's Vite server sits in front of it, and Playwright answers the panel's API calls
+with the demo data of the panel's own browser tests (`test/playwright/demo` in the panel repo), patched here
+with generic data for these crops (`sections-demo.patch`: the released version 0.1.1, the 16 real node checks,
+an uptime history, a load-balanced service, access rules, varied log lines, no person's name). The template
+catalog is not mocked: the panel serves its real 23 templates and their generated logos. Never commit the
+demo changes to the panel repo; they live in this patch.
+
+```bash
+SEYLO=$(cd ../../../seylo && pwd)    # the panel's checkout
+DATA=$(mktemp -d) EMAIL=owner@example.com PASS=$(openssl rand -hex 12)
+mkdir -p out && printf '%s\n%s\n' "$EMAIL" "$PASS" > out/owner
+(cd $SEYLO/apps/panel && SEYLO_DATA_DIR=$DATA bun scripts/create-owner.ts "$EMAIL" "$PASS")
+SEYLO_DATA_DIR=$DATA SEYLO_PORT=3951 SEYLO_HOST=127.0.0.1 SEYLO_SECURE_COOKIES=false bun $SEYLO/apps/panel/src/main.ts &
+(cd $SEYLO/apps/web && PANEL_URL=http://127.0.0.1:3951 ./node_modules/.bin/vite --port 3952 --strictPort --host 127.0.0.1) &
+
+rm -rf out/demo && cp -R $SEYLO/test/playwright/demo out/demo && patch -p1 -d out < sections-demo.patch
+bun run sections.ts                  # every crop; or name some: bun run sections.ts env metrics
+SEYLO_DIR=$SEYLO bun run catalog.ts  # apps/landing/lib/templates.ts from the panel's templates/
+```
+
+`sections.ts` signs in as the owner, opens each screen at 2x in the light theme, narrows a card where a crop
+reads better smaller, hides the other cards around it and writes `out/sections/<name>.png` and
+`apps/landing/public/product/<name>.webp` (each well under 200 KB). Look at every PNG before committing. When a
+crop's pixel size changes, update it in `apps/landing/lib/captures.ts`.

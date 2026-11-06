@@ -44,8 +44,8 @@ export function Hero() {
           Get started
           <IconArrowRight size={16} stroke={2.2} aria-hidden />
         </a>
-        <a href="#how" className="flex items-center gap-2 text-[15px] font-medium text-ink-body">
-          See how it works
+        <a href="#templates" className="flex items-center gap-2 text-[15px] font-medium text-ink-body">
+          See what it does
           <IconArrowRight size={16} stroke={2.2} className="text-ink-muted" aria-hidden />
         </a>
       </div>

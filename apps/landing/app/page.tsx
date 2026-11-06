@@ -1,12 +1,18 @@
+import { AccessSection } from "@/components/access-section";
+import { BrandSection } from "@/components/brand-section";
+import { DatabasesSection } from "@/components/databases-section";
 import { Features } from "@/components/features";
 import { GetStarted } from "@/components/get-started";
 import { Hero } from "@/components/hero";
-import { HowItWorks } from "@/components/how-it-works";
 import { NextToWings } from "@/components/next-to-wings";
+import { NodesSection } from "@/components/nodes-section";
+import { ObserveSection } from "@/components/observe-section";
 import { ProductShot } from "@/components/product-shot";
+import { SettingsSection } from "@/components/settings-section";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Starfield } from "@/components/starfield";
+import { TemplatesSection } from "@/components/templates-section";
 
 // The panel dashboard captured from a running panel with tools/hero-shot (see README).
 const heroShot = { src: "/product/dashboard.webp", width: 2400, height: 1500, sidebarRatio: 0.155 };
@@ -27,7 +33,14 @@ export default function HomePage() {
           />
         </section>
         <Features />
-        <HowItWorks />
+        {/* What the panel does, screen by screen: real crops of the panel (lib/captures.ts). */}
+        <TemplatesSection />
+        <SettingsSection />
+        <NodesSection />
+        <DatabasesSection />
+        <ObserveSection />
+        <AccessSection />
+        <BrandSection />
         <NextToWings />
         <GetStarted />
       </main>

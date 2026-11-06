@@ -139,3 +139,62 @@
     animation: none;
   }
 }
+
+/*
+ * Section captures (components/shot.tsx): light crops of the panel on the navy page. No rim, as
+ * for every block here: a dark drop shadow for depth and a faint blue glow, like the hero shot's.
+ */
+.shot {
+  box-shadow:
+    0 24px 56px -22px rgb(0 0 0 / 0.7),
+    0 34px 90px -36px rgb(37 99 235 / 0.42);
+}
+
+/* Tall crops end in a fade instead of a hard cut. */
+.shot-fade {
+  mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+}
+
+/* Wide crops on phones: drawn larger than the screen and faded out on the right. */
+@media (width < 40rem) {
+  .shot-phone-cut {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    mask-image: linear-gradient(to right, #000 80%, transparent 100%);
+  }
+}
+
+/* A capture at the bottom of a bento cell: it runs off the cell's edge, so the shadow only goes up. */
+.cell-shot {
+  box-shadow: 0 -10px 40px -12px rgb(0 0 0 / 0.55);
+}
+
+/* A second crop laid over a capture (the env editor's hover), shadowed like the panel's popovers. */
+.hover-shot {
+  box-shadow:
+    0 12px 32px -8px rgb(15 23 42 / 0.35),
+    0 2px 6px rgb(15 23 42 / 0.12);
+}
+
+/*
+ * Blocks rise in as they scroll into view, driven by the scroll position in CSS: no script, and
+ * where scroll timelines are missing (or motion is reduced) nothing animates. The animation only
+ * runs while the block's top edge enters the viewport (fill-mode none), so a block below the fold
+ * is already in its final state: full-page screenshots and pages without JavaScript show everything.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .rise {
+      animation: rise linear none;
+      animation-timeline: view();
+      animation-range: entry 0% entry 140px;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
