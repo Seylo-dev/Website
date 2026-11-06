@@ -47,7 +47,7 @@ const items: Item[] = [
   },
   {
     title: "MCP with an approvals queue",
-    body: "AI tools start read-only. Anything that changes or deletes something waits in Approvals until a person says yes.",
+    body: "AI tools start read-only. Deletes and anything that can't be undone wait in Approvals until a person says yes; the rest runs only with the actions you gave the token.",
     icon: IconRobot,
   },
 ];

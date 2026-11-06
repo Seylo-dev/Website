@@ -14,7 +14,7 @@ const engines = [
 const facts: { title: string; body: string; icon: Icon }[] = [
   {
     title: "Exposed over TLS only",
-    body: "Exposing one adds a separate user that must use TLS. The internal URL stays the same.",
+    body: "Exposing one adds a separate user that must use TLS; Redis keeps its default user behind TLS. The internal URL stays the same.",
     icon: IconLock,
   },
   {
@@ -29,7 +29,7 @@ const facts: { title: string; body: string; icon: Icon }[] = [
   },
   {
     title: "Backups to S3 or R2",
-    body: "Dumps on a schedule with keep-last retention, to S3, R2 or MinIO. Restore any run.",
+    body: "Dumps on a schedule with keep-last retention, to S3, R2 or MinIO. Restore any kept run.",
     icon: IconCloudUpload,
   },
 ];

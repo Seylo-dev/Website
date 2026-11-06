@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { captures } from "@/lib/captures";
 import { CellShot, Chips } from "./shot";
 import { SectionHeading } from "./section-heading";
@@ -34,34 +33,14 @@ export function SettingsSection() {
             <Code>{"${{redis.INTERNAL_URL}}"}</Code> resolves on every deploy. The editor underlines a reference this
             node can&apos;t reach and offers the fix. Hover one to see its value.
           </CellText>
-          <div className="mt-auto overflow-hidden pl-5 sm:pl-6">
-            <div className="relative w-[480px] sm:w-[600px] lg:w-[640px]">
-              <Image
-                src={captures.env.src}
-                alt={captures.env.alt}
-                width={captures.env.width}
-                height={captures.env.height}
-                unoptimized
-                className="cell-shot block h-auto w-full rounded-t-[10px]"
-              />
-              {/* The editor's hover for ${{api.URL}}, a separate crop of the same screen, over the empty lines. */}
-              <Image
-                src={captures.envHover.src}
-                alt={captures.envHover.alt}
-                width={captures.envHover.width}
-                height={captures.envHover.height}
-                unoptimized
-                className="hover-shot absolute top-[63%] left-[24%] h-auto w-[41%] rounded-md"
-              />
-            </div>
-          </div>
+          <CellShot capture={captures.env} widthClass="sm:w-[600px] lg:w-[640px]" />
         </li>
 
         <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
           <CellText title="Access rules per domain">
             Basic auth, an IP allowlist, a rate limit and regex redirects on each domain. No middleware files to edit.
           </CellText>
-          <CellShot capture={captures.domainAccess} widthClass="w-[400px]" />
+          <CellShot capture={captures.domainAccess} widthClass="sm:w-[400px]" />
         </li>
 
         <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-7 lg:row-span-2">
@@ -69,7 +48,7 @@ export function SettingsSection() {
             TCP, an HTTP request with path, host and expected status, or a command. A new version gets traffic only
             after it passes; if it never does, the old one keeps serving.
           </CellText>
-          <CellShot capture={captures.healthCheck} widthClass="w-[480px] sm:w-[600px] lg:w-[640px]" />
+          <CellShot capture={captures.healthCheck} widthClass="sm:w-[600px] lg:w-[640px]" />
         </li>
 
         <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
@@ -77,7 +56,7 @@ export function SettingsSection() {
             Restart after a fixed 5 seconds, stop after N crashes in a row, and get one alert per streak instead of one
             per crash.
           </CellText>
-          <CellShot capture={captures.crashPolicy} widthClass="w-[400px]" />
+          <CellShot capture={captures.crashPolicy} widthClass="sm:w-[400px]" />
         </li>
 
         <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
@@ -85,7 +64,7 @@ export function SettingsSection() {
             A port open for 5 minutes to 24 hours, only to the IPs you list. The node closes it on time, even with the
             panel down.
           </CellText>
-          <CellShot capture={captures.timedExpose} widthClass="w-[400px]" />
+          <CellShot capture={captures.timedExpose} widthClass="sm:w-[400px]" />
         </li>
 
         <li className="rise flex flex-col gap-5 rounded-2xl bg-surface p-5 sm:p-6 lg:col-span-12 lg:flex-row lg:items-center lg:gap-10">

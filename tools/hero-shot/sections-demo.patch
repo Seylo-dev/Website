@@ -178,7 +178,7 @@ diff -ru a/demo/service.ts b/demo/service.ts
      networkRxBytesPerSec: 600_000 + Math.sin(i / 3) * 200_000,
      networkTxBytesPerSec: 400_000 + Math.cos(i / 5) * 150_000,
    }));
-@@ -330,18 +342,40 @@
+@@ -330,20 +342,48 @@
      dnsStatus: "missing",
      liveAt: null,
      certificate: { status: "pending", expiresAt: null, issuer: null, error: null },
@@ -218,11 +218,19 @@ diff -ru a/demo/service.ts b/demo/service.ts
      containerId: "c0ffee",
      generation: 42,
 -    line: i % 17 === 0 ? `\u001b[33mwarn\u001b[0m: Stripe webhook retry ${i % 5}/5 for evt_${i}` : `GET /v1/products?page=${i % 9} 200 ${(i * 7) % 90}ms`,
-+    line: i % 17 === 0 ? `\u001b[33mwarn\u001b[0m: Stripe webhook retry ${(i % 4) + 1}/5 for evt_3Qx${(i * 7919) % 9000 + 1000}` : requests[(Math.imul(i + 3, 2654435761) >>> 0) % requests.length],
++    line: i % 17 === 0 ? `\u001b[33mwarn\u001b[0m: Stripe webhook retry ${(i % 4) + 1}/5 for evt_3Qx${(i * 7919) % 9000 + 1000}` : requestLine(i),
    }));
  
++// Each line a different request (7 and 15 share no factor), its latency jittered by -25% to +25%.
++function requestLine(i: number) {
++  const jitter = 0.75 + ((Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.5);
++  return requests[(i * 7 + 3) % requests.length].replace(/(\d+)ms$/, (_, ms) => `${Math.max(1, Math.round(Number(ms) * jitter))}ms`);
++}
++
  const fileEntry = (name: string, isDir: boolean, size: number) => ({
-@@ -590,6 +624,15 @@
+   name,
+   path: name,
+@@ -590,6 +630,15 @@
    "uptime.list": () => ({
      checks: [{ id: "k000000000000001", serviceId: ids.web, projectId: ids.project, name: "Home page", url: "https://shop.example.com", method: "GET", expectedStatus: 0, intervalSeconds: 60, timeoutMs: 10000, failureThreshold: 3, enabled: true, status: "up", statusSince: ago(2 * day), lastCheckedAt: ago(20_000), lastStatusCode: 200, lastLatencyMs: 84, lastError: null, uptime24h: 99.93, createdAt: ago(9 * day), updatedAt: ago(day) }],
    }),

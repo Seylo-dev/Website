@@ -133,33 +133,20 @@ const shots: Shot[] = [
     run: async (page) => {
       await page.locator(".monaco-editor .view-line").first().waitFor();
       const editor = await card(page, "Environment");
-      await width(editor, 700);
+      await width(editor, 600);
       await isolate(page, [editor]);
       await page.waitForTimeout(1400);
+      // The editor's own hover on the last line's reference: it opens above its token, over plain lines,
+      // and leaves the two red underlines in view.
+      const target = page.locator(".view-line span", { hasText: "api.URL" }).last();
+      const t = (await target.boundingBox()) as Box;
+      await page.mouse.move(t.x + t.width * 0.55, t.y + t.height / 2);
+      await page.locator(".monaco-hover:not(.hidden)").first().waitFor();
+      await page.waitForTimeout(1200);
       const b = await union([editor], 22);
       return { ...b, y: b.y + 8, height: b.height - 8 };
     },
   },
-  ...(
-    [
-      ["env-hover-problem", "redis.INTERNAL_URL"],
-      ["env-hover-value", "api.URL"],
-    ] as const
-  ).map(([name, token]): Shot => ({
-    name,
-    path: service(svc.worker, "environment"),
-    viewport: { width: 1440, height: 1000 },
-    run: async (page) => {
-      await page.locator(".monaco-editor .view-line").first().waitFor();
-      await page.waitForTimeout(1200);
-      const target = page.locator(".view-line span", { hasText: token }).last();
-      const box = (await target.boundingBox()) as Box;
-      await page.mouse.move(box.x + box.width * 0.55, box.y + box.height / 2);
-      await page.waitForTimeout(1600);
-      const hover = page.locator(".monaco-hover:not(.hidden)").first();
-      return union([hover], 0);
-    },
-  })),
   {
     name: "domain-access",
     path: service(svc.web, "domains"),
@@ -201,9 +188,11 @@ const shots: Shot[] = [
     path: service(svc.api, "advanced"),
     run: async (page) => {
       const c = await card(page, "Health check and deploys");
-      await width(c, 680);
+      await width(c, 580);
       await isolate(page, [c]);
-      return union([c], 22);
+      // Skip the line of the block above the card.
+      const b = await union([c], 22);
+      return { ...b, y: b.y + 8, height: b.height - 8 };
     },
   },
   {

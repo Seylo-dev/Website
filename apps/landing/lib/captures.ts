@@ -23,13 +23,8 @@ export const captures = {
   ),
   env: capture(
     "env",
-    [1488, 1286],
-    "The environment editor: two lines underlined in red, and below them the problems with one-click fixes such as Expose redis",
-  ),
-  envHover: capture(
-    "env-hover-value",
-    [608, 256],
-    "Hovering a reference: api's public URL becomes https://api.de1.example.com and updates if the domain changes",
+    [1288, 1286],
+    "The environment editor: two lines underlined in red with one-click fixes below them such as Expose redis, and the hover on ${{api.URL}}: api's public URL becomes https://api.de1.example.com and updates if the domain changes",
   ),
   domainAccess: capture(
     "domain-access",
@@ -38,7 +33,7 @@ export const captures = {
   ),
   healthCheck: capture(
     "health-check",
-    [1448, 1204],
+    [1248, 1260],
     "Health check settings: an HTTP request to /health on port 3000, interval, timeout, grace period and the zero-downtime deploy strategy",
   ),
   crashPolicy: capture(

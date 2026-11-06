@@ -10,17 +10,20 @@ function Figure({
   title,
   children,
   className = "",
+  phoneCut = false,
 }: {
   capture: Capture;
   title: string;
   children: React.ReactNode;
   className?: string;
+  /** Wide crops: drawn larger on phones and cut on the right (see Shot). */
+  phoneCut?: React.ComponentProps<typeof Shot>["phoneCut"];
 }) {
   return (
     <figure className={`rise flex min-w-0 flex-col gap-4 ${className}`}>
-      <Shot capture={capture} />
+      <Shot capture={capture} phoneCut={phoneCut} />
       <figcaption className="flex flex-col gap-1.5">
-        <span className="text-[16px] font-semibold text-ink">{title}</span>
+        <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
         <span className="text-[14.5px] leading-[1.6] text-ink-card">{children}</span>
       </figcaption>
     </figure>
@@ -40,7 +43,7 @@ export function ObserveSection() {
       </SectionHeading>
 
       <div className="grid gap-x-8 gap-y-12 lg:grid-cols-12">
-        <Figure capture={captures.logs} title="Logs across deploys" className="lg:col-span-7">
+        <Figure capture={captures.logs} title="Logs across deploys" phoneCut className="lg:col-span-7">
           Search every deploy&apos;s logs, not just the running one, or follow them live. The console, a shell and a
           file browser for the volumes open in the browser too.
         </Figure>
@@ -48,8 +51,8 @@ export function ObserveSection() {
           <Figure capture={captures.metrics} title="Metrics per service">
             CPU, memory and network, average and peak, from live up to 30 days.
           </Figure>
-          <Figure capture={captures.uptime} title="Uptime checks and crash reports">
-            A URL checked on an interval, with its latency history. A crash alert carries the exit code and the last 50
+          <Figure capture={captures.uptime} title="Uptime checks and crash reports" phoneCut="medium">
+            A URL checked on an interval, with its latency history. A crash alert carries the exit code and the last 100
             log lines.
           </Figure>
         </div>

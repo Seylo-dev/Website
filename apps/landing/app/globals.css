@@ -164,16 +164,9 @@
   }
 }
 
-/* A capture at the bottom of a bento cell: it runs off the cell's edge, so the shadow only goes up. */
+/* A capture at the bottom of a bento cell: it runs off the cell's bottom edge, so the shadow only goes up. */
 .cell-shot {
   box-shadow: 0 -10px 40px -12px rgb(0 0 0 / 0.55);
-}
-
-/* A second crop laid over a capture (the env editor's hover), shadowed like the panel's popovers. */
-.hover-shot {
-  box-shadow:
-    0 12px 32px -8px rgb(15 23 42 / 0.35),
-    0 2px 6px rgb(15 23 42 / 0.12);
 }
 
 /*

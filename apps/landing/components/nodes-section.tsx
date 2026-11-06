@@ -23,9 +23,10 @@ const rows: Row[] = [
     title: "Replicas across nodes, or a clean move",
     body: (
       <>
-        Run copies on several nodes. Every node&apos;s edge spreads requests over all replicas, and the entry node takes
-        the public traffic. Moving a service deploys it on the new node, copies its volumes, switches traffic and only
-        then removes the old copy. If anything fails, it stays where it was.
+        Run copies on several nodes. Each node&apos;s edge spreads requests over all replicas, or pick an entry node
+        that takes the public traffic and does the spreading. Moving a service deploys it on the new node, stops the
+        old copy while its volumes are copied over, switches traffic, then removes the old copy. If anything fails, it
+        stays where it was.
       </>
     ),
     chips: ["Load balanced", "Entry node", "Sticky sessions", "Volumes move with it"],
