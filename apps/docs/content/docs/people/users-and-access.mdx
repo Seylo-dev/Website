@@ -15,8 +15,6 @@ Everyone who signs in has a role:
 
 The person who created the panel is its first owner. Only owners change owner roles, the last active owner cannot be demoted, disabled or removed, and nobody changes their own role.
 
-From 0.2, only an owner can allow [host shells](/guides/host-shell) (a root shell on the server itself) on a node. Owners and admins can then open them; members never can.
-
 ## Invite someone
 
 **Settings → People → Invite**: enter the email, pick the role and, for members, which projects or single services they get, with which actions. The link is valid for 1 to 30 days (7 by default) and works once. With an email channel set up in **Settings → Notifications**, the panel emails it; otherwise copy it and send it yourself. It is shown only once.
@@ -53,7 +51,5 @@ The list also shows each person's 2FA and passkeys and their last sign-in. Peopl
 ## Activity log
 
 **Activity** lists every change made through the panel, the API, MCP or the assistant, and every refused attempt: who, what, on which project or service, from where and with which credential, and the result. Filter by person, area, result and time, search, and **Export** as CSV or JSON Lines. A project's **Activity** tab shows its own entries.
-
-From 0.2, each host shell has two entries: its opening, and **Close a root shell on a node** with how long it was open and why it closed.
 
 Passwords, tokens and other secrets are replaced with `[redacted]` before anything is stored. Members see their own entries; seeing everyone's needs the activity log permission.

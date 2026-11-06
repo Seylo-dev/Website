@@ -73,7 +73,7 @@ Every error has the matching HTTP status and the same JSON body:
 | `APPROVAL_REQUIRED` | 403 | An AI tool called an action that needs a person's approval first |
 | `NOT_FOUND` | 404 | No such resource, or the caller can't see it |
 | `CONFLICT` | 409 | Conflicts with the current state, for example the protected panel service (`details.reason` says why) |
-| `RATE_LIMITED` | 429 | Too many requests; wait for the seconds in the `Retry-After` header. From 0.2, `details.reason` `dockerHubRateLimit` means Docker Hub is limiting the panel, with `details.retryAfterSeconds` |
+| `RATE_LIMITED` | 429 | Too many requests; wait for the seconds in the `Retry-After` header |
 | `INTERNAL` | 500 | Something broke on the panel; the panel's log has the details |
 | `NOT_IMPLEMENTED` | 501 | The action, or the node it needs, cannot do this yet (for example an agent too old for a feature) |
 | `UNAVAILABLE` | 503 | A node or an outside service needed for this is unreachable (`details.reason` is `offline` when the node is) |

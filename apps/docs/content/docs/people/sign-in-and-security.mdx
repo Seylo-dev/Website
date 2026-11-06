@@ -20,9 +20,7 @@ Anything that adds a way into your account needs a sign-in from the last 15 minu
 - approving a [command line sign-in](/guides/command-line#sign-in),
 - allowing an AI tool through MCP's OAuth sign-in (see [MCP and AI](/features/mcp-and-ai#connecting)).
 
-Admins and owners also need it, when they work in the browser, for the actions that hand lasting access to someone else: an admin invite, making someone an admin or owner, and creating a node join command (see [Users and access](/people/users-and-access#invite-someone) and [Adding nodes](/guides/adding-nodes#join-a-server)). From 0.2 the same goes for saving a GitLab, Gitea or Bitbucket connection's token (see [GitLab, Gitea and Bitbucket](/guides/git-providers#add-the-connection)).
-
-From 0.2, [host shells](/guides/host-shell) need it every time, and only work in the browser: the owner turning them on for a node, and an owner or admin opening one. API keys and MCP tokens can never do either.
+Admins and owners also need it, when they work in the browser, for the actions that hand lasting access to someone else: an admin invite, making someone an admin or owner, and creating a node join command (see [Users and access](/people/users-and-access#invite-someone) and [Adding nodes](/guides/adding-nodes#join-a-server)).
 
 When your last sign-in is older, the panel shows **Confirm it's you** and then makes the change by itself. Confirm with whichever you have:
 
@@ -36,7 +34,7 @@ API keys and MCP tokens never get this dialog: they cannot change sign-in method
 
 ## Security alerts
 
-The **Security change** alert (see [Alerts and notifications](/features/notifications)) is raised when someone approves a [command line sign-in](/guides/command-line#sign-in), creates an API key, adds a passkey, links a GitHub account for sign-in, sets or changes a password or turns off two-factor sign-in, and when many wrong passwords arrive for one account. From 0.2 it is also raised when the owner allows host shells on a node and when someone opens one. Send it to a channel you read, so a sign-in method you did not add does not go unnoticed.
+The **Security change** alert (see [Alerts and notifications](/features/notifications)) is raised when someone approves a [command line sign-in](/guides/command-line#sign-in), creates an API key, adds a passkey, links a GitHub account for sign-in, sets or changes a password or turns off two-factor sign-in, and when many wrong passwords arrive for one account. Send it to a channel you read, so a sign-in method you did not add does not go unnoticed.
 
 ## Authenticator app (2FA)
 

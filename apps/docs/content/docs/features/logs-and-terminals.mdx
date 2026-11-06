@@ -30,9 +30,7 @@ The **Console** tab attaches to the container's main process: you see its recent
 
 The **Shell** tab opens a new shell inside the running container, as `docker exec -it` would, and shows which user and working folder it runs as.
 
-Databases have a **Database shell** instead, already signed in to `psql`, `mysql`, `mongosh` or `redis-cli`, and from 0.2 `valkey-cli`, `keydb-cli` or `clickhouse-client` (see [Databases](/guides/databases)).
-
-For a root shell on the node itself rather than in a container, see [Host shell](/guides/host-shell) (from 0.2, off until the owner turns it on).
+Databases have a **Database shell** instead, already signed in to `psql`, `mysql`, `mongosh` or `redis-cli` (see [Databases](/guides/databases)).
 
 Console and shell sessions end after 30 minutes without input or output.
 

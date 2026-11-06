@@ -86,15 +86,7 @@ Traefik reaches the agent's edge listener on port 5756 over the `seylo-edge` Doc
 </Accordion>
 
 <Accordion title="Pushes to GitHub don't deploy">
-Check that **Deploy on push** is on (**Source** tab) and look at **Recent deliveries**. GitHub must reach the panel to deliver webhooks, which needs a panel domain. Without one, the panel still finds new commits by asking GitHub once a minute. From 0.2, a delivery can also be skipped on purpose: by `[skip ci]` or `[skip cd]` in the head commit message, or by the service's [watch paths](/guides/watch-paths). **Recent deliveries** says which.
-</Accordion>
-
-<Accordion title="Pushes to GitLab, Gitea or Bitbucket don't deploy">
-From 0.2. Look at the **Webhook** part of the **Source** tab. When the webhook could not be created, it says why, and the panel polls the branch every minute meanwhile. A GitLab webhook needs the panel domain, because GitLab sends its secret in clear. Once you set the domain, click **Create webhook again**. If deliveries arrive but are refused, **Recent deliveries** shows the reason, for example a signature that did not match. See [GitLab, Gitea and Bitbucket](/guides/git-providers#the-webhook).
-</Accordion>
-
-<Accordion title="Docker Hub is rate limiting this panel">
-From 0.2. Docker Hub limits anonymous requests per address. The panel stops asking until the limit lifts, and answers it already has stay cached. Add a Docker Hub login so the panel reads images with that account's limit; see [Deploy from Docker Hub](/guides/docker-hub#pull-limits-and-private-images).
+Check that **Deploy on push** is on (**Source** tab) and look at **Recent deliveries**. GitHub must reach the panel to deliver webhooks, which needs a panel domain. Without one, the panel still finds new commits by asking GitHub once a minute.
 </Accordion>
 </Accordions>
 

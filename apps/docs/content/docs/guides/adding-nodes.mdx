@@ -1,6 +1,6 @@
 ---
 title: Adding nodes
-description: Join more servers to the panel, set where builds run, and manage a node's settings, updates, reboots, disk space and host shell.
+description: Join more servers to the panel, set where builds run, and manage a node's settings, updates, reboots and disk space.
 ---
 
 ## Join a server
@@ -62,7 +62,7 @@ Builds and where they run are described in [Deploy from GitHub or Git](/guides/g
 
 ## Health, updates and reboots
 
-Click a node's name on **Nodes** to open it. Its **Overview** has the machine actions, and the row has **Health** and **Settings**:
+The actions on a node's row:
 
 - **Health** runs the node's health checks: Docker, disk, clock, ports 80 and 443, DNS, the proxy, Wings and more, each with a fix. See [Node health checks](/guides/node-health).
 - **Update now** updates the node's agent to the panel's version; see [Updates](/self-hosting/updates).
@@ -74,11 +74,16 @@ On the node itself, `seylo status`, `seylo health` and `seylo logs` show the sam
 
 ## Disk cleanup
 
-**Settings → Docker cleanup** frees disk space on one node: unused images, build cache, stopped containers and orphaned service data, with a preview first. From 0.2, a node can also clean up by itself, on a schedule or when a disk fills up, from its **Cleanup** view. Only what Seylo created is touched. See [Docker cleanup](/guides/docker-cleanup).
+**Settings → Docker cleanup** frees disk space on one node. Pick what to clean, **Preview** the list with sizes, then **Clean up**:
 
-## Host shell
+| What | Notes |
+| --- | --- |
+| Unused images | Images no service needs any more. The newest images of each service, which rollbacks use, stay. |
+| Build cache | Cached build layers; the next build of each app is slower |
+| Stopped containers | Old containers left after deploys |
+| Orphaned service data | Data folders of services removed without deleting their data. Deleted for good. |
 
-From 0.2, a node's **Shell** view opens a root shell on the server itself, in the browser. It is off on every node until the owner turns it on. See [Host shell](/guides/host-shell).
+Only images, caches, containers and data that Seylo created are touched. Everything else on the machine, including other tools' images and Wings' game servers, is left alone.
 
 ## Remove a node
 

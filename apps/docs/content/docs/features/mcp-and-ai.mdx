@@ -52,7 +52,7 @@ MCP tokens start with `seylo_mcp_`. A regular API key does not work on the MCP s
 
 ### Tools
 
-Tools are the panel's actions with dots replaced by underscores: `services_list`, `logs_search`, `deployments_deploy`. A client sees only the tools its token can use, and a read-only token sees only the ones that read. Account security actions (passwords, 2FA, passkeys, API keys) are never available to AI tools. From 0.2, neither are [host shells](/guides/host-shell) or adding a GitLab, Gitea or Bitbucket connection and changing its token.
+Tools are the panel's actions with dots replaced by underscores: `services_list`, `logs_search`, `deployments_deploy`. A client sees only the tools its token can use, and a read-only token sees only the ones that read. Account security actions (passwords, 2FA, passkeys, API keys) are never available to AI tools.
 
 Tool results leave secrets out the same way the assistant's do: environment values, database passwords, tokens and file contents read through `files_read` come back as `[redacted]`, so a read-only token never hands them to the model's host.
 

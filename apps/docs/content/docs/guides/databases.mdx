@@ -1,25 +1,19 @@
 ---
 title: Databases
-description: Postgres, MySQL, MariaDB, MongoDB, Redis, Valkey, KeyDB, Dragonfly and ClickHouse on the project's private network, with web UIs, shells, TLS exposure and backups.
+description: Postgres, MySQL, MariaDB, MongoDB and Redis on the project's private network, with web UIs, shells, TLS exposure and backups.
 ---
 
 ## Create a database
 
-In a project, click **Add a service**, pick **Database**, then the engine and the version (the newest is preselected):
+In a project, click **Add a service**, pick **Database**, then the engine and, optionally, the version (empty takes the newest supported one):
 
 | Engine | Versions |
 | --- | --- |
-| PostgreSQL | 18 (from 0.2), 17, 16, 15, each also with pgvector (from 0.2) |
+| PostgreSQL | 17, 16, 15 |
 | MySQL | 8.4, 8.0 |
 | MariaDB | 11.8, 11.4, 10.11 |
 | MongoDB | 8.0, 7.0 |
 | Redis | 8.2, 7.4 |
-| Valkey (from 0.2) | 9.1, 9.0, 8.1 |
-| KeyDB (from 0.2) | 6.3, unmaintained |
-| Dragonfly (from 0.2) | 2.0 |
-| ClickHouse (from 0.2) | 26.8, 26.3 |
-
-For Postgres, **Include pgvector** picks an image with the vector extension. The engines marked 0.2 come with Seylo 0.2, which is not released yet; Valkey, KeyDB, Dragonfly and ClickHouse also need a 0.2 agent on the node. [Database engines](/guides/database-engines) has the connection strings, backups and limits of each.
 
 Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name.
 
@@ -39,33 +33,29 @@ See [Environment variables](/guides/environment-variables) for the other variabl
 
 The **Tools** section on the Connection tab has:
 
-- **Web UI**: pgweb for Postgres, phpMyAdmin for MySQL and MariaDB, mongo-express for MongoDB, Redis Commander for Redis, Valkey, KeyDB and Dragonfly, and ClickHouse's own Play page for ClickHouse. It starts when you open it, already signed in, and sleeps again after a few idle minutes, so it costs nothing while unused. It is opened through the node's wildcard domain with a one-time ticket from the panel and never gets a port of its own, so the node needs a wildcard domain.
-- **Database shell**: `psql`, `mysql`/`mariadb`, `mongosh`, `redis-cli`, `valkey-cli`, `keydb-cli` or `clickhouse-client`, already signed in, in the browser.
+- **Web UI**: pgweb for Postgres, phpMyAdmin for MySQL and MariaDB, mongo-express for MongoDB and Redis Commander for Redis. It starts when you open it, already signed in, and sleeps again after a few idle minutes, so it costs nothing while unused. It is opened through the node's wildcard domain with a one-time ticket from the panel and never gets a port of its own, so the node needs a wildcard domain.
+- **Database shell**: `psql`, `mysql`/`mariadb`, `mongosh` or `redis-cli`, already signed in, in the browser.
 
 ## Expose with TLS
 
-To reach the database from your laptop or from another node, turn on **Exposed**. The agent opens a port on the node and the panel creates a separate user that must use SSL; the internal URL and user do not change. Redis, Valkey, KeyDB and Dragonfly have one user, so exposing them uses that same user, only over TLS.
+To reach the database from your laptop or from another node, turn on **Exposed**. The agent opens a port on the node and the panel creates a separate user that must use SSL; the internal URL and user do not change.
 
 **Exposure settings**:
 
 | Setting | What it does |
 | --- | --- |
-| **Allowed IPs** | Only these IPs or CIDRs may connect. Empty allows anywhere, except for KeyDB, which gets no security fixes and is only exposed to listed addresses. |
+| **Allowed IPs** | Only these IPs or CIDRs may connect. Empty allows anywhere. |
 | **TLS host name** | A name that points at the node gets a Let's Encrypt certificate. Empty uses a self-signed certificate. |
 | **Port** | The public port. Empty keeps the current one or picks a free port. |
 
-Postgres, MySQL and MariaDB serve TLS themselves and refuse plain logins for the exposed user. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name.
+Postgres, MySQL and MariaDB serve TLS themselves and refuse plain logins for the exposed user. For MongoDB and Redis the agent terminates TLS on the exposed port. MariaDB always uses its own self-signed certificate, even with a TLS host name.
 
 The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. With a self-signed certificate, tell the client to require TLS without checking the certificate (for Postgres, `sslmode=require`).
 
 ## Reset a password
 
-**Reset password** (the admin user) and **Reset the exposed password** create a new password inside the running database. ClickHouse and Dragonfly read the admin password when they start, so for them a reset restarts the database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting. You type the service name to confirm.
+**Reset password** (the admin user) and **Reset the exposed password** create a new password inside the running database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting. You type the service name to confirm.
 
 ## Backups
 
-On the database's **Backups** tab, schedule dumps to an S3-compatible bucket. Each run uses the engine's own dump tool. See [Backups](/guides/backups), and [Database engines](/guides/database-engines#backups-and-restores) for what each engine's backup and restore do.
-
-## Clone a database
-
-From 0.2, **Clone** in the service's **More actions** menu copies a database into any project and node, empty with new passwords or with a copy of its data. See [Clone and move between projects](/guides/clone-and-move).
+On the database's **Backups** tab, schedule dumps to an S3-compatible bucket. Each run uses the engine's own dump tool. See [Backups](/guides/backups).
