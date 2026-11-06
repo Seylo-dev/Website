@@ -1,0 +1,19 @@
+{
+  "name": "Seylo",
+  "slug": "seylo",
+  "tagline": "All your servers. One calm panel.",
+  "description": "Open-source, self-hosted deploy panel. Deploy apps, databases and compose stacks to as many Linux servers as you own.",
+  "license": "AGPL-3.0",
+  "accent": "#2563EB",
+  "urls": {
+    "site": "https://seylo.dev",
+    "docs": "https://docs.seylo.dev",
+    "api": "https://api.seylo.dev",
+    "install": "install.seylo.dev"
+  },
+  "github": {
+    "org": "Seylo-dev",
+    "repo": "Seylo-dev/App",
+    "docsRepo": "Seylo-dev/Docs"
+  }
+}

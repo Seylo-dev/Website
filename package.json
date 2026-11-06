@@ -1,0 +1,24 @@
+{
+  "name": "seylo-site",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,landing -c blue,magenta \"bun run dev:api\" \"bun run dev:landing\"",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:landing": "bun run --cwd apps/landing dev",
+    "build": "bun run build:api && bun run build:landing",
+    "build:api": "bun run --cwd apps/api build",
+    "build:landing": "bun run --cwd apps/landing build",
+    "start:api": "bun run --cwd apps/api start",
+    "start:landing": "bun run --cwd apps/landing start",
+    "test": "bun run --cwd apps/api test",
+    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/landing typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.6",
+    "prettier": "3.9.10"
+  }
+}

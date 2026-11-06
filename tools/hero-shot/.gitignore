@@ -1,0 +1,5 @@
+node_modules
+# The root .gitignore drops every out/ folder; here only the capture is kept (previews are regenerated).
+!out/
+out/*
+!out/dashboard.png

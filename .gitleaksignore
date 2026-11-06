@@ -1,0 +1,6 @@
+# Reviewed gitleaks findings in this repo's history. None is a real secret:
+# a `seylo_key_...` placeholder in an old docs example, and the fake JWT and
+# API_KEY values the report redaction tests feed to the rules.
+efbe9f538ea664f46863073b435fd636ebe1d978:apps/docs/content/docs/people/api-keys.mdx:curl-auth-header:19
+c251bd008fbe93c81d1e8d55650d515ede265eab:apps/api/test/redaction.test.ts:jwt:19
+c251bd008fbe93c81d1e8d55650d515ede265eab:apps/api/test/redaction.test.ts:generic-api-key:21
