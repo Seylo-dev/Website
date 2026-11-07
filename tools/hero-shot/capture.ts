@@ -1,8 +1,13 @@
-// Captures the panel dashboard for the landing hero: signs in as the owner, opens the dashboard,
-// waits for the three node graphs to draw, checks the page for leftover test names and errors, and
-// writes out/dashboard[-dark].png plus the landing's public/product/dashboard.webp.
+// Captures the panel dashboard for the landing hero from a running panel with real nodes: signs in as
+// the owner, opens the dashboard, waits for the three node graphs to draw, checks the page for leftover
+// test names and errors, and writes out/dashboard[-dark].png plus the landing's
+// public/product/dashboard[-dark].webp. (The landing's current hero comes from the panel's demo mode
+// instead: the `dashboard` shot of sections.ts. See README.md.)
 //
-//   bun run capture.ts [--dark] [--no-webp]
+//   bun run capture.ts [--dark | --both] [--no-webp]
+//
+// --dark takes the panel's dark theme (the browser asks for dark mode, so a panel on the default theme
+// paints seylo-night), --both takes light and then dark.
 //
 // Env: PANEL (default http://192.168.64.3:3000), SESSION_COOKIES (a curl cookie jar with the owner's
 // seylo_session, default ~/.cache/seylo-e2e/state/cookies). Without a usable session it signs in
@@ -19,16 +24,18 @@ const home = process.env.HOME ?? "";
 const panel = (process.env.PANEL ?? "http://192.168.64.3:3000").replace(/\/$/, "");
 const jarFile = process.env.SESSION_COOKIES ?? join(home, ".cache/seylo-e2e/state/cookies");
 const ownerFile = process.env.OWNER_FILE ?? join(home, ".cache/seylo-e2e/state/owner");
-const dark = process.argv.includes("--dark");
-const webp = !process.argv.includes("--no-webp") && !dark;
+const themes: ("light" | "dark")[] = process.argv.includes("--both")
+  ? ["light", "dark"]
+  : process.argv.includes("--dark")
+    ? ["dark"]
+    : ["light"];
+const webp = !process.argv.includes("--no-webp");
 
 // 1600x1000 CSS pixels at 1.5x = 2400x1500: wide enough for the three-column project grid.
 const viewport = { width: 1600, height: 1000 };
 const scale = 1.5;
 
 const outDir = join(here, "out");
-const png = join(outDir, dark ? "dashboard-dark.png" : "dashboard.png");
-const landingWebp = join(here, "../../apps/landing/public/product/dashboard.webp");
 
 /** Words that must not show up in a marketing screenshot. */
 const banned = [
@@ -59,10 +66,19 @@ async function signIn(context: BrowserContext): Promise<void> {
 
 const browser = await chromium.launch();
 try {
+  for (const theme of themes) await shoot(theme);
+} finally {
+  await browser.close();
+}
+
+async function shoot(theme: "light" | "dark") {
+  const suffix = theme === "dark" ? "-dark" : "";
+  const png = join(outDir, `dashboard${suffix}.png`);
+  const landingWebp = join(here, `../../apps/landing/public/product/dashboard${suffix}.webp`);
   const context = await browser.newContext({
     viewport,
     deviceScaleFactor: scale,
-    colorScheme: dark ? "dark" : "light",
+    colorScheme: theme,
   });
   await signIn(context);
   const page = await context.newPage();
@@ -109,6 +125,5 @@ try {
     await sharp(png).webp({ quality: 88, effort: 6 }).toFile(landingWebp);
     console.log(`wrote ${landingWebp}`);
   }
-} finally {
-  await browser.close();
+  await context.close();
 }

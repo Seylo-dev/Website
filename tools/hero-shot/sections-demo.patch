@@ -178,7 +178,22 @@ diff -ru a/demo/service.ts b/demo/service.ts
      networkRxBytesPerSec: 600_000 + Math.sin(i / 3) * 200_000,
      networkTxBytesPerSec: 400_000 + Math.cos(i / 5) * 150_000,
    }));
-@@ -330,20 +342,48 @@
+@@ -231,12 +243,13 @@
+ NODE_ENV=production
+ QUEUE_CONCURRENCY=8
+ DATABASE_URL=postgres://app:s3cr3tpass@db:5432/shop?sslmode=disable
+-API_URL=\${{api.URL}}
+ REDIS_URL=\${{redis.INTERNAL_URL}}
+ STRIPE_SECRET_KEY=sk_live_51HxQ2mAbCdEf
+ SENTRY_DSN=https://abc@o4507.ingest.sentry.io/4507
+ LOG_LEVEL=info
++MAIL_FROM=shop@example.com
+ SMTP_HOST=\${{project.SMTP_HOST}}
++API_URL=\${{api.URL}}
+ `;
+ 
+ const refs = {
+@@ -330,20 +343,48 @@
      dnsStatus: "missing",
      liveAt: null,
      certificate: { status: "pending", expiresAt: null, issuer: null, error: null },
@@ -230,7 +245,7 @@ diff -ru a/demo/service.ts b/demo/service.ts
  const fileEntry = (name: string, isDir: boolean, size: number) => ({
    name,
    path: name,
-@@ -590,6 +630,15 @@
+@@ -590,6 +631,15 @@
    "uptime.list": () => ({
      checks: [{ id: "k000000000000001", serviceId: ids.web, projectId: ids.project, name: "Home page", url: "https://shop.example.com", method: "GET", expectedStatus: 0, intervalSeconds: 60, timeoutMs: 10000, failureThreshold: 3, enabled: true, status: "up", statusSince: ago(2 * day), lastCheckedAt: ago(20_000), lastStatusCode: 200, lastLatencyMs: 84, lastError: null, uptime24h: 99.93, createdAt: ago(9 * day), updatedAt: ago(day) }],
    }),

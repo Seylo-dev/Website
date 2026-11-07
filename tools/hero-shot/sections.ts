@@ -1,19 +1,24 @@
-// Captures the section screenshots of the landing page from the panel's demo mode: a panel run from
+// Captures the panel screenshots of the landing page from the panel's demo mode: a panel run from
 // source with an owner, the web app's Vite server in front of it, and the panel's own browser-test demo
 // data (seylo test/playwright/demo) patched with sections-demo.patch. See README.md, "Section captures".
 //
-//   bun run sections.ts [name ...]     all captures, or only the named ones
+//   bun run sections.ts [--dark | --both] [name ...]     all captures, or only the named ones
+//
+// Light is the default theme. --dark takes the dark pass only, --both takes light and then dark: the
+// panel's default theme in dark mode (the seylo-night preset) from the same demo data, written next to
+// the light file with a -dark suffix. The theme-* preset shots have one theme of their own and are
+// skipped in the dark pass.
 //
 // Env: WEB (default http://127.0.0.1:3952, the Vite server), OWNER_FILE (two lines: email, password of
-// the panel's owner; default out/owner). Writes out/sections/<name>.png and
-// apps/landing/public/product/<name>.webp.
+// the panel's owner; default out/owner). Writes out/sections/<name>[-dark].png and
+// apps/landing/public/product/<name>[-dark].webp.
 
 import { mkdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Browser, chromium, type Locator, type Page } from "playwright";
 import sharp from "sharp";
-import { ids } from "./out/demo/fixtures";
+import { ids, metricsNodes, nodes, updateStatus } from "./out/demo/fixtures";
 import { type Handler, installDemo, type Preset } from "./out/demo/routes";
 import { handlers as serviceHandlers, ids as svc } from "./out/demo/service";
 
@@ -27,7 +32,14 @@ const [email = "", password = ""] = readFileSync(process.env.OWNER_FILE ?? join(
   .trim()
   .split("\n");
 const service = (id: string, tab = "") => `/p/${ids.acme}/s/${id}${tab ? `/${tab}` : ""}`;
-const only = process.argv.slice(2);
+
+const args = process.argv.slice(2);
+const flags = args.filter((a) => a.startsWith("--"));
+const unknown = flags.filter((f) => f !== "--dark" && f !== "--both");
+if (unknown.length > 0) throw new Error(`unknown flag ${unknown.join(", ")} (use --dark or --both)`);
+type Theme = "light" | "dark";
+const themes: Theme[] = flags.includes("--both") ? ["light", "dark"] : flags.includes("--dark") ? ["dark"] : ["light"];
+const only = args.filter((a) => !a.startsWith("--"));
 
 type Box = { x: number; y: number; width: number; height: number };
 interface Shot {
@@ -39,6 +51,11 @@ interface Shot {
   overrides?: Record<string, Handler>;
   /** Width of the final webp in pixels (resized down when set). */
   outWidth?: number;
+  /**
+   * Keeps the page's clock running instead of frozen. The env editor needs it: with a frozen clock its
+   * syntax highlighting never runs. Only for screens without relative times.
+   */
+  runningClock?: boolean;
   quality?: number;
   /** Prepares the page and returns the region to keep. */
   run: (page: Page) => Promise<Box | null>;
@@ -109,7 +126,127 @@ async function settle(page: Page, extra = 1600) {
   await page.waitForTimeout(extra);
 }
 
+/**
+ * Node graphs for the hero: the demo's three nodes at their own levels, with faster swings and a little
+ * deterministic jitter so the lines look like a fleet at work rather than three calm waves. Each line
+ * ends on the node's current usage, so the numbers under the graphs match the right edge.
+ */
+function livelyNodes(range: string) {
+  const demo = metricsNodes(range);
+  const count = 90;
+  const step = demo.stepSeconds;
+  const start = Math.floor(Date.now() / 60_000) * 60_000 - count * step * 1000;
+  const jitter = (i: number, seed: number) => {
+    const v = Math.sin(i * 12.9898 + seed * 78.233) * 43758.5453;
+    return (v - Math.floor(v)) * 2 - 1;
+  };
+  const line = (seed: number, swing: number, end: number, rough = 0.18) => {
+    const values = Array.from({ length: count }, (_, i) => {
+      const x = i / 3.2;
+      return (
+        swing *
+        (Math.sin(x + seed) * 0.5 +
+          Math.sin(x * 2.1 + seed * 2) * 0.32 +
+          Math.sin(x * 0.55 + seed * 3) * 0.45 +
+          Math.sin(x * 4.3 + seed) * 0.16 +
+          jitter(i, seed) * rough)
+      );
+    });
+    const shift = end - (values[count - 1] ?? 0);
+    return values.map((v) => Math.max(0, v + shift));
+  };
+  const shapes: Record<string, { seed: number; cpu: number; mem: number; net: number }> = {
+    [ids.de]: { seed: 1, cpu: 11, mem: 0.06, net: 0.55 },
+    [ids.us]: { seed: 2.6, cpu: 6, mem: 0.05, net: 0.7 },
+    [ids.il]: { seed: 4.1, cpu: 9, mem: 0.025, net: 0.45 },
+  };
+  return {
+    ...demo,
+    nodes: demo.nodes.map((node) => {
+      const shape = shapes[node.nodeId] as { seed: number; cpu: number; mem: number; net: number };
+      const latest = (nodes.find((n) => n.id === node.nodeId) as (typeof nodes)[number]).usage;
+      const net = latest.networkRxBytesPerSec + latest.networkTxBytesPerSec;
+      const cpu = line(shape.seed, shape.cpu, latest.cpuPercent);
+      const mem = line(shape.seed + 1, latest.memoryUsedBytes * shape.mem, latest.memoryUsedBytes, 0.08);
+      const traffic = line(shape.seed + 2, net * shape.net, net, 0.3);
+      return {
+        ...node,
+        points: cpu.map((value, i) => ({
+          t: start + i * step * 1000,
+          cpuPercent: Math.min(100, value),
+          memoryUsedBytes: Math.round(mem[i] ?? 0),
+          memoryTotalBytes: latest.memoryTotalBytes,
+          diskUsedBytes: latest.diskUsedBytes,
+          networkRxBytesPerSec: (traffic[i] ?? 0) * 0.6,
+          networkTxBytesPerSec: (traffic[i] ?? 0) * 0.4,
+        })),
+      };
+    }),
+  };
+}
+
+/** Words that must not show up in a marketing screenshot. */
+const banned = [
+  /\be2e\b/i,
+  /\btest\b/i,
+  /colima/i,
+  /lima-/i,
+  /\bfailed\b/i,
+  /something went wrong/i,
+  /no services yet/i,
+];
+
+/** Fails when the visible part of the page shows a banned word. */
+async function checkWords(page: Page) {
+  const text = await page.evaluate(() => {
+    const parts: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent?.trim()) continue;
+      range.selectNodeContents(node);
+      const box = range.getBoundingClientRect();
+      if (box.width > 0 && box.bottom > 0 && box.top < innerHeight && box.right > 0 && box.left < innerWidth) {
+        parts.push(node.textContent.trim());
+      }
+    }
+    return parts.join("\n");
+  });
+  const hits = banned.filter((re) => re.test(text)).map(String);
+  if (hits.length > 0) throw new Error(`the page shows words that should not be in the shot: ${hits.join(", ")}`);
+}
+
 const shots: Shot[] = [
+  {
+    // The landing hero (components/product-shot.tsx): the whole dashboard, 1600x1000 CSS pixels at 1.5x.
+    name: "dashboard",
+    path: "/",
+    viewport: { width: 1600, height: 1000 },
+    scale: 1.5,
+    quality: 86,
+    overrides: {
+      "metrics.nodes": (input) => livelyNodes(String(input.range ?? "1h")),
+      // A calm sidebar: auto-update on, every node on the released version, no rollout in progress.
+      "updates.status": () => ({
+        ...updateStatus,
+        activeRun: null,
+        nodes: updateStatus.nodes.map((node) => ({ ...node, version: "0.1.1", updateAvailable: false })),
+      }),
+    },
+    run: async (page) => {
+      await page.getByRole("heading", { level: 1, name: "Dashboard" }).waitFor();
+      await page.waitForFunction(() => document.querySelectorAll("main svg path").length >= 6, null, {
+        timeout: 20000,
+      });
+      await page.mouse.move(1596, 996);
+      await page.waitForTimeout(2500);
+      await checkWords(page);
+      // The landing cuts the sidebar out as its own layer, so it needs the sidebar's share of the width.
+      const sidebar = await page.getByRole("navigation").first().boundingBox();
+      if (sidebar) console.log(`dashboard: sidebarRatio ${((sidebar.x + sidebar.width) / 1600).toFixed(4)}`);
+      return { x: 0, y: 0, width: 1600, height: 1000 };
+    },
+  },
   {
     name: "templates",
     path: "/templates",
@@ -130,6 +267,7 @@ const shots: Shot[] = [
     name: "env",
     path: service(svc.worker, "environment"),
     viewport: { width: 1440, height: 1000 },
+    runningClock: true,
     run: async (page) => {
       await page.locator(".monaco-editor .view-line").first().waitFor();
       const editor = await card(page, "Environment");
@@ -377,31 +515,48 @@ if (!login.ok()) throw new Error(`login ${login.status()}`);
 const state = await auth.storageState();
 await auth.close();
 
+// Every page's clock stands still at one moment, so "5 minutes ago" and countdowns read the same in
+// each shot and in both themes, however long the run takes.
+const frozenAt = Date.now();
 const errors: string[] = [];
+const large: string[] = [];
 for (const shot of shots) {
   if (only.length && !only.includes(shot.name)) continue;
-  const viewport = shot.viewport ?? { width: 1440, height: 1200 };
-  const context = await browser.newContext({
-    viewport,
-    deviceScaleFactor: shot.scale ?? 2,
-    colorScheme: "light",
-    reducedMotion: "reduce",
-    storageState: state,
-  });
-  const page = await context.newPage();
-  page.on("pageerror", (e) => errors.push(`${shot.name}: ${e.message}`));
-  await installDemo(page, { preset: shot.preset ?? "seylo", overrides: shot.overrides });
-  await page.goto(base + shot.path);
-  await settle(page);
-  const clip = await shot.run(page);
-  const png = `${outPng}/${shot.name}.png`;
-  await page.screenshot({ path: png, fullPage: true, clip: clip ?? undefined });
-  let img = sharp(png);
-  if (shot.outWidth) img = img.resize({ width: shot.outWidth });
-  const webp = `${outWebp}/${shot.name}.webp`;
-  const info = await img.webp({ quality: shot.quality ?? 84, effort: 6 }).toFile(webp);
-  console.log(`${shot.name}: ${info.width}x${info.height} ${Math.round(statSync(webp).size / 1024)} KB`);
-  await context.close();
+  for (const theme of themes) {
+    // A preset shot shows that preset's own colors; it has no dark twin.
+    if (theme === "dark" && shot.preset) continue;
+    const name = theme === "dark" ? `${shot.name}-dark` : shot.name;
+    const viewport = shot.viewport ?? { width: 1440, height: 1200 };
+    const context = await browser.newContext({
+      viewport,
+      deviceScaleFactor: shot.scale ?? 2,
+      colorScheme: theme,
+      reducedMotion: "reduce",
+      storageState: state,
+    });
+    const page = await context.newPage();
+    if (!shot.runningClock) await page.clock.setFixedTime(frozenAt);
+    page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+    // Dark is the default theme in dark mode: the preset a user gets when the panel follows a dark system.
+    await installDemo(page, {
+      preset: shot.preset ?? (theme === "dark" ? "seylo-night" : "seylo"),
+      overrides: shot.overrides,
+    });
+    await page.goto(base + shot.path);
+    await settle(page);
+    const clip = await shot.run(page);
+    const png = `${outPng}/${name}.png`;
+    await page.screenshot({ path: png, fullPage: true, clip: clip ?? undefined });
+    let img = sharp(png);
+    if (shot.outWidth) img = img.resize({ width: shot.outWidth });
+    const webp = `${outWebp}/${name}.webp`;
+    const info = await img.webp({ quality: shot.quality ?? 84, effort: 6 }).toFile(webp);
+    const kb = Math.round(statSync(webp).size / 1024);
+    console.log(`${name}: ${info.width}x${info.height} ${kb} KB`);
+    if (kb > 200) large.push(`${name} (${kb} KB)`);
+    await context.close();
+  }
 }
 console.log("errors", errors);
+if (large.length > 0) console.log("over 200 KB, lower the shot's quality:", large.join(", "));
 await browser.close();

@@ -1,26 +1,108 @@
 # Hero shot (`tools/hero-shot`)
 
-Makes the landing hero image: a real screenshot of the panel dashboard (three nodes with live graphs,
-projects with running services), taken with Playwright from a running panel. The landing shows it in the 3D
-frame in `apps/landing/components/product-shot.tsx`.
+Makes the landing's panel captures: the hero dashboard (three nodes with lively graphs, projects with running
+services) and the crops of the seven sections, each in the panel's light theme and in its default dark theme
+from the same demo data, taken with Playwright. The landing shows the hero in the 3D frame in
+`apps/landing/components/product-shot.tsx` and the crops through `apps/landing/lib/captures.ts`, each in the
+page's theme.
 
 ```bash
-bun install              # once, at the repo root (this folder is a workspace)
-./stage.sh               # demo projects + load on the nodes (once; then let it run for an hour)
-bun run capture.ts       # -> out/dashboard.png and apps/landing/public/product/dashboard.webp
-bun run preview.ts       # landing hero at 1440x900 and 390x844 -> out/hero-*.png
+bun install                  # once, at the repo root (this folder is a workspace)
+# panel + web from source and the patched demo data: see "Demo mode" below
+bun run sections.ts --both   # hero + every crop, light and dark -> apps/landing/public/product/<name>[-dark].webp
+bun run preview.ts           # landing hero at 1440x900 and 390x844 in both themes -> out/hero-*.png
 ```
 
 ## What you need
 
-- A panel with three joined nodes, signed-in access as the owner and an API key. The 2026-11-05 and 2026-11-06
-  shots used the e2e panel from `seylo/test/e2e-colima` (`make e2e KEEP=1`), whose state lives in
-  `~/.cache/seylo-e2e/state`: `api-key`, `cookies` (the owner's `seylo_session`) and `owner` (email and
-  password, used only when the cookie has expired). Point the scripts elsewhere with `PANEL`, `API_KEY_FILE`,
-  `SESSION_COOKIES`, `OWNER_FILE`.
+- A checkout of the panel (`seylo`, next to this repo) with its dependencies installed. Run it from a scratch
+  copy (`cp -cR seylo /tmp/seylo-shots` on macOS clones it in seconds), so nothing lands in the real checkout.
 - Chromium for Playwright 1.56 (`bunx playwright install chromium` if it is not cached yet).
 
-## 1. Make the panel look like a real deployment
+## Demo mode
+
+The hero and the seven sections (templates, settings, nodes, databases, logs and alerts, access, white label)
+come from the panel's demo mode rather than a fleet: the panel runs from source on an empty data dir, the web
+app's Vite server sits in front of it, and Playwright answers the panel's API calls with the demo data of the
+panel's own browser tests (`test/playwright/demo` in the panel repo), patched here with generic data for these
+captures (`sections-demo.patch`: the released version 0.1.1, the 16 real node checks, an uptime history, a
+load-balanced service, access rules, varied log lines, the worker's env with its `${{api.URL}}` reference on the
+last line so the editor's hover opens over plain lines, no person's name). The template catalog is not mocked:
+the panel serves its real 23 templates and their generated logos. Never commit the demo changes to the panel
+repo; they live in this patch.
+
+```bash
+SEYLO=/tmp/seylo-shots               # the scratch copy of the panel's checkout
+DATA=$(mktemp -d) EMAIL=owner@example.com PASS=$(openssl rand -hex 12)
+mkdir -p out && printf '%s\n%s\n' "$EMAIL" "$PASS" > out/owner
+(cd $SEYLO/apps/panel && SEYLO_DATA_DIR=$DATA bun scripts/create-owner.ts "$EMAIL" "$PASS")
+SEYLO_DATA_DIR=$DATA SEYLO_PORT=3951 SEYLO_HOST=127.0.0.1 SEYLO_SECURE_COOKIES=false bun $SEYLO/apps/panel/src/main.ts &
+(cd $SEYLO/apps/web && PANEL_URL=http://127.0.0.1:3951 ./node_modules/.bin/vite --port 3952 --strictPort --host 127.0.0.1) &
+
+rm -rf out/demo && cp -R $SEYLO/test/playwright/demo out/demo && patch -p1 -d out < sections-demo.patch
+bun run sections.ts --both           # everything, light and dark; or name some: bun run sections.ts --both env metrics
+SEYLO_DIR=$SEYLO bun run catalog.ts  # apps/landing/lib/templates.ts from the panel's templates/
+```
+
+`sections.ts` signs in as the owner, opens each screen at 2x, narrows a card where a crop reads better smaller,
+hides the other cards around it and writes `out/sections/<name>.png` and `apps/landing/public/product/<name>.webp`
+(each under 200 KB; the run lists any file over that). Look at every PNG before committing. When a crop's pixel
+size changes, update it in `apps/landing/lib/captures.ts`.
+
+### Light and dark
+
+| Flag     | Takes                                                              |
+| -------- | ------------------------------------------------------------------ |
+| (none)   | the light theme: `<name>.png` / `<name>.webp`                      |
+| `--dark` | the dark theme only: `<name>-dark.png` / `<name>-dark.webp`        |
+| `--both` | both, light then dark for each capture, so a pair is seconds apart |
+
+Dark is what a user gets with the default theme in dark mode: the browser asks for dark mode and the demo boot
+data says `seylo-night`. Both themes use the same demo data, and every page's clock is frozen at the moment the
+run started (`page.clock.setFixedTime`), so "5 minutes ago", countdowns and the like read the same in the light
+and the dark file. The env editor is the exception (`runningClock`): its syntax highlighting needs a running clock,
+and it shows no times. The light and dark files of a capture have the same pixel size. The four `theme-*` shots
+(the White label section's preset previews) show one preset each and have no dark twin; the dark pass skips
+them.
+
+### The hero
+
+The `dashboard` shot is the hero: the whole dashboard at 1600x1000 CSS pixels at 1.5x (2400x1500). It
+overrides two demo answers: `metrics.nodes` gets livelier lines (the demo's three nodes at their own levels,
+faster swings and a little deterministic jitter, each line ending on the node's current usage so the numbers
+under the graphs match), and `updates.status` has no rollout running and every node on 0.1.1, so the sidebar
+says "up to date". It refuses to save when the visible page shows `e2e`, `test`, `colima`, `failed`, an error
+or an empty state, and prints the sidebar's share of the width (`sidebarRatio`, 0.155 for the 248px sidebar at
+1600px) for `apps/landing/app/page.tsx`.
+
+## Check the landing
+
+```bash
+cd ../../apps/landing && bun run build && PORT=3917 bun run start
+cd ../../tools/hero-shot && bun run preview.ts http://localhost:3917
+```
+
+`preview.ts` takes the hero in the light and the dark theme (the system setting, so no saved choice) and fails
+when the page scrolls sideways. Tune the frame in `apps/landing/app/globals.css` (`.product-shot*`: tilt, fade,
+glow, the phone layout that runs the shot wider than the screen; the rim, shadow and glow colors per theme are
+the `--shot-*` variables).
+
+## From a real panel
+
+`capture.ts` takes the same dashboard from a running panel with real nodes instead of the demo (the 2026-11-05
+and 2026-11-06 heroes came this way). It takes the same theme flags: `--dark` writes `out/dashboard-dark.png`
+and `dashboard-dark.webp`, `--both` takes light and then dark. On the dark pass the browser asks for dark mode,
+so a panel on the default theme with color mode "system" paints `seylo-night`.
+
+- A panel with three joined nodes, signed-in access as the owner and an API key. Those shots used the e2e panel
+  from `seylo/test/e2e-colima` (`make e2e KEEP=1`), whose state lives in `~/.cache/seylo-e2e/state`: `api-key`,
+  `cookies` (the owner's `seylo_session`) and `owner` (email and password, used only when the cookie has
+  expired). Point the scripts elsewhere with `PANEL`, `API_KEY_FILE`, `SESSION_COOKIES`, `OWNER_FILE`.
+
+```bash
+./stage.sh                   # demo projects + load on the nodes (once; then let it run for an hour)
+bun run capture.ts --both    # -> out/dashboard[-dark].png and apps/landing/public/product/dashboard[-dark].webp
+```
 
 Everything goes through the panel's REST API (`/api/v1/<op id>`), no access to the nodes:
 
@@ -54,51 +136,5 @@ key) right before capturing; the sidebar then says "up to date". If a newer test
 latest, publish the running version for the capture (`test/e2e-colima/publish.sh <version>`) and publish the
 newer one again afterwards.
 
-## 2. Capture
-
-`bun run capture.ts` signs in, opens the dashboard at 1600x1000 CSS pixels at 1.5x (2400x1500), waits for the
-node graphs to draw, and refuses to save when the visible part of the page shows `e2e`, `test`, `colima`,
-`failed`, an error or an empty state. It prints the sidebar's share of the width (`sidebarRatio`, 0.155 for
-the 248px sidebar at 1600px) for `apps/landing/app/page.tsx`. `--dark` writes `out/dashboard-dark.png` with the
-panel's dark theme instead (not used: on the navy page the light shot has the contrast).
-
-Open `out/dashboard.png` and look at it before committing.
-
-## 3. Check the landing
-
-```bash
-cd ../../apps/landing && bun run build && PORT=3917 bun run start
-cd ../../tools/hero-shot && bun run preview.ts http://localhost:3917
-```
-
-`preview.ts` fails when the page scrolls sideways. Tune the frame in `apps/landing/app/globals.css`
-(`.product-shot*`: tilt, fade, glow, the phone layout that runs the shot wider than the screen).
-
-## Section captures
-
-The landing's seven sections (templates, settings, nodes, databases, logs and alerts, access, white label) use
-crops of single screens, taken from the panel's demo mode rather than a fleet: the panel runs from source on
-an empty data dir, the web app's Vite server sits in front of it, and Playwright answers the panel's API calls
-with the demo data of the panel's own browser tests (`test/playwright/demo` in the panel repo), patched here
-with generic data for these crops (`sections-demo.patch`: the released version 0.1.1, the 16 real node checks,
-an uptime history, a load-balanced service, access rules, varied log lines, no person's name). The template
-catalog is not mocked: the panel serves its real 23 templates and their generated logos. Never commit the
-demo changes to the panel repo; they live in this patch.
-
-```bash
-SEYLO=$(cd ../../../seylo && pwd)    # the panel's checkout
-DATA=$(mktemp -d) EMAIL=owner@example.com PASS=$(openssl rand -hex 12)
-mkdir -p out && printf '%s\n%s\n' "$EMAIL" "$PASS" > out/owner
-(cd $SEYLO/apps/panel && SEYLO_DATA_DIR=$DATA bun scripts/create-owner.ts "$EMAIL" "$PASS")
-SEYLO_DATA_DIR=$DATA SEYLO_PORT=3951 SEYLO_HOST=127.0.0.1 SEYLO_SECURE_COOKIES=false bun $SEYLO/apps/panel/src/main.ts &
-(cd $SEYLO/apps/web && PANEL_URL=http://127.0.0.1:3951 ./node_modules/.bin/vite --port 3952 --strictPort --host 127.0.0.1) &
-
-rm -rf out/demo && cp -R $SEYLO/test/playwright/demo out/demo && patch -p1 -d out < sections-demo.patch
-bun run sections.ts                  # every crop; or name some: bun run sections.ts env metrics
-SEYLO_DIR=$SEYLO bun run catalog.ts  # apps/landing/lib/templates.ts from the panel's templates/
-```
-
-`sections.ts` signs in as the owner, opens each screen at 2x in the light theme, narrows a card where a crop
-reads better smaller, hides the other cards around it and writes `out/sections/<name>.png` and
-`apps/landing/public/product/<name>.webp` (each well under 200 KB). Look at every PNG before committing. When a
-crop's pixel size changes, update it in `apps/landing/lib/captures.ts`.
+`capture.ts` refuses to save on the same words as the demo hero and prints `sidebarRatio`. Open the PNGs and
+look at them before committing. `out/dashboard.png` in git is the 2026-11-06 capture from the e2e panel.
