@@ -290,6 +290,95 @@ describe("installer source", () => {
     expect(installer.health()).toMatchObject({ state: "failing", lastCheck: { error: { kind: "unreachable" } } });
   });
 
+  test("refuses a signed release older than one it already verified and keeps serving the newer one", async () => {
+    const github = fakeGitHub({
+      latest: "v0.2.0",
+      releases: { "v0.1.1": release("0.1.1"), "v0.2.0": release("0.2.0") },
+    });
+    const { source: installer, lines } = source(github);
+    expect(await installer.get(0)).toMatchObject({ version: "0.2.0", origin: "release" });
+
+    // Someone who can edit the releases marks the older, genuinely signed v0.1.1 as latest.
+    github.state.latest = "v0.1.1";
+    expect(await installer.get(61_000)).toEqual({
+      script: script("0.2.0"),
+      origin: "cache",
+      version: "0.2.0",
+      sha256: sha256(script("0.2.0")),
+    });
+    expect(installer.health()).toMatchObject({
+      state: "stale",
+      serving: { version: "0.2.0", tag: "v0.2.0", verifiedAt: new Date(0).toISOString() },
+      lastCheck: { ok: false, tag: "v0.1.1", error: { kind: "downgrade" } },
+    });
+    expect(errorOf(installer)).toContain("v0.1.1 checks out against its signed manifest but is older than v0.2.0");
+    expect(lines.join("\n")).toContain("!!! REFUSED the latest release: v0.1.1");
+
+    // /healthz stays 200 (there is a verified copy to serve) and says why it is degraded.
+    const health = await (await testApp({ installer })).app.handle(request("/healthz"));
+    expect(health.status).toBe(200);
+    expect(await health.json()).toMatchObject({
+      status: "degraded",
+      installer: { state: "stale", serving: { version: "0.2.0" }, lastCheck: { error: { kind: "downgrade" } } },
+    });
+
+    // Retried like any refused check, and refused again.
+    expect(await installer.get(91_000)).toMatchObject({ version: "0.2.0", origin: "cache" });
+    expect(installer.health().lastCheck?.error?.kind).toBe("downgrade");
+
+    // The same version again (a re-signed release) is not older, so it is served.
+    const recut = "#!/bin/sh\necho 'installer 0.2.0, re-signed'\n";
+    github.state.releases["v0.2.0"] = release("0.2.0", { script: recut });
+    github.state.latest = "v0.2.0";
+    expect(await installer.get(121_000)).toMatchObject({ script: recut, version: "0.2.0", origin: "release" });
+
+    // And a newer one replaces it.
+    github.state.releases["v0.2.1"] = release("0.2.1");
+    github.state.latest = "v0.2.1";
+    expect(await installer.get(182_000)).toMatchObject({ version: "0.2.1", origin: "release" });
+    expect(installer.health()).toMatchObject({ state: "ok", serving: { version: "0.2.1" } });
+  });
+
+  test("orders releases as semver: pre-releases before their release, numbers numerically", async () => {
+    const versions = ["0.2.0-rc.1", "0.2.0-rc.2", "0.2.0-rc.10", "0.2.0", "0.9.0", "0.10.0"];
+    const github = fakeGitHub({
+      latest: "v0.2.0-rc.1",
+      releases: Object.fromEntries(versions.map((version) => [`v${version}`, release(version)])),
+    });
+    const { source: installer } = source(github);
+    let now = 0;
+    const next = async (version: string) => {
+      github.state.latest = `v${version}`;
+      now += 61_000;
+      return installer.get(now);
+    };
+
+    // Each one newer than the last: all served.
+    expect(await installer.get(now)).toMatchObject({ version: "0.2.0-rc.1", origin: "release" });
+    expect(await next("0.2.0-rc.2")).toMatchObject({ version: "0.2.0-rc.2", origin: "release" });
+    expect(await next("0.2.0-rc.10")).toMatchObject({ version: "0.2.0-rc.10", origin: "release" });
+    expect(await next("0.2.0")).toMatchObject({ version: "0.2.0", origin: "release" });
+
+    // Back to a pre-release of the release now served: refused.
+    expect(await next("0.2.0-rc.10")).toMatchObject({ version: "0.2.0", origin: "cache" });
+    expect(installer.health().lastCheck).toMatchObject({ tag: "v0.2.0-rc.10", error: { kind: "downgrade" } });
+
+    expect(await next("0.10.0")).toMatchObject({ version: "0.10.0", origin: "release" });
+    expect(await next("0.9.0")).toMatchObject({ version: "0.10.0", origin: "cache" });
+    expect(installer.health().lastCheck).toMatchObject({ tag: "v0.9.0", error: { kind: "downgrade" } });
+  });
+
+  test("refuses a signed version it can't order", async () => {
+    // Both pass the tag pattern, neither is semver (an empty identifier, a leading zero).
+    for (const version of ["0.2.0-rc..1", "0.02.0"]) {
+      const github = fakeGitHub({ latest: `v${version}`, releases: { [`v${version}`]: release(version) } });
+      const { source: installer } = source(github);
+      expect(await installer.get(0)).toBeNull();
+      expect(installer.health().lastCheck?.error).toMatchObject({ kind: "rejected" });
+      expect(errorOf(installer)).toContain("which is not a semver version");
+    }
+  });
+
   test("never serves something that isn't a script, signed or not", async () => {
     const html = "<html>Not Found</html>";
     const github = fakeGitHub({ latest: "v0.2.0", releases: { "v0.2.0": release("0.2.0", { script: html }) } });

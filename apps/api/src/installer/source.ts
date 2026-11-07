@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { InstallerConfig } from "../config";
 import { verifyMinisign } from "./minisign";
+import { compareSemver, parseSemver } from "./semver";
 
 export type InstallerOrigin = "release" | "cache" | "local";
 
@@ -15,14 +16,16 @@ export interface InstallerScript {
 /**
  * `unreachable`: GitHub could not be reached or answered with an error.
  * `rejected`: the release was downloaded but did not check out against its signed manifest.
+ * `downgrade`: the release checked out, but is older than one this process already verified and
+ * still serves (someone marked an older release "latest").
  */
-export type CheckErrorKind = "unreachable" | "rejected";
+export type CheckErrorKind = "unreachable" | "rejected" | "downgrade";
 
 /** What `/healthz` reports about the installer. */
 export interface InstallerHealth {
   /**
    * - `ok`: the latest release checked out and is served.
-   * - `stale`: the last check failed; the last good copy is still served.
+   * - `stale`: the last check failed or found an older release; the last good copy is still served.
    * - `failing`: the last check failed and nothing verified is left to serve.
    * - `pending`: no check has finished yet.
    */
@@ -84,7 +87,9 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
  * 2. downloads manifest.json, manifest.json.minisig and install.sh from that tag,
  * 3. verifies the manifest's minisign signature with the release key from brand.json,
  * 4. requires the manifest's version to be the tag's and sha256(install.sh) to be
- *    `manifest.installer.sha256`.
+ *    `manifest.installer.sha256`,
+ * 5. refuses a version older (by semver) than the newest one this process verified before, so
+ *    marking an older signed release "latest" on GitHub can't roll new installs back.
  *
  * Only then is the script cached and served. A check that fails for any reason keeps the last
  * good copy in service, is logged and shows in /healthz. With nothing verified at all, the local
@@ -205,6 +210,10 @@ export function createInstallerSource(
     if (!version || version !== tag.replace(/^v/, "")) {
       throw new CheckError("rejected", `the signed manifest under ${tag} is for version ${version ?? "(none)"}`);
     }
+    // Releases are ordered by semver to refuse a rollback, so one that can't be ordered is not served.
+    if (!parseSemver(version)) {
+      throw new CheckError("rejected", `the signed manifest of ${tag} names ${version}, which is not a semver version`);
+    }
     const installer = (manifest.installer ?? null) as { sha256?: unknown; size?: unknown } | null;
     const expected = typeof installer?.sha256 === "string" ? installer.sha256.toLowerCase() : null;
     if (!expected || !SHA256_HEX.test(expected)) {
@@ -240,6 +249,13 @@ export function createInstallerSource(
     checkingTag = null;
     try {
       const verified = await check();
+      // `good` is the newest release this process has verified: an older one never replaces it.
+      if (good && compareSemver(verified.version, good.version) < 0) {
+        throw new CheckError(
+          "downgrade",
+          `${verified.tag} checks out against its signed manifest but is older than ${good.tag}, which this API already verified`,
+        );
+      }
       if (good?.sha256 !== verified.sha256) {
         log.log(
           `[installer] serving install.sh of ${verified.tag} (sha256 ${verified.sha256}), verified against its signed manifest`,
@@ -259,7 +275,11 @@ export function createInstallerSource(
       const still = good
         ? `Still serving ${good.tag}, verified ${new Date(good.verifiedAt).toISOString()}.`
         : "Nothing verified to serve: /install.sh answers 503.";
-      if (error.kind === "rejected") {
+      if (error.kind === "downgrade") {
+        log.error(
+          `[installer] !!! REFUSED the latest release: ${error.message}. ${still} Check which release is marked latest on GitHub; to roll back on purpose, restart the API.`,
+        );
+      } else if (error.kind === "rejected") {
         log.error(
           `[installer] !!! REFUSED the latest release: ${error.message}. ${still} Check the release on GitHub.`,
         );

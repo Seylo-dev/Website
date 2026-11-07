@@ -63,7 +63,12 @@ SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
   2. verifies the manifest's minisign signature with `minisignPublicKey` from `brand/brand.json`
      (`src/installer/minisign.ts`, the same check as the panel's);
   3. requires the manifest's `version` to be the tag's and `sha256(install.sh)` to equal
-     `installer.sha256` in the manifest (and its `size`, when set), and the script to start with `#!`.
+     `installer.sha256` in the manifest (and its `size`, when set), and the script to start with `#!`;
+  4. refuses a release older than the newest one this process has verified, compared as semver
+     (`src/installer/semver.ts`: `0.2.0-rc.1` is older than `0.2.0`, `0.10.0` newer than `0.9.0`), so
+     marking an older signed release "latest" on GitHub can't roll new installs back. The newer copy
+     keeps being served, the log says `!!! REFUSED` and `/healthz` shows `"stale"` with error kind
+     `downgrade`. The floor lives in memory: to roll back on purpose, restart the API.
 
   Only a script that passes all of it is cached and served. When a check fails (GitHub down, a
   release without a manifest, a replaced `install.sh`, a bad signature), the last good copy keeps being
