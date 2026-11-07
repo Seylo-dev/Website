@@ -82,6 +82,8 @@ function access(op: Operation): string {
   const lines: string[] = [];
   if (permission === "public") lines.push("Needs no sign-in.");
   else if (permission === "signed-in") lines.push("Any signed-in caller.");
+  else if (permission === "signed-in, whole account")
+    lines.push("Any signed-in caller, but not an API key or MCP token limited to some projects or actions.");
   else if (permission) {
     const [scope, action] = permission.includes(":") ? permission.split(":", 2) : ["global", permission];
     if (scope === "service") lines.push(`Needs \`${action}\` on the service (a grant on its project covers it).`);
