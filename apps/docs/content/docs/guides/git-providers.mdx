@@ -111,9 +111,11 @@ Every delivery is checked before anything in it is read, comparing in constant t
 | Gitea, Forgejo | `X-Gitea-Signature` or `X-Forgejo-Signature`: HMAC-SHA256 of the body with the secret |
 | Bitbucket | `X-Hub-Signature`: `sha256=` and the HMAC-SHA256 of the body |
 
-A delivery needs the provider's delivery id. The same body sent again under another id within 3 days is refused as a replay, also after a panel restart, and an id already handled is ignored. Each webhook takes 20 deliveries at once, then one every 3 seconds; more get `429` with `Retry-After`. Bodies over 5 MiB are refused.
+A delivery needs the provider's delivery id. The same body sent again under another id within 3 days is refused as a replay, also after a panel restart, and an id already handled is ignored. Bodies over 5 MiB are refused.
 
-**Recent deliveries** on the Source tab lists every delivery with what it did and why, refused ones included (at most 20 refused ones an hour across the panel). **Retry failed** only works for GitHub; for the others, redeliver from the provider's webhook settings.
+Each webhook handles 120 deliveries at once, then one a second, far more than a busy repository sends. Past that a delivery is not refused, since providers do not send one again and GitLab turns a webhook off after 4 failures in a row: it gets `200` but is not handled, **Recent deliveries** lists it as **Ignored** ("Too many deliveries to this webhook: not handled; the branch head is read again within a minute."), and the next branch poll reads the head. So a push in it deploys about a minute late; a merge or pull request event in it is lost.
+
+**Recent deliveries** on the Source tab lists every delivery with what it did and why, refused ones included (at most 20 refused or unhandled ones an hour across the panel). **Retry failed** only works for GitHub; for the others, redeliver from the provider's webhook settings.
 
 ## Deploy on push
 
@@ -123,7 +125,7 @@ A push to the deployed branch deploys the branch head that the provider's API re
 - [Watch paths](/guides/watch-paths) can limit deploys to pushes that touch certain files.
 - A push while an earlier push deploy is still queued joins it: that deploy builds the newer head, and the delivery says **A deploy was already queued**. So at most one push deploy waits behind the running one.
 
-The panel also polls the branch head, to catch missed deliveries: every minute while the service has no working webhook, every 5 minutes while it has one, and not at all while the webhook delivered within the last 5 minutes.
+The panel also polls the branch head, to catch missed deliveries: every minute while the service has no working webhook, every 5 minutes while it has one, and not at all while the webhook delivered within the last 5 minutes, unless the webhook left a delivery unhandled (see [Deliveries](#deliveries)).
 
 ## Merge and pull request previews
 
@@ -153,4 +155,4 @@ A commit whose queued deploy a newer push took over shows **Superseded by a newe
 - Bitbucket Cloud only, not Bitbucket Data Center.
 - The provider's certificate must come from a certificate authority the panel and the build nodes trust (the usual public ones). Servers with self-signed certificates do not work yet.
 - Compose stacks cannot deploy from a provider repository yet: use the **Git** source of the stack.
-- The provider's address may be a private one (a server on your network). Cloud metadata addresses and names that do not resolve are refused, and the panel follows no redirects from the provider's API.
+- The provider's address may be a private one (a server on your network). Cloud metadata addresses and names that do not resolve are refused, and the panel follows no redirects from the provider's API. Build nodes clone from it on a private address too, but only from the connection's own host and port: they check every address they connect to, like for a **Git** source, and refuse a redirect to another internal address (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).

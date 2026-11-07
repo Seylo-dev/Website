@@ -32,6 +32,8 @@ Two panels can't share one SQLite file, so a panel update is a short stop, not a
 
 The panel shows an updating page for those seconds. Apps are not affected: they run on the nodes, not in the panel. A journal on disk lets the agent finish or undo a swap that was interrupted, for example by a reboot.
 
+New in 0.2: when the panel's update to a release was rolled back, automatic runs do not start for that release at all, and the nodes, which update after the panel, wait with it. The **Update failed** alert ends with "Automatic updates wait for a newer release; updating the panel by hand installs this one." **Update to `<version>`** in **Settings → Updates** or on **Nodes** tries it again.
+
 ## How a node updates
 
 1. The agent downloads its new binary, checks its size and SHA-256 against the signed manifest, and makes sure it runs.
@@ -41,7 +43,12 @@ The panel shows an updating page for those seconds. Apps are not affected: they 
 
 Either way the panel gets exactly one result for the node.
 
-New in 0.2: after the guard rolls a release back, the node waits before it installs that release again by itself (auto-update, or an agent too old for the panel): an hour after the first rollback, then a day after each later one. The node raises an **Update failed** alert that says until when, so a bad release does not restart the agent, and with it builds, shells and consoles, every few minutes. **Update now** on **Nodes** installs it right away. A confirmed update clears the record and the alert.
+New in 0.2: a release the guard rolled back is held for that node, so a bad release does not keep restarting the agent, and with it builds, shells and consoles:
+
+- The panel's automatic runs (the check every 6 hours with **Update automatically** on) leave the node out for that release, with no time limit, until a newer release comes out. The panel's alert, **Update to `<version>` failed on `<node>`**, ends with "Automatic updates leave this node out until a newer release; Update now installs this one."
+- The node itself waits before it installs that release again on its own (when it connects with auto-update on, or when the panel refuses it as too old): an hour after the first rollback, then a day after each later one. Its own **Update failed** alert says until when.
+
+**Update now** for the node (on **Nodes** or in **Settings → Updates**) installs the release right away and lifts the hold. A confirmed update to that release or a later one clears it as well, and resolves the node's alert.
 
 ## Upgrading from 0.1
 

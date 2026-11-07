@@ -29,6 +29,6 @@ To keep checks from being used to probe your private network, the panel refuses 
 
 A private address also passes when it is a node's **Public address** as set in the node's settings (see [Node settings](/guides/adding-nodes#node-settings)), for clouds with 1:1 NAT where that is how people reach the node. New in 0.2: only that setting counts. The addresses a node's agent detects and reports about itself no longer make a private address pass, since a compromised node could report any address. A check aimed at such an address goes **Down** with the reason, until an admin sets the node's **Public address** to it or allows internal targets. The panel's own node gets its **Public address** from the address the setup link was opened at, when it knows no public one.
 
-The same rules apply to **Check access** on a [Git source](/guides/github-and-git#git-servers-on-private-addresses) for members.
+New in 0.2: **Check access** on a Git source does not follow these rules. Git servers on private addresses, a node's **Public address** included, need an owner or admin to allow them per project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
 A check on a name that does not resolve yet can be saved. Until the name resolves, the panel sends nothing and the check records "Not checked: the name did not resolve".

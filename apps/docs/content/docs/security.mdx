@@ -19,7 +19,7 @@ Treat these accounts like root SSH keys: keep them to a few people and give each
 
 A member, shown as a guest on the projects they can reach, sees and does only what was shared with them: whole projects or single services, with the actions picked when sharing. Members never get panel-wide actions (nodes, settings, people, updates), and nobody can share an action they do not hold themselves.
 
-A member who may deploy runs code on the node, but not as root on it: Seylo starts services without privileged mode, host networking, devices, bind mounts or the Docker socket, and ignores those settings in compose files. A member can't put a service on a hostname or path that another service already routes unless they may edit that service too.
+A member who may deploy runs code on the node, but not as root on it: Seylo starts services without privileged mode, host networking, devices, bind mounts or the Docker socket, and ignores those settings in compose files. A member can't put a service on a hostname or path that another service already routes unless they may edit that service too. A git URL does not lead into a node's network either: since 0.2 the node checks the address of every connection git makes and clones from an internal address only for a host an owner or admin allowed in the project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
 Services of different projects on one node still share its kernel and Docker. If you do not trust a member that far, keep their projects on a node of their own.
 
