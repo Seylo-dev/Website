@@ -8,8 +8,9 @@ An app's **Source** tab says where its code comes from. Changes there apply on t
 | Source | What it is |
 | --- | --- |
 | **GitHub** | A repository through the panel's own GitHub App |
+| **GitLab**, **Gitea**, **Bitbucket** | New in 0.2: a repository through a connection with an access token, see [GitLab, Gitea and Bitbucket](/guides/git-providers) |
 | **Git** | Any git URL, with a credential for private repositories |
-| **Docker image** | A ready image from a registry, see [Images and uploads](/guides/images-and-uploads) |
+| **Docker image** | A ready image from a registry, see [Images and uploads](/guides/images-and-uploads), or (new in 0.2) one found on [Docker Hub](/guides/docker-hub) |
 | **Dockerfile** | A Dockerfile typed in the panel, see [Images and uploads](/guides/images-and-uploads) |
 | **Upload** | A `.tar.gz` of your code, see [Images and uploads](/guides/images-and-uploads) |
 
@@ -33,7 +34,7 @@ On the app's **Source** tab pick **GitHub**, then the account, the repository an
 
 ## Any other Git host
 
-Pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. **Check access** lists the branches it can see. For a private repository, pick a **Credential**:
+New in 0.2: GitLab, Gitea, Forgejo and Bitbucket Cloud have their own sources, with a webhook the panel creates, merge request previews and commit statuses: see [GitLab, Gitea and Bitbucket](/guides/git-providers). For any other host, or on 0.1, pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. **Check access** lists the branches it can see. For a private repository, pick a **Credential**:
 
 - an HTTPS access token for the host, or
 - an SSH key: the panel can generate an Ed25519 deploy key and give you the public half to add as a read-only deploy key on the repository.
@@ -72,6 +73,11 @@ Turn on **Deploy on push** on the Source tab and every push to the branch deploy
 
 Deploys of one service run one at a time: a push while a deploy is running waits in line and starts when it is done.
 
+New in 0.2:
+
+- A push whose head commit message contains `[skip ci]`, `[ci skip]`, `[skip cd]` or `[cd skip]` (any case) does not deploy. A pull request whose title contains one of them gets no preview deploy.
+- **Watch paths** on the Source tab make a service deploy only when a push changes files it cares about, for monorepos. See [Watch paths](/guides/watch-paths).
+
 ### Deploy trigger URL
 
 For other Git hosts and CI, **Deploy trigger** creates a secret URL that deploys the service on `POST`:
@@ -82,9 +88,11 @@ curl -X POST "https://panel.example.com/api/hooks/deploy/<token>?commit=<sha>"
 
 `commit` is optional. The URL is shown once; **New URL** replaces it and the old one stops working.
 
+New in 0.2: a call whose JSON body says what changed (a push payload in GitHub's, GitLab's or Gitea's shape, or `{"changedFiles": [...]}`) goes through the service's watch paths and the `[skip ci]` markers first; see [Watch paths](/guides/watch-paths#the-deploy-trigger-url).
+
 ## Pull request previews
 
-On the **Previews** tab, turn on **Previews** and every open pull request against the deployed branch gets its own copy of the service, deployed on each push to the pull request and removed when it closes. Previews are for services that deploy from GitHub.
+On the **Previews** tab, turn on **Previews** and every open pull request against the deployed branch gets its own copy of the service, deployed on each push to the pull request and removed when it closes. Previews are for services that deploy from GitHub, and (new in 0.2) from GitLab (merge requests), Gitea and Bitbucket (see [GitLab, Gitea and Bitbucket](/guides/git-providers#merge-and-pull-request-previews)).
 
 | Setting | What it does |
 | --- | --- |

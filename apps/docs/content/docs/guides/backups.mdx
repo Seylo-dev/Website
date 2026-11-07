@@ -42,9 +42,12 @@ On a service's **Backups** tab, **Add schedule**:
 | MySQL, MariaDB | `mysqldump` or `mariadb-dump` |
 | MongoDB | `mongodump` |
 | Redis | An RDB snapshot (`redis-cli --rdb`) |
+| Valkey, KeyDB (new in 0.2) | An RDB snapshot (`valkey-cli --rdb` or `keydb-cli --rdb`) |
+| Dragonfly (new in 0.2) | An RDB snapshot it saves into its data folder (`SAVE RDB`) |
+| ClickHouse (new in 0.2) | A `BACKUP` of every database except the system ones, as a zip |
 | Volume | A `.tar.gz` of the volume's folder |
 
-Dumps run in a helper container from the database's own image, so the dump tool always matches the server version.
+Dumps run in a helper container from the database's own image, so the dump tool always matches the server version. Dragonfly and ClickHouse write their backup into their own data folder first; the helper streams it to the bucket and deletes it, so the node needs room for one backup there. How each engine restores, including ClickHouse's rename-aside restore, is in [Database engines](/guides/database-engines#backups-and-restores).
 
 ## Restore
 

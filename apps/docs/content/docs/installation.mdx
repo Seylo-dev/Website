@@ -124,6 +124,16 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 
 Running the installer again is safe: it updates the binary and the systemd unit and keeps the node's data and identity.
 
+### Without a terminal
+
+The installer asks one question, whether to install Docker when it is missing, and it can only ask on a terminal. With no terminal (cloud-init, automation, a CI job, `ssh` without `-t`), give the answer after `sh -s --`:
+
+```bash
+curl -fsSL https://install.seylo.dev | sudo sh -s -- --yes
+```
+
+`--yes` or `--install-docker` installs Docker when it is missing and changes nothing when it is there. The same goes for a `join` command from **Add node**: add the flag at its end. Without either flag and without a terminal, the installer stops before it installs anything and says to re-run with `--install-docker`. That message needs the v0.1.1 installer or newer; the v0.1.0 one stopped with `cannot create /dev/tty` instead.
+
 ## Firewalls
 
 When ufw or firewalld is active, the installer opens what Seylo needs and prints what is left to you:

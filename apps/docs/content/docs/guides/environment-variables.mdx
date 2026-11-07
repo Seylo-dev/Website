@@ -47,13 +47,13 @@ Every service offers these besides its own keys:
 | Service | Variables |
 | --- | --- |
 | Apps, compose members and Boxes | `URL` (public URL of the primary domain), `DOMAIN` (its host), `INTERNAL_URL` (`http://<service>:<port>` on the project network), `INTERNAL_HOST`, `INTERNAL_PORT` |
-| Databases | `INTERNAL_URL` (connection URL on the project network), `INTERNAL_HOST`, `INTERNAL_PORT`, `EXPOSED_URL` (connection URL from anywhere, with TLS), `EXPOSED_HOST`, `EXPOSED_PORT`, `USER`, `PASSWORD`, `DATABASE` |
+| Databases | `INTERNAL_URL` (connection URL on the project network), `INTERNAL_HOST`, `INTERNAL_PORT`, `EXPOSED_URL` (connection URL from anywhere, with TLS), `EXPOSED_HOST`, `EXPOSED_PORT`, `USER`, `PASSWORD`, `DATABASE`. ClickHouse (new in 0.2) also has `INTERNAL_HTTP_URL` (its HTTP interface, with the password) and `INTERNAL_HTTP_PORT`. |
 
 `URL` and `DOMAIN` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed.
 
 ## Secret variables
 
-Every value reaches the container the same way. Whether a variable is a secret matters where a value could be kept: crash reports and troubleshoot uploads strip secret values, Dockerfile builds never pass them as build args, and Nixpacks builds (which write their variables into the image) do not get them at all. A variable is a secret when its name contains `SECRET`, `TOKEN`, `PASS`, `KEY`, `PRIVATE`, `CREDENTIAL` or `DSN`, when its value is a URL with a password or a long random token, or when it references a secret (a database's `PASSWORD`, `INTERNAL_URL` or `EXPOSED_URL`, or another service's secret). A comment on the line above, or after the value, overrides the guess:
+Every value reaches the container the same way. Whether a variable is a secret matters where a value could be kept: crash reports and troubleshoot uploads strip secret values, Dockerfile builds never pass them as build args, and Nixpacks builds (which write their variables into the image) do not get them at all. A variable is a secret when its name contains `SECRET`, `TOKEN`, `PASS`, `KEY`, `PRIVATE`, `CREDENTIAL` or `DSN`, when its value is a URL with a password or a long random token, or when it references a secret (a database's `PASSWORD`, `INTERNAL_URL`, `INTERNAL_HTTP_URL` or `EXPOSED_URL`, or another service's secret). A comment on the line above, or after the value, overrides the guess:
 
 ```bash
 # @public

@@ -44,6 +44,6 @@ The agent also runs the checks every hour in the background. When a check that p
 | Firewall blocks an IP:port address | `ufw allow <port>/tcp`, or `firewall-cmd --permanent --add-port=<port>/tcp && firewall-cmd --reload` |
 | Live-restore is off | Add `"live-restore": true` to `/etc/docker/daemon.json`, then `systemctl reload docker` (restarts nothing) |
 | No public address | Set it as the node's **Public address** on **Nodes** |
-| Disk almost full | **Settings → Docker cleanup** (see [Adding nodes](/guides/adding-nodes#disk-cleanup)), or grow the disk. Between checks, the node raises **Disk above 85%** on its own when its data or Docker disk passes 85% |
+| Disk almost full | **Settings → Docker cleanup**, or (new in 0.2) a scheduled or disk-triggered cleanup in the node's **Cleanup** view (see [Docker cleanup](/guides/docker-cleanup)), or grow the disk. Between checks, the node raises **Disk above 85%** on its own when its data or Docker disk passes 85% |
 | Docker too old | **Update Docker** on the node's row, or your package manager |
 | Docker unreachable | `systemctl start docker`, then check `journalctl -u docker` |

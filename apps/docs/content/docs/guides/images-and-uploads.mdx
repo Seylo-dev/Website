@@ -9,7 +9,7 @@ Besides [GitHub and Git](/guides/github-and-git), an app's **Source** tab takes 
 
 Pick **Docker image** and enter the image, for example `ghcr.io/acme/api:1.4.2`. Nothing is built: the image is pulled and run. Every node pulls it by digest, so all replicas run exactly the same image even if the tag moves later.
 
-When you create an app you can also pick **Docker image** in the **New app** dialog and deploy right away.
+When you create an app you can also pick **Docker image** in the **New app** dialog and deploy right away. New in 0.2: **Add a service → From Docker Hub** searches Docker Hub and fills in the image's port, volumes and settings for you; see [Deploy from Docker Hub](/guides/docker-hub).
 
 ### Private registries
 
