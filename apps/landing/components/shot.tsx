@@ -9,6 +9,11 @@ const phoneWidths = { wide: "w-[170%]", medium: "w-[130%]" } as const;
  * by CSS, so the right one shows before any script runs and on theme changes). Lazy by default: a hidden
  * lazy image has no box, so the browser does not fetch the theme that is not on screen.
  *
+ * `eager` (the hero) loads both files right away. The server cannot tell which one the theme hides, so
+ * both images are low priority: the visible one arrives through the high-priority preload that
+ * app/layout.tsx picks by media query, and the hidden one loads after it. (Without `low`, React would
+ * also add a preload for each file.)
+ *
  * Served as is (`unoptimized`): the captures are small webp files already, and resizing would soften the
  * panel's small text.
  */
@@ -24,7 +29,7 @@ export function ThemeImage({
   style?: React.CSSProperties;
   /** Defaults to the capture's alt text; "" for a decorative copy. */
   alt?: string;
-  /** For first paint (the hero): both files load right away and the visible one is not held back. */
+  /** For first paint (the hero): both files load right away. */
   eager?: boolean;
 }) {
   const common = {
@@ -33,7 +38,7 @@ export function ThemeImage({
     height: capture.height,
     unoptimized: true,
     loading: eager ? ("eager" as const) : ("lazy" as const),
-    fetchPriority: eager && alt ? ("high" as const) : undefined,
+    fetchPriority: eager && capture.srcDark ? ("low" as const) : undefined,
     style,
   };
   if (!capture.srcDark) return <Image {...common} src={capture.src} className={className} />;

@@ -124,11 +124,12 @@
   /* The accent buttons' shadow, the same in both themes. */
   --shadow-accent: 0 1px 2px rgb(37 99 235 / 0.3), 0 4px 12px rgb(37 99 235 / 0.18);
 
-  --shot-glow-a: rgb(59 130 246 / 0.32);
+  /* The dark capture's surfaces sit close to the navy, so the frame's rim and glow carry its edge. */
+  --shot-glow-a: rgb(59 130 246 / 0.4);
   --shot-glow-b: rgb(37 99 235 / 0.18);
   --shot-frame:
-    0 0 0 1px rgb(191 209 255 / 0.28), 0 30px 60px -12px rgb(0 0 0 / 0.55), 0 50px 140px -20px rgb(37 99 235 / 0.4);
-  --shot-sidebar-filter: brightness(0.86) saturate(0.9);
+    0 0 0 1px rgb(191 209 255 / 0.36), 0 30px 60px -12px rgb(0 0 0 / 0.55), 0 50px 140px -20px rgb(37 99 235 / 0.4);
+  --shot-sidebar-filter: brightness(0.92) saturate(0.9);
   --shot-shadow: 0 24px 56px -22px rgb(0 0 0 / 0.7), 0 34px 90px -36px rgb(37 99 235 / 0.42);
   --cell-shot-shadow: 0 -10px 40px -12px rgb(0 0 0 / 0.55);
 }
@@ -151,7 +152,7 @@
     --color-ink-soft: #475569;
     --color-ink-card: #526075;
     --color-ink-muted: #5b687c;
-    --color-ink-dim: #7d8aa3;
+    --color-ink-dim: #6b7993;
     --color-ink-code: #1e293b;
 
     --color-accent: #2563eb;

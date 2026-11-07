@@ -64,7 +64,7 @@ function NavMenu({ label, items }: { label: string; items: MenuItem[] }) {
 export function SiteHeader() {
   return (
     <div className="relative z-10 px-4 pt-4 sm:px-6">
-      <header className="mx-auto flex min-h-15 max-w-[1200px] flex-wrap items-center gap-x-7.5 gap-y-3 rounded-xl border border-nav-line bg-nav py-2.5 pr-3 pl-4.5 shadow-[var(--shadow-nav)] backdrop-blur-md">
+      <header className="mx-auto flex min-h-15 max-w-[1200px] flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-7.5 rounded-xl border border-nav-line bg-nav py-2.5 pr-3 pl-4.5 shadow-[var(--shadow-nav)] backdrop-blur-md">
         <Link href="/" aria-label="Home">
           <Logo />
         </Link>
@@ -78,14 +78,16 @@ export function SiteHeader() {
           <a href={links.apiReference}>API</a>
           <a href={links.changelog}>Changelog</a>
         </nav>
+        {/* Under 360px the GitHub button is its icon (the label stays for screen readers), so both buttons
+            still fit beside the logo; the small gap on phones is the logo's distance to them. */}
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <a
             href={links.github}
-            className="hairline-strong flex h-9 items-center gap-2 rounded-lg bg-quiet px-3.5 text-sm font-medium text-ink"
+            className="hairline-strong flex h-9 items-center gap-2 rounded-lg bg-quiet px-2.5 text-sm font-medium text-ink min-[360px]:px-3.5"
           >
             <IconBrandGithub size={16} aria-hidden />
-            Star on GitHub
+            <span className="sr-only min-[360px]:not-sr-only">Star on GitHub</span>
           </a>
         </div>
       </header>

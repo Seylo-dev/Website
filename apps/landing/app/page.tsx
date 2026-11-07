@@ -13,16 +13,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Starfield } from "@/components/starfield";
 import { TemplatesSection } from "@/components/templates-section";
-
-// The panel dashboard from the panel's demo mode, in its light and dark theme, captured with
-// tools/hero-shot (sections.ts, see its README).
-const heroShot = {
-  src: "/product/dashboard.webp",
-  srcDark: "/product/dashboard-dark.webp",
-  width: 2400,
-  height: 1500,
-  sidebarRatio: 0.155,
-};
+import { heroShot } from "@/lib/captures";
 
 export default function HomePage() {
   return (

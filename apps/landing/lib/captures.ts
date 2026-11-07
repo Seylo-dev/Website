@@ -13,6 +13,19 @@ export interface Capture {
   alt: string;
 }
 
+/**
+ * The hero: the whole dashboard at 2400x1500 in both themes (`sections.ts dashboard`), shown by
+ * components/product-shot.tsx. `sidebarRatio` is the sidebar's share of the width, the strip set back in
+ * depth. app/layout.tsx preloads the system theme's file at high priority.
+ */
+export const heroShot = {
+  src: "/product/dashboard.webp",
+  srcDark: "/product/dashboard-dark.webp",
+  width: 2400,
+  height: 1500,
+  sidebarRatio: 0.155,
+};
+
 const capture = (name: string, px: [number, number], alt: string): Capture => ({
   src: `/product/${name}.webp`,
   srcDark: `/product/${name}-dark.webp`,

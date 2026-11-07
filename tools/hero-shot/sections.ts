@@ -41,6 +41,11 @@ type Theme = "light" | "dark";
 const themes: Theme[] = flags.includes("--both") ? ["light", "dark"] : flags.includes("--dark") ? ["dark"] : ["light"];
 const only = args.filter((a) => !a.startsWith("--"));
 
+// Every page's clock stands still at one moment, so "5 minutes ago" and countdowns read the same in
+// each shot and in both themes, however long the run takes. The hero's graph points are laid out from the
+// same moment, so the light and the dark pass get identical lines.
+const frozenAt = Date.now();
+
 type Box = { x: number; y: number; width: number; height: number };
 interface Shot {
   name: string;
@@ -135,7 +140,7 @@ function livelyNodes(range: string) {
   const demo = metricsNodes(range);
   const count = 90;
   const step = demo.stepSeconds;
-  const start = Math.floor(Date.now() / 60_000) * 60_000 - count * step * 1000;
+  const start = Math.floor(frozenAt / 60_000) * 60_000 - count * step * 1000;
   const jitter = (i: number, seed: number) => {
     const v = Math.sin(i * 12.9898 + seed * 78.233) * 43758.5453;
     return (v - Math.floor(v)) * 2 - 1;
@@ -515,9 +520,6 @@ if (!login.ok()) throw new Error(`login ${login.status()}`);
 const state = await auth.storageState();
 await auth.close();
 
-// Every page's clock stands still at one moment, so "5 minutes ago" and countdowns read the same in
-// each shot and in both themes, however long the run takes.
-const frozenAt = Date.now();
 const errors: string[] = [];
 const large: string[] = [];
 for (const shot of shots) {

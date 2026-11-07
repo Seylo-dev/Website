@@ -2,7 +2,7 @@
 
 import { IconCheck, IconDeviceDesktop, IconMoon, IconSun, type Icon } from "@tabler/icons-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { type ThemeChoice, themeStorageKey } from "@/lib/theme";
+import { pinnedThemeColor, type ThemeChoice, themePinAttribute, themeStorageKey } from "@/lib/theme";
 
 const choices: { value: ThemeChoice; label: string; icon: Icon }[] = [
   { value: "system", label: "System", icon: IconDeviceDesktop },
@@ -19,6 +19,27 @@ function readChoice(): ThemeChoice {
   }
 }
 
+/**
+ * The browser's chrome color: a pinned theme's own theme-color ahead of the per-scheme ones, none for
+ * "system" so those apply again (lib/theme.ts; app/layout.tsx does the same before first paint).
+ */
+function pinThemeColor(choice: ThemeChoice) {
+  let pin = document.querySelector<HTMLMetaElement>(`meta[${themePinAttribute}]`);
+  if (choice === "system") {
+    pin?.remove();
+    return;
+  }
+  if (!pin) {
+    pin = document.createElement("meta");
+    pin.name = "theme-color";
+    pin.setAttribute(themePinAttribute, "");
+    const first = document.querySelector('meta[name="theme-color"]');
+    if (first?.parentNode) first.parentNode.insertBefore(pin, first);
+    else document.head.append(pin);
+  }
+  pin.content = pinnedThemeColor(choice);
+}
+
 /** Puts the choice on <html> (no class for "system") without a fade on the elements that transition colors. */
 function applyChoice(choice: ThemeChoice) {
   const root = document.documentElement;
@@ -27,6 +48,7 @@ function applyChoice(choice: ThemeChoice) {
   document.head.append(freeze);
   root.classList.remove("light", "dark");
   if (choice !== "system") root.classList.add(choice);
+  pinThemeColor(choice);
   // Let the new colors land before transitions come back.
   void getComputedStyle(root).color;
   requestAnimationFrame(() => requestAnimationFrame(() => freeze.remove()));
@@ -129,9 +151,11 @@ export function ThemeToggle() {
 
   return (
     <div ref={rootRef} className="relative">
+      {/* Disabled until mounted: without JavaScript, or before hydration, a press would do nothing. */}
       <button
         ref={buttonRef}
         type="button"
+        disabled={choice === null}
         aria-label={label}
         title={label}
         aria-haspopup="menu"
@@ -139,7 +163,7 @@ export function ThemeToggle() {
         aria-controls={menuId}
         onClick={() => (open ? close(false) : openMenu("current"))}
         onKeyDown={onButtonKey}
-        className="hairline-strong flex size-9 cursor-pointer items-center justify-center rounded-lg bg-quiet text-ink-soft transition-[color] hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="hairline-strong flex size-9 items-center justify-center rounded-lg bg-quiet text-ink-soft transition-[color] enabled:cursor-pointer enabled:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {/* The icon of the theme in effect, from CSS, so it is right before hydration too. */}
         <IconSun size={17} stroke={1.9} aria-hidden className="dark:hidden" />

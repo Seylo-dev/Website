@@ -70,10 +70,11 @@ them.
 The `dashboard` shot is the hero: the whole dashboard at 1600x1000 CSS pixels at 1.5x (2400x1500). It
 overrides two demo answers: `metrics.nodes` gets livelier lines (the demo's three nodes at their own levels,
 faster swings and a little deterministic jitter, each line ending on the node's current usage so the numbers
-under the graphs match), and `updates.status` has no rollout running and every node on 0.1.1, so the sidebar
+under the graphs match; the points are laid out from the run's frozen clock, so the light and the dark pass
+get the same lines), and `updates.status` has no rollout running and every node on 0.1.1, so the sidebar
 says "up to date". It refuses to save when the visible page shows `e2e`, `test`, `colima`, `failed`, an error
 or an empty state, and prints the sidebar's share of the width (`sidebarRatio`, 0.155 for the 248px sidebar at
-1600px) for `apps/landing/app/page.tsx`.
+1600px) for `heroShot` in `apps/landing/lib/captures.ts`.
 
 ## Check the landing
 

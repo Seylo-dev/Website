@@ -27,7 +27,13 @@ The page follows the system setting (`prefers-color-scheme`) until the visitor p
 the nav (`components/theme-toggle.tsx`: System, Light, Dark). The choice is saved in `localStorage` under
 `theme` (`lib/theme.ts`; "System" removes it) and goes on `<html>` as the class `light` or `dark`; no class
 means "follow the system". A tiny inline script in `app/layout.tsx` sets that class before the first paint, so
-a saved choice never flashes the other theme, and without JavaScript the page still follows the system.
+a saved choice never flashes the other theme, and without JavaScript the page still follows the system. The
+menu button stays disabled until the page has hydrated, so without JavaScript it is an inert control.
+
+The browser's own chrome (`<meta name="theme-color">`) follows the page too: the viewport config gives one color
+per `prefers-color-scheme`, and a pinned theme adds a third one without `media` ahead of them (the inline script
+before first paint, the menu after a pick; "System" removes it). Its content is the color in lowercase so React
+does not adopt it as one of the viewport's tags during hydration (`lib/theme.ts`).
 
 - Every color is a token in `app/globals.css`: `@theme` holds the dark values, a `light` block redefines each
   one. Shadows, rims and the shot frames are CSS variables there too (`--lift`, `--edge*`, `--shot-*`). Dark
@@ -48,10 +54,17 @@ theme.
 depth, the bottom and side edges fading into the page. In dark the frame has a light rim and a blue glow (a
 dark shadow would not show on navy); in light a soft shadow and a paler glow. On phones the shot is drawn at
 about twice the screen width and cut on the right, so the text stays legible. The tilt, fade and glow live in
-`app/globals.css` (`.product-shot*`, `--shot-*`). Both theme files load eagerly, since the hero is first paint.
+`app/globals.css` (`.product-shot*`, `--shot-*`).
+
+Both theme files load eagerly, since the hero is first paint. The server cannot tell which one the theme
+hides, so `app/layout.tsx` preloads the system theme's file at high priority with a media query
+(`preload(..., { media })`, the first links in `<head>`, no JavaScript needed) and both images are low priority:
+the visible one comes from the preload, the hidden one loads after it. A script cannot make that choice: an
+inline script runs only once the stylesheet has arrived, and by then the browser has requested both images. A
+theme pinned against the system comes from an earlier visit, so both files are in the browser's cache then.
 
 To swap the image: write the new captures (16:10, e.g. 2400x1500, the same size in both themes) to
-`public/product/`, and in `app/page.tsx` set `heroShot` to their paths and size and `sidebarRatio` to the
+`public/product/`, and in `lib/captures.ts` set `heroShot` to their paths and size and `sidebarRatio` to the
 sidebar's width divided by the image width (`tools/hero-shot` prints it).
 
 ## The section captures
