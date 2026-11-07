@@ -41,6 +41,12 @@ The panel shows an updating page for those seconds. Apps are not affected: they 
 
 Either way the panel gets exactly one result for the node.
 
+New in 0.2: after the guard rolls a release back, the node waits before it installs that release again by itself (auto-update, or an agent too old for the panel): an hour after the first rollback, then a day after each later one. The node raises an **Update failed** alert that says until when, so a bad release does not restart the agent, and with it builds, shells and consoles, every few minutes. **Update now** on **Nodes** installs it right away. A confirmed update clears the record and the alert.
+
+## Upgrading from 0.1
+
+The update to 0.2 runs like any other. A few security fixes in it change what people see afterwards, such as one more sign-in for everyone; [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) lists them.
+
 ## Docker
 
 Docker Engine is not updated with the rest. Update it per node with **Update Docker** on **Nodes**, which uses the system's package manager (apt, dnf or yum) and shows the version change first. With Docker's live-restore on, which the installer sets up, containers keep running while the daemon restarts; when it is off, the dialog warns first (see [Docker live-restore](/installation#docker-live-restore)).

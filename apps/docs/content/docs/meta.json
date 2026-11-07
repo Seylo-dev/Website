@@ -48,6 +48,7 @@
     "---Self-hosting---",
     "self-hosting/the-panel",
     "self-hosting/updates",
+    "self-hosting/upgrading-from-0-1",
     "self-hosting/backups",
     "self-hosting/telemetry",
     "security",

@@ -49,3 +49,8 @@ The **Storage** tab lists the service's volumes. **Add volume** takes a name, a 
 - delete files and folders.
 
 Changes are live for the running service. Paths cannot escape the volume: `..` and symlinks pointing outside it are refused. On a service that runs on several nodes, each node keeps its own copy of every volume; pick the node in the file browser.
+
+New in 0.2, so that nobody can leave a root-owned setuid program in a volume through the file browser:
+
+- **Permissions** keep only the permission and sticky bits: setuid and setgid are dropped, so `4755` becomes `0755`. Writing or uploading over a setuid or setgid file drops those bits first. Archives were already extracted without them.
+- New files and folders get the owner of their folder, so a volume a non-root container uses stays writable for it. In a folder owned by root they belong to `nobody` (65534) instead; root in the container still reads and writes them. A file you replace keeps its owner.

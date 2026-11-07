@@ -34,12 +34,24 @@ On the app's **Source** tab pick **GitHub**, then the account, the repository an
 
 ## Any other Git host
 
-New in 0.2: GitLab, Gitea, Forgejo and Bitbucket Cloud have their own sources, with a webhook the panel creates, merge request previews and commit statuses: see [GitLab, Gitea and Bitbucket](/guides/git-providers). For any other host, or on 0.1, pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. **Check access** lists the branches it can see. For a private repository, pick a **Credential**:
+New in 0.2: GitLab, Gitea, Forgejo and Bitbucket Cloud have their own sources, with a webhook the panel creates, merge request previews and commit statuses: see [GitLab, Gitea and Bitbucket](/guides/git-providers). For any other host, or on 0.1, pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. Plain `http://` is not supported. **Check access** lists the branches it can see. For a private repository, pick a **Credential**:
 
 - an HTTPS access token for the host, or
 - an SSH key: the panel can generate an Ed25519 deploy key and give you the public half to add as a read-only deploy key on the repository.
 
-A credential is tied to its host. The panel refuses a repository URL on another host for it, when you save the source and again at every deploy, and the build node's git only offers it to that host. A token never goes over plain `http://`. A member can only attach a credential (or a registry login, or a GitHub App installation) to a project when they may manage it, or when a service of that project already uses it.
+New in 0.2: the URL itself never carries a secret. A user name or token in an `https://` URL (`https://user:token@host/...`), or a password in an `ssh://` URL, is refused when you save, and the form says so before you do: "Take the user name and token out of the URL: add them as a git credential and pick it below." `ssh://git@host/...` and `git@host:path` are fine. A source saved on 0.1 with a token in its URL keeps deploying, but the panel no longer shows that part, and saving the source again needs a credential instead.
+
+A credential is tied to its host. The panel refuses a repository URL on another host for it, when you save the source and again at every deploy, and the build node's git only offers it to that host.
+
+A member can only attach a credential (or a registry login, a GitHub App installation or a git provider connection) to a project when they may manage it, or when a service of that project already uses it. New in 0.2: only for what that service uses it for, the same repository URL, image repository (any tag) or repository. So when an admin sets up one service with a token that reaches every repository of an account, members of the project can use it for that one repository; the repository pickers list only those for them. For another repository, ask an admin to set up the first service with it.
+
+### Git servers on private addresses
+
+New in 0.2. Nodes clone as root inside their own network, so a git URL could reach machines only that network should see. A **Git** source, and a compose stack's git URL, must point at a public address. A host on a private, loopback, link-local or reserved address, or a name the panel cannot resolve, works in a project once an owner or admin has saved a source with that host in that project; from then on the project's members may use it too. Cloud metadata addresses never work. The panel checks when the source is saved and again right before each build, since a name can resolve somewhere else by then.
+
+Upgrading keeps what works: on its first start, 0.2 counts the hosts of git sources that were already saved as allowed in their projects, so an existing LAN git server keeps building. A service [moved to another project](/guides/clone-and-move#move-a-service-to-another-project) does not take its host along: its next build needs the host allowed in the new project.
+
+**Check access** is a request the panel makes itself, so it follows the [uptime check rules](/features/uptime-checks#where-checks-run-from) instead: on a private address it works for owners and admins, and for members only at a node's **Public address** or when an admin turned on **Allow checks of internal addresses**.
 
 <Callout title="Adding credentials">
 The Source tab lets you pick stored credentials. Adding one is done through the API for now (`git.createCredential`, `git.generateSshKey`, see the [API reference](/api-reference)); a screen for it in Settings is coming later.

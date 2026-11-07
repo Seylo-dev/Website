@@ -48,8 +48,14 @@ The panel is running. Open this link within an hour to create the owner account:
 
   http://203.0.113.10:3000/setup?t=seylo_setup_...
 
+This link is plain HTTP: the setup token, your password and your session cross the network unencrypted.
+Open it only from a network you trust, or through an SSH tunnel (ssh -L 3000:localhost:3000 <user>@<server>,
+then the same path on http://localhost:3000). Set a panel domain in the setup wizard to switch to HTTPS.
+
 If 203.0.113.10 is not this server's public address, use the public one with the same path.
 ```
+
+The installer of 0.1 printed the same without the plain HTTP lines.
 
 </Step>
 <Step>
@@ -72,6 +78,8 @@ seylo panel setup-link
 
 <Callout type="warn" title="Plain HTTP until the panel has a domain">
 On `http://<server-ip>:3000` the setup link, your password and your session cookie cross the network unencrypted. Browsers also send a cookie of `http://<server-ip>` to every port of that address, including a service someone else runs there. So set the **Panel domain** before you invite anyone. To stay off plain HTTP from the very first sign-in, open the link through an SSH tunnel instead: run `ssh -L 3000:127.0.0.1:3000 root@203.0.113.10` on your computer and open the same link with `http://localhost:3000` in place of `http://203.0.113.10:3000`.
+
+New in 0.2: the installer and `seylo panel setup-link` print this warning under an `http://` link, and every page the panel serves over plain HTTP shows **This connection is not encrypted** with the tunnel command for its port. Through the tunnel (`localhost`) the warning goes away.
 </Callout>
 
 </Step>

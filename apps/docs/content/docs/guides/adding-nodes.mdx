@@ -38,6 +38,18 @@ Two kinds of node do not move by themselves:
 - Nodes that joined over plain HTTP (`--insecure`) never move: nothing on a plain connection proves the new address comes from your panel. Run a new join command from **Add node** on them with `--force` added. The node keeps its key, so the panel keeps the same node and its services.
 - Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too.
 
+## The panel's identity
+
+New in 0.2. At its first connect to a 0.2 panel (its join, or the first connect after the update), a node writes down the panel's id and the panel's identity key in `/var/lib/seylo/config.yml`. From then on it refuses any other panel, at any address: one that names another id, or does not prove it holds that key, is closed before it can send the node anything. So someone who gets a valid certificate for the panel's domain (a lapsed domain, a hijacked DNS record) cannot take the node over, and a node with a pinned fallback address goes back to it.
+
+The identity stays the same through updates, restarts and a restore of the panel's own backup (`panel.db` with its `master.key`). It changes when:
+
+- the panel is installed again from scratch (a new `/var/lib/seylo/panel/`),
+- `panel.db` from another panel is restored,
+- the master key is rotated with `--new-panel-identity` (see [If a copy leaked](/self-hosting/backups#if-a-copy-leaked)).
+
+After that, every node refuses the panel. It shows offline on **Nodes**, `seylo logs` on the node says the panel's address "answers as another panel" or "answers with another panel identity key", and its services keep running. Join each node again: on **Nodes**, **Add node** gives a join command with a new token (one node per token); run it on the node with `--force` added at the end. After a key rotation the panel still knows the node by its key, so it keeps the same node and its services. The panel's own node needs it too.
+
 ## Latency
 
 All traffic between a node and the panel goes over one WebSocket that the node keeps open. Reads in the panel come from the panel's own copy of each node's state, and an action is one round trip with progress pushed back, so a panel in Germany managing a node in the US feels close to a local one.
@@ -51,7 +63,7 @@ The **Settings** action on a node:
 | Setting | What it does |
 | --- | --- |
 | **Name**, **Location**, **Tags** | How the node shows up in the panel |
-| **Public address** | Where people and other nodes reach this server, when it is not the detected address: for example the public IP of a cloud server (AWS, Google Cloud, Azure, Oracle) whose network interface only has a private one. Used for IP:port links, exposed databases, load balancing and join commands. The panel server's is filled in from the address you opened the setup link at, when it knows no public address of its own. The node health check warns while no public address is known. |
+| **Public address** | Where people and other nodes reach this server, when it is not the detected address: for example the public IP of a cloud server (AWS, Google Cloud, Azure, Oracle) whose network interface only has a private one. Used for IP:port links, exposed databases, load balancing and join commands. Uptime checks and branch checks may also target it when it is a private address (see [Uptime checks](/features/uptime-checks#where-checks-run-from)). The panel server's is filled in from the address you opened the setup link at, when it knows no public address of its own. The node health check warns while no public address is known. |
 | **Wildcard domain** | New services on this node get `<name>.<this domain>`. Point the wildcard `A` record at the node first. |
 | **Build images on this node** | Allow builds here. Images built here run on every node; small nodes usually leave this off. |
 | **Builds at once** | How many builds run in parallel; the rest wait in a queue |

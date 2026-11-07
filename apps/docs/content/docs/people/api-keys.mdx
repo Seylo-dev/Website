@@ -26,6 +26,16 @@ A key acts as the person who made it, narrowed by its actions, its projects and 
 
 Keys cannot manage sign-in: changing passwords, 2FA, passkeys, sessions or other keys needs a browser session. New in 0.2: keys can also never open a [host shell](/guides/host-shell) or turn host shells on, whatever actions they hold. Only a browser session can create a key, and only one that signed in within the last 15 minutes: otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first.
 
+New in 0.2: a key limited to some projects, or to some actions, stays out of what spans your whole account:
+
+- it cannot read or use your assistant chats, list your API keys, read your security settings or preferences, or list your own access. Those calls get `403 FORBIDDEN` with `details.reason` `narrowedKey`,
+- in **Approvals** it sees only the requests it made itself, and approvals of actions it holds in its projects,
+- it reads **Activity** only when its actions include **See everyone's activity** (or all of them), and then only the entries of its projects.
+
+A key with **All projects** and every action is not limited this way, and read-only on its own does not limit it either.
+
+A [database web UI or a Box](/guides/databases#web-ui-and-shell) opened with a key is checked as that key while it is open: it closes within about a minute once the key is revoked or expires.
+
 ## Managing keys
 
 The **API keys** table shows each key's name, what it can do, its projects, when it was last used and when it expires. **Revoke** stops a key at once and cannot be undone; create a new one instead. Owners and admins can switch to **Everyone's** to see and revoke other people's keys.

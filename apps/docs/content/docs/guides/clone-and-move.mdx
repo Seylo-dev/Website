@@ -69,7 +69,7 @@ A clone needs permission to view the source and to create services in the target
 | A database's data | Seeing its credentials, and stopping it |
 | The automatic domain | Editing domains in the target project; for the access rules, also viewing domains on the source |
 
-When the source deploys with a git credential, a registry login, a GitHub App installation or a git provider connection, you must also be allowed to use it in the target project: you may manage it, or a service of that project already uses it.
+When the source deploys with a git credential, a registry login, a GitHub App installation or a git provider connection, you must also be allowed to use it in the target project: you may manage it, or a service of that project already uses it for the same repository or image (see [Deploy from GitHub or Git](/guides/github-and-git#any-other-git-host)). A **Git** source on a private address also needs that host allowed in the target project, which an owner or admin does by cloning or saving a source with it there (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
 ## Move a service to another project
 
@@ -90,6 +90,7 @@ Services and names you cannot see are counted, not named. When the list has anyt
 
 - **A running service** switches networks like a deploy, without a rebuild: its running containers join the new project's network, pass their health check there, traffic switches to them, and they leave the old network. On 0.2 agents the containers keep running; older agents start new ones, so databases restart once. The **Deployments** tab shows it as a deployment started by **move**. If the switch fails, the service goes back to the old project, with its shares and invite entries.
 - **A stopped or never-deployed service** changes project at once.
+- **A Git source on a private address** is not allowed in the new project by the move: its next build fails until an owner or admin saves a source with that host in the new project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
 ### What blocks a move
 

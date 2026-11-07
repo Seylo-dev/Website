@@ -25,9 +25,9 @@ curl https://panel.example.com/api/v1/projects.list \
   -H "Authorization: Bearer $SEYLO_TOKEN"
 ```
 
-A key acts as the person who made it, narrowed to the actions and projects picked for it, and read-only keys can only call queries. A call outside its scope gets `403 FORBIDDEN`.
+A key acts as the person who made it, narrowed to the actions and projects picked for it, and read-only keys can only call queries. A call outside its scope gets `403 FORBIDDEN`. New in 0.2: a key limited to some projects or actions also gets `403 FORBIDDEN` with `details.reason` `narrowedKey` for actions that span the whole account (see [How a key is limited](/people/api-keys#how-a-key-is-limited)); their pages say "not an API key or MCP token limited to some projects or actions".
 
-The web app uses a session cookie (`seylo_session`) instead. A request with a bearer token ignores the cookie. Requests that change something with only a cookie must come from the panel's own origin.
+The web app uses a browser session instead: the `seylo_session` cookie (`__Host-seylo_session` over HTTPS) and, new in 0.2, the session key the sign-in answer hands out in the `x-seylo-session-key` header, which the web app sends back on every call. A cookie without its key signs nobody in, and a request with the session cookie twice gets `401 UNAUTHENTICATED` with `details.reason` `duplicateSession` (see [Sessions](/people/sign-in-and-security#sessions)). A request with a bearer token ignores both. Requests that change something with only a session must come from the panel's own origin. For scripts, use an API key.
 
 MCP tokens (`seylo_mcp_...`) work here too, but only for the actions that are available to AI tools, and actions that delete something return `403 APPROVAL_REQUIRED` until a person approves them (see [MCP and AI](/features/mcp-and-ai)).
 
@@ -45,7 +45,7 @@ curl -X POST https://panel.example.com/api/v1/deployments.deploy \
   -d '{"serviceId": "k3x9q2m7v8w1z0ab"}'
 ```
 
-Fields an action does not know are dropped. A successful call answers `200` with the action's output as JSON. Ids are 16 characters of lowercase letters and digits; times are ISO 8601 strings. A request body may be up to 4 MiB; a larger one gets `400 BAD_REQUEST`. Source archives go through their own upload endpoint, not through an action.
+Fields an action does not know are dropped. A successful call answers `200` with the action's output as JSON. Ids are 16 characters of lowercase letters and digits; times are ISO 8601 strings. New in 0.2: a request body may be up to 1 MiB, or 2 MiB for `compose.preview`, `compose.create`, `compose.update`, `maintenance.set` and `maintenance.setGlobal`, and 4 MiB for `files.write` (0.1 took 4 MiB everywhere). A larger one gets `400 BAD_REQUEST`. Source archives go through their own upload endpoint, not through an action.
 
 Long-running actions return right away. A deploy, for example, returns the new deployment; follow it with `deployments.get` and `deployments.log`.
 
@@ -68,19 +68,24 @@ Every error has the matching HTTP status and the same JSON body:
 | Code | Status | Meaning |
 | --- | --- | --- |
 | `BAD_REQUEST` | 400 | The input failed validation (`details.field` names the field), or the request makes no sense in this state |
-| `UNAUTHENTICATED` | 401 | No credentials, or the key or session is not valid any more |
-| `FORBIDDEN` | 403 | The caller may not run this action on this resource. `details.reason` `reauth`: a browser session needs a sign-in from the last 15 minutes for this action; confirm with `auth.reauth`, then repeat the call |
+| `UNAUTHENTICATED` | 401 | No credentials, or the key or session is not valid any more. `details.reason` `duplicateSession`: the browser sent two session cookies |
+| `FORBIDDEN` | 403 | The caller may not run this action on this resource. `details.reason` `reauth`: a browser session needs a sign-in from the last 15 minutes for this action; confirm with `auth.reauth`, then repeat the call. `narrowedKey`: a key limited to some projects or actions called an account-wide action |
 | `APPROVAL_REQUIRED` | 403 | An AI tool called an action that needs a person's approval first |
 | `NOT_FOUND` | 404 | No such resource, or the caller can't see it |
 | `CONFLICT` | 409 | Conflicts with the current state, for example the protected panel service (`details.reason` says why) |
 | `RATE_LIMITED` | 429 | Too many requests; wait for the seconds in the `Retry-After` header. New in 0.2: `details.reason` `dockerHubRateLimit` means Docker Hub is limiting the panel, with `details.retryAfterSeconds` |
 | `INTERNAL` | 500 | Something broke on the panel; the panel's log has the details |
 | `NOT_IMPLEMENTED` | 501 | The action, or the node it needs, cannot do this yet (for example an agent too old for a feature) |
-| `UNAVAILABLE` | 503 | A node or an outside service needed for this is unreachable (`details.reason` is `offline` when the node is) |
+| `UNAVAILABLE` | 503 | A node or an outside service needed for this is unreachable (`details.reason` is `offline` when the node is). New in 0.2: also when the panel is busy receiving other request bodies; wait for `Retry-After` |
 
 ## Rate limits
 
-Each caller gets a bucket of 120 requests that refills at 20 per second. Sign-in and token checks have a stricter bucket: 10 tries, then one every 6 seconds. Over the limit, the answer is `429 RATE_LIMITED` with `Retry-After`.
+Each caller gets a bucket of 120 requests that refills at 20 per second. Sign-in and token checks have a stricter bucket: 10 tries, then one every 6 seconds. Over the limit, the answer is `429 RATE_LIMITED` with `Retry-After`. New in 0.2: callers without a key or session are counted per address with IPv6 grouped by /64, and wrong passwords have their own limits per address and per account (see [Password](/people/sign-in-and-security#password)).
+
+Other limits a busy setup can reach (new in 0.2):
+
+- **Request bodies**: besides each request's own size limit (see [Request style](#request-style)), the panel holds at most 64 MiB of request bodies being received at once. Past that it answers `503 UNAVAILABLE` with `Retry-After: 5`.
+- **Live updates**: the web app's live socket takes 300 messages from one person, across all their tabs, then 30 a second; a socket past that is closed and reconnects after a pause, without signing anyone out. One socket follows at most 200 topics.
 
 ## Same actions, other doors
 

@@ -19,14 +19,14 @@ Service logs are not stored by the panel. They stay on each node and are streame
 
 ## Give the panel a domain
 
-After installation the panel answers on `http://<server-ip>:3000`, which is plain HTTP: passwords and the session cookie cross the network unencrypted, and browsers send a cookie of `http://<server-ip>` to every port of that address, including services other people run there. Set a domain before you invite anyone; until then, reach the panel through an SSH tunnel (`ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, then `http://localhost:3000`).
+After installation the panel answers on `http://<server-ip>:3000`, which is plain HTTP: passwords and the session cookie cross the network unencrypted, and browsers send a cookie of `http://<server-ip>` to every port of that address, including services other people run there. Set a domain before you invite anyone; until then, reach the panel through an SSH tunnel (`ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, then `http://localhost:3000`). New in 0.2: every page the panel serves over plain HTTP shows **This connection is not encrypted** with the tunnel command for its port; through the tunnel itself it does not.
 
 Point an `A` record at the panel's node and set the hostname as **Panel domain** in **Settings → General**. The panel gets a certificate like any other service; the page shows **Waiting for DNS**, **Getting a certificate**, then **Active**.
 
 Once the domain is active:
 
 - page loads on `http://<server-ip>:3000` redirect to the domain (API calls and the local agent keep working on the old address),
-- the session cookie is `Secure` and HTTPS answers carry HSTS,
+- the session cookie is `Secure` (since 0.2, `__Host-seylo_session`, see [Sessions](/people/sign-in-and-security#sessions)) and HTTPS answers carry HSTS,
 - new join commands on **Nodes** use `https://<panel domain>`,
 - nodes that joined over the panel's agent port (`https://<server-ip>:3443`) move to the domain by themselves and keep that address as a fallback.
 
@@ -69,3 +69,5 @@ seylo panel setup-link   # a new owner setup link, while no owner exists
 ## Moving the panel to another server
 
 There is no built-in way to move the panel to another server yet; it is coming later. Until then, keep a backup of `/var/lib/seylo/panel/` (see [Backing up the panel](/self-hosting/backups)).
+
+A panel installed again from scratch is a different panel to your nodes, even on the same server: since 0.2 each node refuses it until it is joined again with `seylo join --force` (see [The panel's identity](/guides/adding-nodes#the-panels-identity)).

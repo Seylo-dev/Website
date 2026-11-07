@@ -38,7 +38,7 @@ For each changed file, the last pattern that matches it decides: a plain pattern
 
 The push deploys when at least one changed file counts. Otherwise it is skipped; for a webhook delivery or a trigger call, **Recent deliveries** on the Source tab says why. A deploy that ran writes the deciding line into its log, for example `Watch paths: apps/web/src/index.ts matches apps/web/**.`
 
-When the panel cannot know every changed file, the push deploys: watch paths never skip a push on a guess. The files come from the push payload; when the payload lists none or cut the list short (very large pushes), the panel asks the provider which files changed between the old and the new head. If that fails too, or the provider's answer is capped as well, the push deploys.
+When the panel cannot know every changed file, the push deploys: watch paths never skip a push on a guess. The files come from the push payload; when the payload lists none or cut the list short (very large pushes), the panel asks the provider which files changed between the old and the new head. If that fails too, or the provider's answer is capped as well, the push deploys. Matching is also capped per push. A push with more changed files than the panel matches in a moment (thousands of files against many patterns) deploys, with "Watch paths: too many changed files to match" in its log.
 
 ## Examples
 
@@ -112,6 +112,8 @@ curl -X POST "https://panel.example.com/api/hooks/deploy/<token>" \
 ```
 
 With only `?commit=<sha>` and no body, the panel asks the service's git source which files changed between the live deployment's commit and that one, when the source can say. A call with neither deploys.
+
+A `changedFiles` list keeps at most 20,000 entries; a longer one counts as cut short, so the call deploys.
 
 A skipped call answers `200` with `"deploymentId": null` and the reason in `skipped`.
 

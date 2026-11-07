@@ -9,7 +9,9 @@ Each person manages their own sign-in methods in **Settings → Security** (unde
 
 Passwords need at least 10 characters. Changing yours signs you out everywhere else. If you signed up with GitHub, you can set a password to also sign in with your email; setting that first password needs a recent sign-in (see [Confirm it's you](#confirm-its-you)).
 
-After five wrong passwords or codes in a row from one address, sign-in for that email from that address pauses for 30 seconds, doubling up to 15 minutes; 15 quiet minutes forgive the streak. The pause is per address, so a stranger guessing at your email only locks themselves out, never you. Past 50 wrong passwords for one email within 15 minutes, from any addresses, every sign-in for that email waits a few seconds first and the account's owner gets a **Security change** alert. That brake never locks anyone out. An admin who enables a person again in **Settings → People** clears both.
+After five wrong passwords or codes in a row from one address, sign-in for that email from that address pauses for 30 seconds, doubling up to 15 minutes; 15 quiet minutes forgive the streak. The pause is per address, so a stranger guessing at your email only locks themselves out, never you. New in 0.2: all addresses of one IPv6 /64 count as one address, so a block of IPv6 addresses buys no extra tries.
+
+Past 50 wrong passwords for one email within 15 minutes, from any addresses, the account's owner gets a **Security change** alert and a brake starts. New in 0.2: while it is on, the panel checks at most one password for that email every 2.5 seconds, one at a time, however many addresses the guesses come from; the others get "Too many failed sign-ins for this email" with the seconds to wait. Addresses (or IPv6 /64s) that signed in to that account with the right password in the last 30 days skip the brake, so a guessing campaign does not keep you out. The brake never locks anyone out. An admin who enables a person again in **Settings → People** clears both.
 
 ## Confirm it's you
 
@@ -20,7 +22,11 @@ Anything that adds a way into your account needs a sign-in from the last 15 minu
 - approving a [command line sign-in](/guides/command-line#sign-in),
 - allowing an AI tool through MCP's OAuth sign-in (see [MCP and AI](/features/mcp-and-ai#connecting)).
 
-Admins and owners also need it, when they work in the browser, for the actions that hand lasting access to someone else: an admin invite, making someone an admin or owner, and creating a node join command (see [Users and access](/people/users-and-access#invite-someone) and [Adding nodes](/guides/adding-nodes#join-a-server)). New in 0.2: the same goes for saving a GitLab, Gitea or Bitbucket connection's token (see [GitLab, Gitea and Bitbucket](/guides/git-providers#add-the-connection)).
+In the browser, the actions that hand lasting access to someone else need it too: making someone an admin or owner, creating a node join command and inviting people (see [Users and access](/people/users-and-access#invite-someone) and [Adding nodes](/guides/adding-nodes#join-a-server)). New in 0.2:
+
+- every invite needs it, member invites included, not only admin invites,
+- so does any change to someone's access that gives them more: a new project or service, a new action, or a wildcard that also covers actions added later. Taking access away and lowering a role never ask,
+- and so does saving a GitLab, Gitea or Bitbucket connection's token (see [GitLab, Gitea and Bitbucket](/guides/git-providers#add-the-connection)).
 
 New in 0.2: [host shells](/guides/host-shell) need it every time, and only work in the browser: the owner turning them on for a node, and an owner or admin opening one. API keys and MCP tokens can never do either.
 
@@ -32,7 +38,7 @@ When your last sign-in is older, the panel shows **Confirm it's you** and then m
 
 The confirmation counts for 15 minutes in that browser only. Five wrong answers in a row from one address pause it for 30 seconds, doubling up to 15 minutes, like wrong sign-ins. An account with none of the three (GitHub sign-in only) gets **Sign in again** instead, and comes back to the same page afterwards. Closing the dialog cancels the change.
 
-API keys and MCP tokens never get this dialog: they cannot change sign-in methods or make keys at all. An admin's API key can still invite admins, change roles and create join commands without it, because the key itself was made under a recent sign-in. Through the API, a stale browser session gets `403 FORBIDDEN` with `details.reason` set to `reauth`; confirm with `auth.reauth` (see the [API reference](/api-reference)) and repeat the call.
+API keys and MCP tokens never get this dialog: they cannot change sign-in methods or make keys at all. An API key that holds the actions can still invite people, widen their access, change roles and create join commands without it, because the key itself was made under a recent sign-in. Through the API, a stale browser session gets `403 FORBIDDEN` with `details.reason` set to `reauth`; confirm with `auth.reauth` (see the [API reference](/api-reference)) and repeat the call.
 
 ## Security alerts
 
@@ -60,9 +66,18 @@ GitHub sign-in needs the panel's GitHub OAuth client to be set up. When it is no
 
 **Sessions** lists the browsers where you are signed in, with their address and when they were last active. **Sign out** ends one, **Sign out everywhere else** ends all but this one.
 
-A browser session lasts 30 days after it was last used, and at most 90 days after you signed in. The session cookie is HttpOnly, `Secure` on every HTTPS request, and only a hash of it is stored. Over HTTPS the panel also sends HSTS, and no page of the panel can be shown in a frame.
+A browser session lasts 30 days after it was last used, and at most 90 days after you signed in. Only hashes of it are stored.
+
+New in 0.2: a session has two halves, and the panel needs both. One is an HttpOnly cookie. The other is a session key the panel hands to the web app when you sign in; the web app keeps it in the browser's storage for the panel's own address and port and sends it with every request. Browsers send a cookie to every port of an address, but that storage is per address and port, so a copy of the cookie that reaches another service on the same server signs nobody in. Changing your password or your two-factor settings replaces both halves.
+
+Over HTTPS the cookie is `__Host-seylo_session`: `Secure`, sent to the panel's own host only, and the only name the panel reads there, so a cookie that another site under the same parent domain sets is ignored. On `http://<server-ip>:3000` it is `seylo_session`. When a browser sends the session cookie twice (another site on the same address set one too), the panel uses neither, and the sign-in page says "This browser sent two session cookies for this address, so the panel used neither." Clear the browser's cookies for the panel's address and sign in again.
+
+Over HTTPS the panel also sends HSTS. No page of the panel can be shown in a frame, and (new in 0.2) the web app's pages only run the panel's own scripts.
+
+Sessions from before 0.2 have no key, so everyone signs in once after the update (see [Upgrading from 0.1](/self-hosting/upgrading-from-0-1)).
 
 ## For admins
 
 - **Settings → People** shows who has 2FA and passkeys. Disabling a person ends all of their sessions and API keys at once; see [Users and access](/people/users-and-access).
 - API keys and MCP tokens never change sign-in methods, passwords or other keys: those actions need a browser session.
+- New in 0.2: failed sign-ins, refused actions and rate limits also go to the panel's own log as warnings (`sign-in failed`, `op refused`, `op rate limited`), with the action, the address and, when known, the person, never what was typed. See them with `seylo panel logs` on the panel's node. In **Activity**, failed attempts from people who are not signed in are kept up to 200 an hour; past that, one line in the panel's log says the rest were left out.

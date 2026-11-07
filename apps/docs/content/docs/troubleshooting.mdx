@@ -96,6 +96,26 @@ New in 0.2. Look at the **Webhook** part of the **Source** tab. When the webhook
 <Accordion title="Docker Hub is rate limiting this panel">
 New in 0.2. Docker Hub limits anonymous requests per address. The panel stops asking until the limit lifts, and answers it already has stay cached. Add a Docker Hub login so the panel reads images with that account's limit; see [Deploy from Docker Hub](/guides/docker-hub#pull-limits-and-private-images).
 </Accordion>
+
+<Accordion title="Everyone was signed out after the update to 0.2">
+Expected, once. Sessions made before 0.2 have no session key, so the panel asks everyone to sign in again. API keys and MCP tokens keep working. See [Upgrading from 0.1](/self-hosting/upgrading-from-0-1).
+</Accordion>
+
+<Accordion title="The sign-in page says the browser sent two session cookies">
+New in 0.2. Another site on the same address set a second session cookie, so the panel uses neither. Clear the browser's cookies for the panel's address and sign in again. See [Sessions](/people/sign-in-and-security#sessions).
+</Accordion>
+
+<Accordion title="Every node went offline after reinstalling the panel">
+New in 0.2. Nodes remember the panel they joined and refuse a panel installed from scratch, a restored `panel.db` of another panel, or a panel after a master key rotation with `--new-panel-identity`. `seylo logs` on a node says "answers as another panel" or "answers with another panel identity key". Join each node again with a new command from **Add node** and `--force` added. See [The panel's identity](/guides/adding-nodes#the-panels-identity).
+</Accordion>
+
+<Accordion title="A Git source is refused as an internal address">
+New in 0.2. Git servers on private, loopback or link-local addresses work in a project only after an owner or admin saved a source with that host there; then the project's members can use it too. Ask one to save the source once. A URL with a user name or token in it is refused as well: add a git credential instead. See [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses).
+</Accordion>
+
+<Accordion title="An uptime check on a node's private address is down after the update">
+New in 0.2. A private address passes only when it is a node's **Public address** as set in the node's settings, or when an admin allows internal targets in **Settings → General → Uptime checks**. The addresses a node detects about itself no longer count. See [Uptime checks](/features/uptime-checks#where-checks-run-from).
+</Accordion>
 </Accordions>
 
 ## Still stuck

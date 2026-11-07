@@ -13,7 +13,7 @@ When you create an app you can also pick **Docker image** in the **New app** dia
 
 ### Private registries
 
-For a private image, pick a **Registry login**. A login is a server (`ghcr.io`, `registry.example.com:5000`, or `docker.io` for Docker Hub), a user name and a password or access token. The panel tries the login before it stores it and keeps the password encrypted. Each node that runs the service pulls the image itself with that login. A login only works for images on its own server: the panel refuses an image on another registry with it.
+For a private image, pick a **Registry login**. A login is a server (`ghcr.io`, `registry.example.com:5000`, or `docker.io` for Docker Hub), a user name and a password or access token. The panel tries the login before it stores it and keeps the password encrypted. Each node that runs the service pulls the image itself with that login. A login only works for images on its own server: the panel refuses an image on another registry with it. New in 0.2: a member can pick a login only for an image repository (any tag) that a service of the project already pulls with it; owners and admins pick any.
 
 An image may not come from `localhost`, `127.0.0.1` or the node's internal registry address (`127.0.0.1:5755`), which only carries images the panel built for that service.
 

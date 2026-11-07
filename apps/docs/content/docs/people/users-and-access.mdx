@@ -25,7 +25,7 @@ The person opens the link and creates their account. **Invites** lists links tha
 
 Give the panel a [domain](/self-hosting/the-panel#give-the-panel-a-domain) before you invite anyone. On `http://<server-ip>:3000` passwords and session cookies cross the network unencrypted, and a service a member runs on `http://<server-ip>:<port>` would receive the session cookies of everyone who uses the panel on that address.
 
-Inviting an admin, and making someone an admin or owner, hands out lasting access, so in the browser it needs a sign-in from the last 15 minutes: otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first. Member invites, sharing and lowering a role do not ask.
+Inviting someone, and making someone an admin or owner, hands out lasting access, so in the browser it needs a sign-in from the last 15 minutes: otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first. New in 0.2: that holds for every invite, member invites too; on 0.1 only admin invites asked. Lowering a role does not ask.
 
 ## Sharing projects and services
 
@@ -40,6 +40,10 @@ A member sees only what is shared with them. Share from a project's **People** t
 For finer control, open the person in **Settings → People** and **Add access** to a whole project or a single service, then **Choose actions**: for example, read logs but not open a shell, or edit domains but not variables. A project grant covers all of the project's services; a service grant covers that service only. Panel-wide actions (nodes, settings, people) are never shared this way; they come with the owner and admin roles.
 
 You can only share actions you hold yourself on that project or service.
+
+New in 0.2: sharing that gives someone more than they had (a new project or service, a new action, or a wildcard that also covers actions added later) needs a sign-in from the last 15 minutes in the browser, like an invite. Removing access or narrowing it never asks.
+
+New in 0.2: the pickers of panel-wide settings follow what a person can do. Someone who may not create or change a service anywhere sees no git credentials, git provider connections or registry logins in them, and someone who sees no service sees no notification channels or backup destinations.
 
 ## Changing a person
 
@@ -58,4 +62,10 @@ The list also shows each person's 2FA and passkeys and their last sign-in. Peopl
 
 New in 0.2: each [host shell](/guides/host-shell) has two entries: **Open a root shell on a node**, and **Close a root shell on a node** with how long it was open and why it closed.
 
-Passwords, tokens and other secrets are replaced with `[redacted]` before anything is stored. Members see their own entries; seeing everyone's needs the activity log permission.
+Passwords, tokens and other secrets are replaced with `[redacted]` before anything is stored. Members see their own entries; seeing everyone's needs the activity log permission (**See everyone's activity**).
+
+### How long entries are kept
+
+New in 0.2: **Settings → General → Activity log → Keep entries for** sets how long the log keeps entries: 90 or 180 days, 1, 2 or 5 years, or **Forever**. The default is 1 year. Older entries are removed once a day, except successful security changes, which stay whatever you pick: sign-ins and other account security changes, API keys, people and invites, access changes, command line sign-ins, host shells, MCP, setup and node join commands. Through the API (`settings.updateGeneral`, `auditRetentionDays`) any number of days from 30 to 3650 works, and `null` keeps everything. MCP clients and the assistant cannot change it.
+
+Failed attempts from people who are not signed in, such as wrong passwords, are kept up to 200 an hour, so a flood of them cannot fill the log.

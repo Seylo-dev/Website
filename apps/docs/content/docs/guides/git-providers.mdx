@@ -72,7 +72,7 @@ An app password with the same permissions and your Bitbucket user name also work
 
 **Connections** lists each one with its host, the account it acts as (**Acts as**), how many services use it, and a **Statuses** switch. **Check** asks the provider again, for example after the token expired. Replacing a token or renaming a connection is done through the API for now (`gitProviders.update`, see the [API reference](/api-reference)); the kind, address and workspace never change. **Delete** removes the connection and its token, and is refused while a service still uses it.
 
-Connections are panel-wide: owners and admins manage them (the **Manage GitLab, Gitea and Bitbucket connections** action). Everyone signed in sees their names and hosts, never the token. Browsing a connection's repositories needs permission to create services in the project, and connecting one needs permission to change the service. A member can only attach a connection to a project when they may manage connections, or when a service of that project already uses it.
+Connections are panel-wide: owners and admins manage them (the **Manage GitLab, Gitea and Bitbucket connections** action). Everyone signed in sees their names and hosts, never the token. Browsing a connection's repositories needs permission to create services in the project, and connecting one needs permission to change the service. A member can only attach a connection to a project when they may manage connections, or for a repository that a service of that project already deploys through it: members see only those repositories in the list, so one connected repository does not open every repository the token reaches.
 
 ## Connect a repository
 
@@ -111,7 +111,7 @@ Every delivery is checked before anything in it is read, comparing in constant t
 | Gitea, Forgejo | `X-Gitea-Signature` or `X-Forgejo-Signature`: HMAC-SHA256 of the body with the secret |
 | Bitbucket | `X-Hub-Signature`: `sha256=` and the HMAC-SHA256 of the body |
 
-A delivery needs the provider's delivery id. The same body sent again under another id within 3 days (and since the panel last started) is refused as a replay, and an id already handled is ignored. Each webhook takes 20 deliveries at once, then one every 3 seconds; more get `429` with `Retry-After`. Bodies over 5 MiB are refused.
+A delivery needs the provider's delivery id. The same body sent again under another id within 3 days is refused as a replay, also after a panel restart, and an id already handled is ignored. Each webhook takes 20 deliveries at once, then one every 3 seconds; more get `429` with `Retry-After`. Bodies over 5 MiB are refused.
 
 **Recent deliveries** on the Source tab lists every delivery with what it did and why, refused ones included (at most 20 refused ones an hour across the panel). **Retry failed** only works for GitHub; for the others, redeliver from the provider's webhook settings.
 

@@ -31,6 +31,41 @@ Then move both files off the server. A cron job on the panel's node can do this 
 
 Before every panel update, the update itself also copies `panel.db` and `metrics.db` to `/var/lib/seylo/update/panel-snapshots/`, so a failed update can roll back.
 
+## If a copy leaked
+
+New in 0.2. A copy of `/var/lib/seylo/panel/` (a backup, an old disk) holds every secret the panel knows, readable with the `master.key` in it. A script in the panel's image gives the panel a new `master.key`: it seals every secret in `panel.db` again with the new key in one transaction, and replaces `master.key` only after that. From then on the old key opens nothing the panel stores.
+
+It does not make the copy harmless. The copy still opens with its own key, so every secret that was in it is exposed: change those yourself (environment values, database passwords, git and registry tokens, backup and notification credentials), and delete old copies and backups, including old snapshots in `/var/lib/seylo/update/panel-snapshots/`. Then take a new backup.
+
+Pick one of two flags. The script refuses to run without exactly one:
+
+| Flag | When | What it also does |
+| --- | --- | --- |
+| `--new-panel-identity` | `panel.db` leaked, usually together with `master.key` (a copy of the data dir, a backup) | Drops the panel's identity key, which signs database web UI and Box tickets and proves the panel to its nodes, and the load balancer CA. The panel makes new ones when it starts. Every node then refuses the panel until it is joined again with `seylo join --force` (see [The panel's identity](/guides/adding-nodes#the-panels-identity)); the script lists the nodes and the steps. |
+| `--keep-panel-identity` | Only `master.key` leaked; `panel.db` never did | Seals the identity key and the load balancer CA again with the new key, so nodes keep working |
+
+Both delete every recovery code, since they are keyed with the old key, and print whose. Those people make new ones in **Settings → Security**.
+
+The script is not a `seylo` command yet: it runs from the panel's image, on the panel's node, with the panel stopped. Stop the agent first so it does not start the panel again, and start it once the script is done:
+
+```bash
+systemctl stop seylo                      # the agent; services keep running
+PANEL=$(docker ps -q --filter label=seylo.service=panel00000000000)
+IMAGE=$(docker inspect --format '{{.Config.Image}}' "$PANEL")
+docker stop "$PANEL"
+
+docker run --rm -v /var/lib/seylo/panel:/var/lib/seylo/panel -e SEYLO_DATA_DIR=/var/lib/seylo/panel \
+  "$IMAGE" bun apps/panel/dist/rotate-master-key.js --new-panel-identity
+
+systemctl start seylo
+seylo panel start                         # starts the panel with the new key
+seylo panel status
+```
+
+Use `--keep-panel-identity` in place of `--new-panel-identity` when only `master.key` leaked. The script prints how many values it sealed again and, with `--new-panel-identity`, every node to join again.
+
+Services on every node keep running meanwhile; only the panel is down for those minutes. A run that stops halfway (a crash, a reboot) leaves the new key in `master.key.new`; running the script again finishes or undoes it.
+
 ## Each node's data
 
 Each node keeps its own data under `/var/lib/seylo/`: service volumes, logs, its key and config. Back up what matters in volumes with service backups. A node's key and config are easy to replace: a new server joins with a new join command.

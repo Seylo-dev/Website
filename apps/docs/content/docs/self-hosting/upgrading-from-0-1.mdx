@@ -1,0 +1,30 @@
+---
+title: Upgrading from 0.1
+description: What changes when the panel and its nodes update from 0.1 to 0.2, and what to do about it.
+---
+
+The update to 0.2 runs like any other, from **Settings → Updates**: the panel first, then each node (see [Updates](/self-hosting/updates)). Besides the new features, 0.2 carries the fixes from a [security audit](/security#security-reviews). Most of them change nothing you see. These do.
+
+## What everyone notices
+
+- **One more sign-in.** A browser session now needs a session key that the web app keeps, next to its cookie (see [Sessions](/people/sign-in-and-security#sessions)). Sessions from 0.1 have no key, so everyone signs in again once after the panel updates. API keys, MCP tokens and `seylo login` keep working.
+- **Database web UIs and Boxes.** Once a node runs the 0.2 agent, a web UI or Box session opened before shows **Sign-in needed**: open it from the panel again. From then on the node checks with the panel about once a minute, so removing someone's access closes their open session within about a minute (see [Databases](/guides/databases#web-ui-and-shell)).
+- **Confirm it's you more often.** In the browser, every invite, member invites too, and every change that gives someone more access needs a sign-in from the last 15 minutes (see [Confirm it's you](/people/sign-in-and-security#confirm-its-you)).
+- **A warning on plain HTTP.** Until the panel has a domain, every page on `http://<server-ip>:3000` says **This connection is not encrypted** and shows the SSH tunnel command (see [Give the panel a domain](/self-hosting/the-panel#give-the-panel-a-domain)).
+- **MCP sign-in** always starts on **Read only** and marks the name a client gives itself as not verified (see [MCP and AI](/features/mcp-and-ai#connecting)).
+
+## What may need an owner or admin
+
+- **Git servers on private addresses.** A **Git** source on a private, loopback or link-local address now works in a project only after an owner or admin saved a source with that host there. On its first start, 0.2 allows the hosts of every git source already saved, in their projects, so existing LAN git servers keep building. A service moved to another project afterwards needs its host allowed there. See [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses).
+- **Git URLs with a token inside.** A source whose URL carries a user name or token keeps deploying, but the panel no longer shows that part, and saving the source again needs a git credential instead.
+- **Shared credentials.** A member can use a git credential, registry login, GitHub App installation or git provider connection only for the repository or image a service of the project already uses it with. For another repository, an owner or admin sets up the first service.
+- **Uptime checks on private addresses.** A node's private address no longer counts just because its agent reported it. Checks aimed at one go **Down** after the update: set that address as the node's **Public address** in its settings, or turn on **Settings → General → Uptime checks → Allow checks of internal addresses** (see [Uptime checks](/features/uptime-checks#where-checks-run-from)). Members' **Check access** on git sources follows the same rule.
+- **Scripts with limited API keys.** A key limited to some projects or actions now gets `403 FORBIDDEN` with `narrowedKey` for account-wide actions, and sees fewer approvals and activity entries (see [How a key is limited](/people/api-keys#how-a-key-is-limited)). Most request bodies are now limited to 1 MiB (see [Request style](/api-reference#request-style)).
+- **The activity log keeps 1 year** by default; older entries are removed once a day, apart from security changes. Pick **Forever** in **Settings → General → Activity log** to keep everything (see [How long entries are kept](/people/users-and-access#how-long-entries-are-kept)).
+- **File permissions.** The file browser no longer sets or keeps setuid and setgid bits, and new files in a folder owned by root belong to `nobody` (see [Volumes and files](/features/logs-and-terminals#volumes-and-files)).
+
+## Nodes
+
+- **The panel's identity.** At their first connect to 0.2, nodes write down the panel's identity and refuse any other panel from then on. Nothing to do now. Later, a panel installed again from scratch, or a master key rotation with `--new-panel-identity`, needs `seylo join --force` on every node (see [The panel's identity](/guides/adding-nodes#the-panels-identity)).
+- **Agent updates after a rollback** wait an hour, then a day after each further rollback, with an **Update failed** alert. **Update now** installs right away (see [How a node updates](/self-hosting/updates#how-a-node-updates)).
+- **Load balancing** on port 5757 only serves with the node's certificate from the panel. A node the panel cannot issue one for raises **Node health check failed** (see [Load balancing](/guides/load-balancing)).
