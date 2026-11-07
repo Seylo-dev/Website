@@ -1,3 +1,4 @@
+import type { Server } from "bun";
 import { Elysia, t } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 import { clientKey } from "../client-ip";
@@ -8,19 +9,23 @@ interface TelemetryRoutesOptions {
   store: TelemetryStore;
   trustProxy: boolean;
   statsToken: string | null;
+  /** The listening server (null under `app.handle()`): the address of a connection comes from it. */
+  getServer: () => Server<unknown> | null;
 }
 
 // The panel pings about once an hour; this leaves room for many panels behind one NAT
 // while keeping a single client from flooding the table.
 const PINGS_PER_HOUR_PER_IP = 60;
 
-export function telemetryRoutes({ store, trustProxy, statsToken }: TelemetryRoutesOptions) {
+export function telemetryRoutes({ store, trustProxy, statsToken, getServer }: TelemetryRoutesOptions) {
   return new Elysia({ name: "telemetry" })
     .use(
       rateLimit({
         scoping: "scoped",
         duration: 60 * 60 * 1000,
         max: PINGS_PER_HOUR_PER_IP,
+        // Without it the limiter asks this plugin's own instance, which never has a server.
+        injectServer: getServer,
         generator: (request, server) => clientKey(request, server, trustProxy),
         // The stats endpoint has its own bearer token and isn't worth limiting.
         skip: (request) => request.method !== "POST",

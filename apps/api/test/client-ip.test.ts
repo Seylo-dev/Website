@@ -3,7 +3,13 @@ import type { Server } from "bun";
 import { clientKey } from "../src/client-ip";
 import { closeTestDatabases, testApp } from "./helpers";
 
-afterAll(closeTestDatabases);
+type App = Awaited<ReturnType<typeof testApp>>["app"];
+const listening: App[] = [];
+
+afterAll(async () => {
+  for (const app of listening) await app.stop(true);
+  await closeTestDatabases();
+});
 
 /** A request as it reaches the container, from `socket`, with the headers the hops in front of it set. */
 function from(socket: string | null, headers: Record<string, string> = {}) {
@@ -147,5 +153,87 @@ describe("rate limits with TRUST_PROXY", () => {
     for (let i = 0; i < 61; i++) statuses.push((await app.handle(forged("/telemetry", i, ping(i)))).status);
     expect(statuses.slice(0, 60).every((status) => status === 204)).toBe(true);
     expect(statuses[60]).toBe(429);
+  });
+});
+
+// app.handle() has no connection behind it, so these listen for real: without a usable proxy hop the
+// key is the connection's address, and only the listening server knows it.
+async function listen(trustProxy: boolean, hostname: string) {
+  const { app } = await testApp({ trustProxy });
+  app.listen({ port: 0, hostname });
+  listening.push(app);
+  return app.server!.port;
+}
+
+const upload = (origin: string, headers: Record<string, string> = {}) =>
+  fetch(`${origin}/l`, { method: "POST", body: "# hi", headers: { "content-type": "text/markdown", ...headers } }).then(
+    (response) => response.status,
+  );
+
+let pings = 0;
+const ping = (origin: string, headers: Record<string, string> = {}) =>
+  fetch(`${origin}/telemetry`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify({
+      installId: `install-live-${String(pings++).padStart(6, "0")}`,
+      version: "0.2.0",
+      nodes: 1,
+      services: 1,
+    }),
+  }).then((response) => response.status);
+
+/** One server on "::" answering both 127.0.0.1 and [::1]: two connection addresses on one machine. */
+async function dualStackLoopback() {
+  let server: ReturnType<typeof Bun.serve> | null = null;
+  try {
+    server = Bun.serve({ port: 0, hostname: "::", fetch: () => new Response("ok") });
+    for (const host of ["127.0.0.1", "[::1]"]) if (!(await fetch(`http://${host}:${server.port}/`)).ok) return false;
+    return true;
+  } catch {
+    return false;
+  } finally {
+    server?.stop(true);
+  }
+}
+const dualStack = await dualStackLoopback();
+if (!dualStack) console.warn("client-ip.test: no dual-stack loopback (127.0.0.1 and ::1 on '::'), skipping that test");
+
+describe("rate limits on a listening server", () => {
+  test.skipIf(!dualStack)("without TRUST_PROXY, each connection address has its own budget", async () => {
+    const port = await listen(false, "::");
+    const v4 = `http://127.0.0.1:${port}`;
+    const v6 = `http://[::1]:${port}`;
+    // Headers count for nothing without TRUST_PROXY, so rotating them doesn't help either.
+    const forged = (i: number) => ({ "cf-connecting-ip": `198.51.100.${i}`, "x-forwarded-for": `198.51.100.${i}` });
+
+    const uploads: number[] = [];
+    for (let i = 0; i < 21; i++) uploads.push(await upload(v4, forged(i)));
+    expect(uploads.slice(0, 20).every((status) => status === 201)).toBe(true);
+    expect(uploads[20]).toBe(429);
+    expect(await upload(v6)).toBe(201);
+
+    const telemetry: number[] = [];
+    for (let i = 0; i < 61; i++) telemetry.push(await ping(v4, forged(i)));
+    expect(telemetry.slice(0, 60).every((status) => status === 204)).toBe(true);
+    expect(telemetry[60]).toBe(429);
+    expect(await ping(v6)).toBe(204);
+  });
+
+  test("with TRUST_PROXY and no usable X-Forwarded-For, the connection's address, not one key for everyone", async () => {
+    const port = await listen(true, "127.0.0.1");
+    const origin = `http://127.0.0.1:${port}`;
+    // No X-Forwarded-For, or one that doesn't parse: both count against 127.0.0.1, the connection.
+    const uploads: number[] = [];
+    for (let i = 0; i < 10; i++) uploads.push(await upload(origin));
+    for (let i = 0; i < 10; i++) uploads.push(await upload(origin, { "x-forwarded-for": "unknown" }));
+    expect(uploads.every((status) => status === 201)).toBe(true);
+    // The same budget as a proxy hop naming that address, and nobody else's.
+    expect(await upload(origin, { "x-forwarded-for": "127.0.0.1" })).toBe(429);
+    expect(await upload(origin, { "x-forwarded-for": "203.0.113.50" })).toBe(201);
+
+    for (let i = 0; i < 60; i++) expect(await ping(origin)).toBe(204);
+    expect(await ping(origin, { "x-forwarded-for": "127.0.0.1" })).toBe(429);
+    expect(await ping(origin, { "x-forwarded-for": "203.0.113.50" })).toBe(204);
   });
 });

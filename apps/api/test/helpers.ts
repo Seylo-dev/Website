@@ -73,11 +73,15 @@ export async function closeTestDatabases() {
 }
 
 export async function testApp(
-  options: { statsToken?: string; installer?: InstallerSource; backend?: TestBackend } = {},
+  options: { statsToken?: string; installer?: InstallerSource; backend?: TestBackend; trustProxy?: boolean } = {},
 ) {
   const db = await openTestDatabase(await (options.backend ?? sqlite).newDatabase());
   return createApp({
-    config: { trustProxy: true, statsToken: options.statsToken ?? null, reportBaseUrl: REPORT_BASE_URL },
+    config: {
+      trustProxy: options.trustProxy ?? true,
+      statsToken: options.statsToken ?? null,
+      reportBaseUrl: REPORT_BASE_URL,
+    },
     sql: db.sql,
     installer: options.installer ?? noInstaller,
   });

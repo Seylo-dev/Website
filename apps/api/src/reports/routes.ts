@@ -1,3 +1,4 @@
+import type { Server } from "bun";
 import { Elysia, t } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 import { clientKey } from "../client-ip";
@@ -16,6 +17,8 @@ interface ReportRoutesOptions {
   trustProxy: boolean;
   /** Public base the returned link is built on: `https://seylo.dev/l`. */
   reportBaseUrl: string;
+  /** The listening server (null under `app.handle()`): the address of a connection comes from it. */
+  getServer: () => Server<unknown> | null;
 }
 
 const pageHeaders = {
@@ -29,13 +32,15 @@ const pageHeaders = {
 
 const idParams = t.Object({ id: t.String({ pattern: "^[A-Za-z0-9_-]{22}$" }) });
 
-export function reportRoutes({ store, trustProxy, reportBaseUrl }: ReportRoutesOptions) {
+export function reportRoutes({ store, trustProxy, reportBaseUrl, getServer }: ReportRoutesOptions) {
   return new Elysia({ name: "reports" })
     .use(
       rateLimit({
         scoping: "scoped",
         duration: 60 * 60 * 1000,
         max: UPLOADS_PER_HOUR_PER_IP,
+        // Without it the limiter asks this plugin's own instance, which never has a server.
+        injectServer: getServer,
         generator: (request, server) => clientKey(request, server, trustProxy),
         // Only uploads are limited; reading a report you were sent should never fail.
         skip: (request) => request.method !== "POST",

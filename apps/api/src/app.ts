@@ -20,6 +20,10 @@ const REQUEST_ERRORS = new Set(["VALIDATION", "NOT_FOUND", "PARSE", "INVALID_COO
 /** The whole API without a listening server, so tests can drive it with `app.handle()`. */
 export function createApp({ config, sql, installer }: AppDeps) {
   const reports = createReportStore(sql);
+  // The rate limits read the connection's address from the server, and elysia-rate-limit asks the
+  // instance it was added to: the route plugin's own, whose `server` stays null when this one
+  // listens. So they get this instance's server. Called per request, after `app` is assigned.
+  const getServer = () => app.server;
   const app = new Elysia()
     // A failed query (database restarting, network blip) is logged here and answered with a plain
     // 500, instead of Elysia's default of sending the driver's message to the client. Errors that
@@ -44,9 +48,17 @@ export function createApp({ config, sql, installer }: AppDeps) {
         store: createTelemetryStore(sql),
         trustProxy: config.trustProxy,
         statsToken: config.statsToken,
+        getServer,
       }),
     )
-    .use(reportRoutes({ store: reports, trustProxy: config.trustProxy, reportBaseUrl: config.reportBaseUrl }))
+    .use(
+      reportRoutes({
+        store: reports,
+        trustProxy: config.trustProxy,
+        reportBaseUrl: config.reportBaseUrl,
+        getServer,
+      }),
+    )
     .use(installerRoutes(installer));
 
   return { app, reports };
