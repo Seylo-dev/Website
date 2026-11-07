@@ -23,14 +23,16 @@ A member who may deploy runs code on the node, but not as root on it: Seylo star
 
 Services of different projects on one node still share its kernel and Docker. If you do not trust a member that far, keep their projects on a node of their own.
 
+Taking access away takes effect everywhere: since 0.2 that includes a database web UI or a Box the person has open, which closes within about a minute (see [Databases](/guides/databases#web-ui-and-shell)).
+
 ### People without an account
 
-From the internet, people reach your services' domains and the ports you open, plus the panel's own pages: sign-in, the owner setup link (one use, one hour), invite links (one use, 1 to 30 days) and, only while the MCP server is on, its OAuth endpoints. Passwords are hashed with argon2id, and repeated wrong passwords or codes slow down and pause sign-in (see [Sign-in and security](/people/sign-in-and-security#password)).
+From the internet, people reach your services' domains and the ports you open, plus the panel's own pages: sign-in, the owner setup link (one use, one hour), invite links (one use, 1 to 30 days) and, only while the MCP server is on, its OAuth endpoints. Passwords are hashed with argon2id, and repeated wrong passwords or codes slow down and pause sign-in, counted per address (all of an IPv6 /64 counts as one) and per account (see [Sign-in and security](/people/sign-in-and-security#password)).
 
 ### API keys, MCP tokens and the assistant
 
-- An [API key](/people/api-keys) acts as the person who made it, narrowed to the actions, projects and read-only setting picked for it. It loses access when that person does, and it can never manage sign-in methods or other keys. Only a browser session with a recent sign-in can create one. The panel stores only a hash of it.
-- The [MCP server](/features/mcp-and-ai) is off until you turn it on. Tokens you create are read-only unless you change that, and the OAuth consent page always starts on **Read only**, whatever the client asked for. Account security actions are never available to AI tools, and secrets in tool results come back as `[redacted]`.
+- An [API key](/people/api-keys) acts as the person who made it, narrowed to the actions, projects and read-only setting picked for it. It loses access when that person does, and it can never manage sign-in methods or other keys. A key limited to some projects or actions also stays out of account-wide data, such as the person's assistant chats, their other keys and their security settings. Only a browser session with a recent sign-in can create one. The panel stores only a hash of it.
+- The [MCP server](/features/mcp-and-ai) is off until you turn it on. Tokens you create are read-only unless you change that, and the OAuth consent page always starts on **Read only**, whatever the client asked for, and marks the name the client gave itself as not verified. Account security actions are never available to AI tools, and secrets in tool results come back as `[redacted]`.
 - Anything that deletes something or can't be undone waits in **Approvals** when an AI tool asks for it, and runs only after a person approves it from a browser session. An API key can deny a request but never approve one.
 - The built-in assistant acts with the permissions of the person talking to it, and every change it wants to make waits for approval, not only deletions.
 
@@ -40,7 +42,7 @@ Every action, and every refused attempt, is in **Activity** with the person and 
 
 Someone with root on a node gets what runs there: its services, their volumes and logs, their environment (including any credentials those services were given for services elsewhere) and the node's own agent key.
 
-They do not get other nodes or the panel's secrets. The panel sends a node only the services placed on it, believes its reports only about those services, lets it pull and push only its own images in the registry, and caps how much it can make the panel hold in memory. Remove the node on **Nodes**, then change the secrets of the services that ran there.
+They do not get other nodes or the panel's secrets. The panel sends a node only the services placed on it, believes its reports only about those services, lets it pull and push only its own images in the registry, and caps how much it can make the panel hold in memory and store each day. Remove the node on **Nodes**, then change the secrets of the services that ran there.
 
 The node that runs the panel is the exception: it holds `panel.db` and `master.key`, so taking it over is taking over the panel.
 
@@ -52,12 +54,13 @@ A copy of `panel.db` on its own is much less: the secrets in it are encrypted wi
 
 ### The network
 
-- **Agents and the panel**: agents dial out to the panel over TLS, checked against the panel domain's public certificate, or against the panel's own key pinned in the join command (`--pin`) while the panel has no domain. Each agent signs every connection with its own Ed25519 key, so a join token is useless after its first use. `--insecure` gives all of that up and is meant for test setups only. See [Adding nodes](/guides/adding-nodes).
-- **Your browser and the panel**: plain HTTP until the panel has a domain, see below.
+- **Agents and the panel**: agents dial out to the panel over TLS, checked against the panel domain's public certificate, or against the panel's own key pinned in the join command (`--pin`) while the panel has no domain. Each agent signs every connection with its own Ed25519 key, so a join token is useless after its first use. Since 0.2, each agent also remembers the panel's identity key from its first connect and refuses any other panel, even one with a valid certificate for the panel's domain (see [The panel's identity](/guides/adding-nodes#the-panels-identity)). `--insecure` gives up the TLS checks and is meant for test setups only. See [Adding nodes](/guides/adding-nodes).
+- **Between nodes**: load balancing traffic on port 5757 is mutual TLS with certificates from the panel's own CA. A node without its certificate answers 404 there to everyone (see [Load balancing](/guides/load-balancing)).
+- **Your browser and the panel**: plain HTTP until the panel has a domain, see below. A session needs both its HttpOnly cookie and a session key that the web app keeps for the panel's own address and port, so a copy of the cookie that a browser sends to another port of the same address signs nobody in (see [Sessions](/people/sign-in-and-security#sessions)).
 - **Behind Cloudflare**: the panel takes the visitor's address from Cloudflare's header only from trusted proxies, see [The panel behind Cloudflare](/guides/domains-and-https#the-panel-behind-cloudflare).
 
 <Callout type="warn" title="Set a panel domain before you invite people">
-Until the panel has a domain, it answers on `http://<server-ip>:3000`: the setup link, your password and your session cookie cross the network unencrypted. Browsers also send a cookie of `http://<server-ip>` to every port of that address, so a service a member runs on `http://<server-ip>:<port>` would receive your session. Give the panel a domain (**Settings → General → Panel domain**) before you invite anyone. Until then, reach the panel through an SSH tunnel, `ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, and open `http://localhost:3000` instead.
+Until the panel has a domain, it answers on `http://<server-ip>:3000`: the setup link, your password and your session cross the network unencrypted, readable by anyone on the path. Browsers also send a cookie of `http://<server-ip>` to every port of that address, so a service a member runs on `http://<server-ip>:<port>` receives your session cookie; since 0.2 that copy alone signs nobody in, but the network path still sees everything. Give the panel a domain (**Settings → General → Panel domain**) before you invite anyone. Until then, reach the panel through an SSH tunnel, `ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, and open `http://localhost:3000` instead. New in 0.2: every page the panel serves over plain HTTP says **This connection is not encrypted** and shows that command.
 </Callout>
 
 ## Signed releases
@@ -68,7 +71,7 @@ Every [release](https://github.com/Seylo-dev/App/releases) is signed with the pr
 RWTwvrETQsecIkFOCm1ceiZwfxVq6sFfiEmJfWnUVv7UBIn0jWm2h1ip
 ```
 
-It is the `minisignPublicKey` in `brand/brand.json` of the [app repo](https://github.com/Seylo-dev/App) and is compiled into the panel, the agent and the installer. Each release carries:
+It is the `minisignPublicKey` in `brand/brand.json` of the [app repo](https://github.com/Seylo-dev/App) and is compiled into the panel, the agent and the installer. The private half is kept offline by the maintainers and, on GitHub, only in the app repo's `release` environment: only the job that signs a release can read it, after a maintainer approves that run. The job that builds the release, and runs its npm build scripts, never sees it. Each release carries:
 
 | File | What it is |
 | --- | --- |
@@ -131,18 +134,19 @@ Secrets are sealed with AES-256-GCM, with a separate key derived from `master.ke
 - environment variables of projects, services and deployments, compose files and file mounts,
 - Git, GitHub and registry credentials and webhook secrets,
 - backup destinations, notification channels, custom certificates' private keys and Cloudflare tunnel tokens,
-- authenticator app secrets, the assistant's Anthropic API key and the input of actions waiting for approval.
+- authenticator app secrets, the assistant's Anthropic API key and the input of actions waiting for approval,
+- the panel's identity key, which signs database web UI and Box tickets and proves the panel to its nodes, and the load balancer CA's key.
 
-Not stored at all, only as hashes: passwords (argon2id), session tokens, API keys, MCP tokens and the passwords of basic auth rules.
+Not stored at all, only as hashes: passwords (argon2id), session tokens and session keys, API keys, MCP tokens and the passwords of basic auth rules.
 
-So a copy of `panel.db` alone holds no secrets, and `master.key` alone is useless. Together they are every secret the panel knows: back them up, but keep the copies apart (see [Backing up the panel](/self-hosting/backups)).
+So a copy of `panel.db` alone holds no secrets, and `master.key` alone is useless. Together they are every secret the panel knows: back them up, but keep the copies apart (see [Backing up the panel](/self-hosting/backups)). If a copy leaked, give the panel a new `master.key`: see [If a copy leaked](/self-hosting/backups#if-a-copy-leaked).
 
 ### On every node
 
 | File | What it holds |
 | --- | --- |
 | `/var/lib/seylo/agent.key` | The node's Ed25519 private key, mode 0600 |
-| `/var/lib/seylo/config.yml` | The panel's address and certificate pin, mode 0600 |
+| `/var/lib/seylo/config.yml` | The panel's address and certificate pin and, since 0.2, the panel's id and identity key, mode 0600 |
 | `/var/lib/seylo/state/` | The last desired state from the panel, mode 0600. It includes the environment of the node's services, so the node can restart them while the panel is down. |
 | `/var/lib/seylo/services/<id>/` | Volumes and file mounts, as your services wrote them. Seylo does not encrypt them. |
 
@@ -162,8 +166,10 @@ Only the latest release gets security fixes; the panel updates itself and every 
 
 Seylo gets security reviews of the panel, the agent, the installer, the release path and this website. The latest one is summarised below, with the release its fixes shipped in.
 
-{/* TODO(release): fill in the numbers from the latest security review, then delete this comment and the callout below. */}
+- **Date**: 2026-11-07.
+- **Kind**: an internal audit, not an external penetration test.
+- **Reviewed**: the code that became 0.2.
+- **Confirmed findings**: 37: 5 high, 18 medium and 14 low.
+- **Fixed**: all 37, in 0.2.
 
-<Callout type="error" title="TODO before release: review numbers">
-Fill in from the latest review: the date, the version and commits reviewed, how many findings by severity, how many were fixed and in which release, and links to any advisories. Delete this callout once the numbers are in.
-</Callout>
+Some of the fixes change what you see after the update, for example one more sign-in for everyone and a rule for git servers on private addresses. [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) lists them.
