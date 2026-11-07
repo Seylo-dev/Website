@@ -12,9 +12,9 @@ export function Hero() {
     >
       <a
         href={`${links.docs}/guides/adding-nodes`}
-        className="inline-flex items-center gap-2.5 rounded-lg bg-accent/10 py-1 pr-3 pl-1 text-[13.5px] shadow-[inset_0_0_0_1px_rgb(107_151_255/0.24)]"
+        className="inline-flex items-center gap-2.5 rounded-lg bg-accent/10 py-1 pr-3 pl-1 text-[13.5px] shadow-[var(--ring-badge)]"
       >
-        <span className="rounded-md bg-accent px-2 py-0.75 text-xs font-semibold text-white">New</span>
+        <span className="rounded-md bg-accent px-2 py-0.75 text-xs font-semibold text-on-accent">New</span>
         Deploy to many nodes from one panel
         <IconArrowRight size={14} stroke={2.2} className="text-accent-bright" aria-hidden />
       </a>
@@ -39,7 +39,7 @@ export function Hero() {
       <div className="mt-7.5 flex flex-wrap items-center justify-center gap-x-6.5 gap-y-3.5">
         <a
           href={links.install}
-          className="flex h-11.5 items-center gap-2.25 rounded-lg bg-accent pr-4.5 pl-5 text-[15px] font-medium text-white shadow-[0_1px_2px_rgb(37_99_235/0.3),0_4px_12px_rgb(37_99_235/0.18)] hover:bg-blue-500 hover:text-white"
+          className="flex h-11.5 items-center gap-2.25 rounded-lg bg-accent pr-4.5 pl-5 text-[15px] font-medium text-on-accent shadow-[var(--shadow-accent)] hover:bg-accent-hover hover:text-on-accent"
         >
           Get started
           <IconArrowRight size={16} stroke={2.2} aria-hidden />

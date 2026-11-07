@@ -1,14 +1,28 @@
-// Real crops of the panel (v0.1.1, light theme), taken at 2x from the panel's demo mode with demo data:
-// see tools/hero-shot/README.md, "Section captures". Width and height are CSS pixels (half the file's).
+// Real crops of the panel (v0.1.1), taken at 2x from the panel's demo mode with demo data, once in its
+// light theme and once in its default dark theme (seylo-night) from the same data: see
+// tools/hero-shot/README.md, "Section captures". Width and height are CSS pixels (half the file's); the
+// light and dark files of a crop have the same size.
 
 export interface Capture {
+  /** The light theme's file. */
   src: string;
+  /** The dark theme's file, when the crop has one (the theme preset previews do not). */
+  srcDark?: string;
   width: number;
   height: number;
   alt: string;
 }
 
 const capture = (name: string, px: [number, number], alt: string): Capture => ({
+  src: `/product/${name}.webp`,
+  srcDark: `/product/${name}-dark.webp`,
+  width: px[0] / 2,
+  height: px[1] / 2,
+  alt,
+});
+
+/** A crop with one theme of its own: the theme preset previews show each preset as it is. */
+const single = (name: string, px: [number, number], alt: string): Capture => ({
   src: `/product/${name}.webp`,
   width: px[0] / 2,
   height: px[1] / 2,
@@ -98,21 +112,21 @@ export const themeShots = [
   {
     preset: "Default",
     note: "Light and dark",
-    capture: capture("theme-seylo", [720, 450], "The dashboard in the Default theme"),
+    capture: single("theme-seylo", [720, 450], "The dashboard in the Default theme"),
   },
   {
     preset: "Night",
     note: "Dark with ink blues",
-    capture: capture("theme-seylo-night", [720, 450], "The dashboard in the Night theme"),
+    capture: single("theme-seylo-night", [720, 450], "The dashboard in the Night theme"),
   },
   {
     preset: "Classic",
     note: "Soft gray cards, green accent",
-    capture: capture("theme-classic", [720, 450], "The dashboard in the Classic theme"),
+    capture: single("theme-classic", [720, 450], "The dashboard in the Classic theme"),
   },
   {
     preset: "Midnight",
     note: "Dense, purple accent",
-    capture: capture("theme-midnight", [720, 450], "The dashboard in the Midnight theme"),
+    capture: single("theme-midnight", [720, 450], "The dashboard in the Midnight theme"),
   },
 ];

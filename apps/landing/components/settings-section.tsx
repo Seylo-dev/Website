@@ -28,7 +28,7 @@ export function SettingsSection() {
       </SectionHeading>
 
       <ul className="grid gap-4 lg:grid-cols-12">
-        <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-7">
+        <li className="rise lift flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-7">
           <CellText title="Env that knows your other services">
             <Code>{"${{redis.INTERNAL_URL}}"}</Code> resolves on every deploy. The editor underlines a reference this
             node can&apos;t reach and offers the fix. Hover one to see its value.
@@ -36,14 +36,14 @@ export function SettingsSection() {
           <CellShot capture={captures.env} widthClass="sm:w-[600px] lg:w-[640px]" />
         </li>
 
-        <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
+        <li className="rise lift flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
           <CellText title="Access rules per domain">
             Basic auth, an IP allowlist, a rate limit and regex redirects on each domain. No middleware files to edit.
           </CellText>
           <CellShot capture={captures.domainAccess} widthClass="sm:w-[400px]" />
         </li>
 
-        <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-7 lg:row-span-2">
+        <li className="rise lift flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-7 lg:row-span-2">
           <CellText title="Health checks that gate deploys">
             TCP, an HTTP request with path, host and expected status, or a command. A new version gets traffic only
             after it passes; if it never does, the old one keeps serving.
@@ -51,7 +51,7 @@ export function SettingsSection() {
           <CellShot capture={captures.healthCheck} widthClass="sm:w-[600px] lg:w-[640px]" />
         </li>
 
-        <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
+        <li className="rise lift flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
           <CellText title="A crash policy, not a restart loop">
             Restart after a fixed 5 seconds, stop after N crashes in a row, and get one alert per streak instead of one
             per crash.
@@ -59,7 +59,7 @@ export function SettingsSection() {
           <CellShot capture={captures.crashPolicy} widthClass="sm:w-[400px]" />
         </li>
 
-        <li className="rise flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
+        <li className="rise lift flex flex-col overflow-hidden rounded-2xl bg-surface lg:col-span-5">
           <CellText title="Timed expose, locked to your IP">
             A port open for 5 minutes to 24 hours, only to the IPs you list. The node closes it on time, even with the
             panel down.
@@ -67,7 +67,7 @@ export function SettingsSection() {
           <CellShot capture={captures.timedExpose} widthClass="sm:w-[400px]" />
         </li>
 
-        <li className="rise flex flex-col gap-5 rounded-2xl bg-surface p-5 sm:p-6 lg:col-span-12 lg:flex-row lg:items-center lg:gap-10">
+        <li className="rise lift flex flex-col gap-5 rounded-2xl bg-surface p-5 sm:p-6 lg:col-span-12 lg:flex-row lg:items-center lg:gap-10">
           <div className="flex flex-col gap-2 lg:max-w-[560px]">
             <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Maintenance and down pages</h3>
             <p className="text-[14.5px] leading-[1.6] text-ink-card">

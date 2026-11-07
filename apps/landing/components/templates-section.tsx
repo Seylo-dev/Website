@@ -46,7 +46,7 @@ export function TemplatesSection() {
         {catalog.map((template) => (
           <li
             key={template.slug}
-            className="flex min-w-0 items-center gap-2.5 rounded-xl bg-surface p-2.5 sm:gap-3 sm:p-3"
+            className="lift flex min-w-0 items-center gap-2.5 rounded-xl bg-surface p-2.5 sm:gap-3 sm:p-3"
           >
             <span
               aria-hidden

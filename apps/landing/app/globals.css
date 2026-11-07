@@ -1,9 +1,40 @@
 @import "tailwindcss";
 
 /*
- * The landing page is dark only: deep navy with high-contrast text and the panel's blue as the
- * one accent, from the approved landing design. Tokens are named by role so sections never
- * hard-code a hex value.
+ * Two themes, dark and light, picked by the class on <html>: "dark" or "light" when the visitor chose
+ * one with the toggle (components/theme-toggle.tsx, remembered in localStorage and set before paint by
+ * the script in app/layout.tsx), no class to follow the system setting. That way the page follows the
+ * system even without JavaScript.
+ *
+ * `light:` and `dark:` are exact complements, so a pair like `dark:hidden` / `light:hidden` always
+ * shows exactly one of two elements.
+ */
+@custom-variant light {
+  &:where(.light, .light *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: light) {
+    &:where(:root:not(.dark), :root:not(.dark) *) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media not (prefers-color-scheme: light) {
+    &:where(:root:not(.light), :root:not(.light) *) {
+      @slot;
+    }
+  }
+}
+
+/*
+ * Tokens are named by role so sections never hard-code a color. The values here are the dark theme:
+ * deep navy with high-contrast text and the panel's blue as the one accent, from the approved landing
+ * design. The light theme below redefines every one of them.
  */
 @theme {
   --font-sans: var(--font-geist), system-ui, sans-serif;
@@ -23,18 +54,175 @@
   --color-ink-code: #d6dce8;
 
   --color-accent: #2563eb;
+  --color-accent-hover: oklch(62.3% 0.214 259.815);
   --color-accent-bright: #6b97ff;
   --color-accent-icon: #7ea6ff;
+  --color-on-accent: #ffffff;
 
   --color-success-bg: #113131;
   --color-success-fg: #86efac;
   --color-chip: #21293c;
+
+  /* Washes of the accent behind the hero, the Wings block and the closing call to action. */
+  --color-hero-wash: rgb(37 99 235 / 0.22);
+  --color-block-wash: rgb(37 99 235 / 0.14);
+  --color-cta-wash: rgb(37 99 235 / 0.18);
+
+  /* The floating nav, its menus and the quiet (non-accent) buttons. */
+  --color-nav: oklch(20.8% 0.042 265.755 / 0.6);
+  --color-nav-line: oklch(70.4% 0.04 256.788 / 0.12);
+  --color-quiet: oklch(70.4% 0.04 256.788 / 0.1);
+  --color-hover: rgb(255 255 255 / 0.05);
+  --color-line: oklch(70.4% 0.04 256.788 / 0.1);
+
+  /* The install command's edge: at rest, on hover, after a copy. */
+  --color-field-line: oklch(70.4% 0.04 256.788 / 0.16);
+  --color-field-line-hover: oklch(70.4% 0.04 256.788 / 0.3);
+  --color-field-line-done: oklch(72.3% 0.219 149.579 / 0.4);
+
+  /* The engine badges of the Databases section, as the panel shows them. */
+  --color-tone-sky: oklch(74.6% 0.16 232.661 / 0.14);
+  --color-tone-sky-fg: oklch(82.8% 0.111 230.318);
+  --color-tone-green: oklch(79.2% 0.209 151.711 / 0.14);
+  --color-tone-green-fg: oklch(87.1% 0.15 154.449);
+  --color-tone-red: oklch(70.4% 0.191 22.216 / 0.14);
+  --color-tone-red-fg: oklch(80.8% 0.114 19.571);
+
+  /* The node rows of the Wings block: status dot, its halo and the tag chip. */
+  --color-wings-violet-dot: oklch(70.2% 0.183 293.541);
+  --color-wings-violet-halo: oklch(60.6% 0.25 292.717 / 0.16);
+  --color-wings-violet-chip: #1f1c44;
+  --color-wings-violet-fg: oklch(81.1% 0.111 293.571);
+  --color-wings-green-dot: oklch(79.2% 0.209 151.711);
+  --color-wings-green-halo: oklch(72.3% 0.219 149.579 / 0.14);
+  --color-wings-green-chip: #0d292a;
+  --color-wings-green-fg: oklch(87.1% 0.15 154.449);
+  --color-wings-gray-dot: oklch(70.4% 0.04 256.788);
+  --color-wings-gray-halo: oklch(70.4% 0.04 256.788 / 0.12);
+  --color-wings-gray-chip: #1d2537;
+  --color-wings-gray-fg: #c9d2e3;
+
+  --color-star: #c9d2e3;
+  --color-selection: rgb(37 99 235 / 0.45);
+  --color-selection-ink: #ffffff;
+}
+
+/*
+ * Shadows and edges per theme. Dark has no card shadow (a shadow does not show on navy) and keeps its
+ * faint inset rims; light has no rims at all: white surfaces lifted by soft shadows, as in the panel.
+ */
+:root {
+  color-scheme: dark;
+  --edge: inset 0 0 0 1px rgb(148 163 184 / 0.08);
+  --edge-strong: inset 0 0 0 1px rgb(148 163 184 / 0.16);
+  --edge-block: inset 0 0 0 1px rgb(148 163 184 / 0.08);
+  --lift: none;
+  --shadow-nav: 0 10px 30px rgba(2, 6, 23, 0.35);
+  --shadow-menu: 0 20px 40px rgba(2, 6, 23, 0.5);
+  --shadow-command: 0 10px 30px rgba(2, 6, 23, 0.45);
+  --ring-badge: inset 0 0 0 1px rgb(107 151 255 / 0.24);
+  /* The accent buttons' shadow, the same in both themes. */
+  --shadow-accent: 0 1px 2px rgb(37 99 235 / 0.3), 0 4px 12px rgb(37 99 235 / 0.18);
+
+  --shot-glow-a: rgb(59 130 246 / 0.32);
+  --shot-glow-b: rgb(37 99 235 / 0.18);
+  --shot-frame:
+    0 0 0 1px rgb(191 209 255 / 0.28), 0 30px 60px -12px rgb(0 0 0 / 0.55), 0 50px 140px -20px rgb(37 99 235 / 0.4);
+  --shot-sidebar-filter: brightness(0.86) saturate(0.9);
+  --shot-shadow: 0 24px 56px -22px rgb(0 0 0 / 0.7), 0 34px 90px -36px rgb(37 99 235 / 0.42);
+  --cell-shot-shadow: 0 -10px 40px -12px rgb(0 0 0 / 0.55);
+}
+
+/*
+ * Light: the panel's own light look. A tinted gray ground with a soft blue wash, white surfaces, soft
+ * shadows instead of borders, dark slate text and the same blue, a step deeper where it is text.
+ */
+:root {
+  @variant light {
+    color-scheme: light;
+
+    --color-page: #f3f5f9;
+    --color-surface: #ffffff;
+    --color-surface-sunken: #f6f8fb;
+    --color-code: #e9edf4;
+
+    --color-ink: #0f172a;
+    --color-ink-body: #1e293b;
+    --color-ink-soft: #475569;
+    --color-ink-card: #526075;
+    --color-ink-muted: #5b687c;
+    --color-ink-dim: #7d8aa3;
+    --color-ink-code: #1e293b;
+
+    --color-accent: #2563eb;
+    --color-accent-bright: #2563eb;
+    --color-accent-icon: #2563eb;
+
+    --color-success-bg: #e3f4ea;
+    --color-success-fg: #0e6b3b;
+    --color-chip: #e8ecf3;
+
+    --color-hero-wash: rgb(59 130 246 / 0.13);
+    --color-block-wash: rgb(59 130 246 / 0.07);
+    --color-cta-wash: rgb(59 130 246 / 0.12);
+
+    --color-nav: rgb(255 255 255 / 0.78);
+    --color-nav-line: transparent;
+    --color-quiet: #ffffff;
+    --color-hover: rgb(15 23 42 / 0.045);
+    --color-line: transparent;
+
+    --color-field-line: transparent;
+    --color-field-line-hover: transparent;
+    --color-field-line-done: transparent;
+
+    --color-tone-sky: #e8f2fb;
+    --color-tone-sky-fg: #1d5e8c;
+    --color-tone-green: #e7f6ee;
+    --color-tone-green-fg: #0e6b3b;
+    --color-tone-red: #fdecec;
+    --color-tone-red-fg: #b42318;
+
+    --color-wings-violet-dot: #7c5cf0;
+    --color-wings-violet-halo: rgb(124 92 240 / 0.13);
+    --color-wings-violet-chip: #f1eefd;
+    --color-wings-violet-fg: #5b3fc4;
+    --color-wings-green-dot: #16a34a;
+    --color-wings-green-halo: rgb(22 163 74 / 0.12);
+    --color-wings-green-chip: #e7f6ee;
+    --color-wings-green-fg: #0e6b3b;
+    --color-wings-gray-dot: #94a3b8;
+    --color-wings-gray-halo: rgb(100 116 139 / 0.12);
+    --color-wings-gray-chip: #eef1f6;
+    --color-wings-gray-fg: #3b4556;
+
+    --color-star: #94a3b8;
+    --color-selection: rgb(37 99 235 / 0.2);
+    --color-selection-ink: #0f172a;
+
+    --edge: none;
+    --edge-strong: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px rgb(15 23 42 / 0.04);
+    --edge-block: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.05);
+    --lift: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.05);
+    --shadow-nav: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 28px rgb(15 23 42 / 0.07);
+    --shadow-menu: 0 1px 2px rgb(15 23 42 / 0.06), 0 12px 32px rgb(15 23 42 / 0.12);
+    --shadow-command: 0 1px 2px rgb(15 23 42 / 0.05), 0 10px 30px -6px rgb(15 23 42 / 0.12);
+    --ring-badge: none;
+
+    --shot-glow-a: rgb(59 130 246 / 0.2);
+    --shot-glow-b: rgb(37 99 235 / 0.1);
+    --shot-frame:
+      0 1px 2px rgb(15 23 42 / 0.06), 0 24px 56px -14px rgb(15 23 42 / 0.2), 0 50px 140px -20px rgb(37 99 235 / 0.22);
+    --shot-sidebar-filter: brightness(0.97) saturate(0.95);
+    --shot-shadow:
+      0 1px 2px rgb(15 23 42 / 0.05), 0 18px 44px -18px rgb(15 23 42 / 0.2), 0 30px 80px -40px rgb(37 99 235 / 0.28);
+    --cell-shot-shadow: 0 -6px 24px -10px rgb(15 23 42 / 0.14);
+  }
 }
 
 @layer base {
   html {
     background: var(--color-page);
-    color-scheme: dark;
   }
   body {
     @apply bg-page font-sans text-ink-body antialiased;
@@ -43,17 +231,29 @@
     @apply text-ink-soft transition-colors hover:text-ink;
   }
   ::selection {
-    background: rgb(37 99 235 / 0.45);
-    color: #fff;
+    background: var(--color-selection);
+    color: var(--color-selection-ink);
   }
 }
 
+/* Faint inset rims in dark; nothing in light, where surfaces carry soft shadows instead. */
 @utility hairline {
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.08);
+  box-shadow: var(--edge);
 }
 
+/* Quiet buttons and menus: a stronger rim in dark, a small control shadow in light. */
 @utility hairline-strong {
-  box-shadow: inset 0 0 0 1px rgb(148 163 184 / 0.16);
+  box-shadow: var(--edge-strong);
+}
+
+/* A block that stands on the page: a rim in dark, a card shadow in light. */
+@utility edge-block {
+  box-shadow: var(--edge-block);
+}
+
+/* Cards on the page: flat in dark, lifted by a soft shadow in light. */
+@utility lift {
+  box-shadow: var(--lift);
 }
 
 /*
@@ -61,15 +261,16 @@
  * tipped back, the right side further away, the whole plane turned slightly counter-clockwise.
  * rotateZ comes first so it turns the already-tilted plane on screen. Tweak --shot-tilt to retune.
  *
- * The capture is the panel's light theme, so on the navy page the frame gets a thin light rim, a
- * blue glow behind it instead of a dark drop shadow (which would not show on navy), and a long
- * bottom fade so the bright shot dissolves into the page rather than ending on a hard edge.
+ * Each theme shows the panel in the same theme. In dark the frame gets a thin light rim and a blue
+ * glow behind it instead of a dark drop shadow (which would not show on navy); in light a soft shadow
+ * and a paler glow. Both end in a long bottom fade, so the shot dissolves into the page rather than
+ * ending on a hard edge.
  */
 .product-shot {
   /* Lets the layers offset themselves in cqw, so the depth effect scales with the shot. */
   container-type: inline-size;
   --shot-tilt: rotateZ(-6deg) rotateX(22deg) rotateY(9deg);
-  /* Eased rather than linear, so the bright shot has no visible line where the fade ends. */
+  /* Eased rather than linear, so the shot has no visible line where the fade ends. */
   --shot-fade-bottom: linear-gradient(
     to bottom,
     #000 32%,
@@ -95,8 +296,8 @@
 .product-shot-glow {
   /* closest-side: both gradients reach zero inside the box, so the mask's edge never cuts them. */
   background:
-    radial-gradient(closest-side at 54% 42%, rgb(59 130 246 / 0.32), rgb(59 130 246 / 0)),
-    radial-gradient(closest-side at 38% 58%, rgb(37 99 235 / 0.18), rgb(37 99 235 / 0));
+    radial-gradient(closest-side at 54% 42%, var(--shot-glow-a), transparent),
+    radial-gradient(closest-side at 38% 58%, var(--shot-glow-b), transparent);
   filter: blur(24px);
 }
 
@@ -111,16 +312,13 @@
 }
 
 .product-shot-layer {
-  box-shadow:
-    0 0 0 1px rgb(191 209 255 / 0.28),
-    0 30px 60px -12px rgb(0 0 0 / 0.55),
-    0 50px 140px -20px rgb(37 99 235 / 0.4);
+  box-shadow: var(--shot-frame);
 }
 
 /* The sidebar sits a step back, slightly out to the left and a little dimmer, so the main area overlaps it. */
 .product-shot-sidebar {
   transform: translate3d(-1.6cqw, 1.8cqw, -80px);
-  filter: brightness(0.86) saturate(0.9);
+  filter: var(--shot-sidebar-filter);
 }
 
 .product-shot-main {
@@ -141,13 +339,11 @@
 }
 
 /*
- * Section captures (components/shot.tsx): light crops of the panel on the navy page. No rim, as
- * for every block here: a dark drop shadow for depth and a faint blue glow, like the hero shot's.
+ * Section captures (components/shot.tsx): crops of the panel in the page's theme. No rim, as for
+ * every block here: a drop shadow for depth and a faint blue glow, like the hero shot's.
  */
 .shot {
-  box-shadow:
-    0 24px 56px -22px rgb(0 0 0 / 0.7),
-    0 34px 90px -36px rgb(37 99 235 / 0.42);
+  box-shadow: var(--shot-shadow);
 }
 
 /* Tall crops end in a fade instead of a hard cut. */
@@ -166,7 +362,7 @@
 
 /* A capture at the bottom of a bento cell: it runs off the cell's bottom edge, so the shadow only goes up. */
 .cell-shot {
-  box-shadow: 0 -10px 40px -12px rgb(0 0 0 / 0.55);
+  box-shadow: var(--cell-shot-shadow);
 }
 
 /*

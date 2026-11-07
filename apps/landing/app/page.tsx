@@ -14,12 +14,19 @@ import { SiteHeader } from "@/components/site-header";
 import { Starfield } from "@/components/starfield";
 import { TemplatesSection } from "@/components/templates-section";
 
-// The panel dashboard captured from a running panel with tools/hero-shot (see README).
-const heroShot = { src: "/product/dashboard.webp", width: 2400, height: 1500, sidebarRatio: 0.155 };
+// The panel dashboard from the panel's demo mode, in its light and dark theme, captured with
+// tools/hero-shot (sections.ts, see its README).
+const heroShot = {
+  src: "/product/dashboard.webp",
+  srcDark: "/product/dashboard-dark.webp",
+  width: 2400,
+  height: 1500,
+  sidebarRatio: 0.155,
+};
 
 export default function HomePage() {
   return (
-    <div className="relative overflow-x-clip bg-[radial-gradient(800px_400px_at_50%_0%,rgb(37_99_235/0.22),rgb(37_99_235/0)_70%)]">
+    <div className="relative overflow-x-clip bg-[radial-gradient(800px_400px_at_50%_0%,var(--color-hero-wash),transparent_70%)]">
       <Starfield />
       <SiteHeader />
       <main>

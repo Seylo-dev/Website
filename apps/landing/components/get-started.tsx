@@ -3,9 +3,11 @@ import { links } from "@/lib/site";
 
 export function GetStarted() {
   return (
+    // Light has no divider line, so its wash sits behind the buttons and fades out before the footer instead of
+    // ending on the section's bottom edge.
     <section
       aria-label="Get started"
-      className="border-t border-slate-400/10 bg-[radial-gradient(720px_340px_at_50%_100%,rgb(37_99_235/0.18),rgb(37_99_235/0)_70%)]"
+      className="border-t border-line bg-[radial-gradient(720px_340px_at_50%_100%,var(--color-cta-wash),transparent_70%)] light:border-t-0 light:bg-[radial-gradient(760px_300px_at_50%_68%,var(--color-cta-wash),transparent_70%)]"
     >
       <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-4.5 px-6 py-24 text-center">
         <span className="text-[13.5px] font-medium text-accent-bright">Get started</span>
@@ -16,14 +18,14 @@ export function GetStarted() {
         <div className="mt-2.5 flex flex-wrap justify-center gap-3">
           <a
             href={links.install}
-            className="flex h-11.5 items-center gap-2.25 rounded-lg bg-accent pr-4.5 pl-5 text-[15px] font-medium text-white shadow-[0_1px_2px_rgb(37_99_235/0.3),0_4px_12px_rgb(37_99_235/0.18)] hover:bg-blue-500 hover:text-white"
+            className="flex h-11.5 items-center gap-2.25 rounded-lg bg-accent pr-4.5 pl-5 text-[15px] font-medium text-on-accent shadow-[var(--shadow-accent)] hover:bg-accent-hover hover:text-on-accent"
           >
             Read the install guide
             <IconArrowRight size={16} stroke={2.2} aria-hidden />
           </a>
           <a
             href={links.github}
-            className="hairline-strong flex h-11.5 items-center rounded-lg bg-slate-400/10 px-5 text-[15px] font-medium text-ink"
+            className="hairline-strong flex h-11.5 items-center rounded-lg bg-quiet px-5 text-[15px] font-medium text-ink"
           >
             View the source
           </a>

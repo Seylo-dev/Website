@@ -4,30 +4,30 @@ const rows = [
   {
     name: "il-tlv-1",
     tag: "Wings detected",
-    dot: "bg-violet-400",
-    halo: "bg-violet-500/16",
-    chip: "bg-[#1F1C44] text-violet-300",
+    dot: "bg-wings-violet-dot",
+    halo: "bg-wings-violet-halo",
+    chip: "bg-wings-violet-chip text-wings-violet-fg",
   },
   {
     name: "cs2-retake-01, cs2-mm-04",
     tag: "priority",
-    dot: "bg-green-400",
-    halo: "bg-green-500/14",
-    chip: "bg-[#0D292A] text-green-300",
+    dot: "bg-wings-green-dot",
+    halo: "bg-wings-green-halo",
+    chip: "bg-wings-green-chip text-wings-green-fg",
   },
   {
     name: "api, worker, umami",
     tag: "share the rest",
-    dot: "bg-slate-400",
-    halo: "bg-slate-400/12",
-    chip: "bg-[#1D2537] text-ink-soft",
+    dot: "bg-wings-gray-dot",
+    halo: "bg-wings-gray-halo",
+    chip: "bg-wings-gray-chip text-wings-gray-fg",
   },
 ];
 
 export function NextToWings() {
   return (
     <section aria-label="Next to game servers" className="mx-auto max-w-[1200px] px-6 pb-24">
-      <div className="hairline flex flex-wrap items-center gap-10 rounded-2xl bg-[radial-gradient(620px_320px_at_0%_0%,rgb(37_99_235/0.14),rgb(37_99_235/0)_70%),var(--color-surface)] p-[clamp(24px,4vw,44px)]">
+      <div className="edge-block flex flex-wrap items-center gap-10 rounded-2xl bg-[radial-gradient(620px_320px_at_0%_0%,var(--color-block-wash),transparent_70%),var(--color-surface)] p-[clamp(24px,4vw,44px)]">
         <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3.5">
           <span className="text-[13.5px] font-medium text-accent-bright">Already running Pterodactyl or Pelican?</span>
           <h2 className="text-[clamp(28px,3vw,36px)] leading-[1.1] font-semibold tracking-[-0.03em] text-ink">

@@ -84,7 +84,7 @@ export function Features() {
       </SectionHeading>
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] gap-4">
         {features.map(({ key, title, body, icon: FeatureIcon }) => (
-          <li key={key} className="flex flex-col gap-3 rounded-xl bg-surface p-6">
+          <li key={key} className="lift flex flex-col gap-3 rounded-xl bg-surface p-6">
             <div className="mb-1 flex items-center gap-2.5">
               <span
                 aria-hidden

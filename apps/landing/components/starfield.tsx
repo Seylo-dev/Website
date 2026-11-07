@@ -20,17 +20,17 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
   opacity: [0.18, 0.25, 0.32, 0.4, 0.5][Math.floor(random() * 5)],
 }));
 
-/** The faint dots behind the hero, fading out towards the product shot. */
+/** The faint dots behind the hero, fading out towards the product shot. Dark theme only: on the light ground they read as dust. */
 export function Starfield() {
   return (
     <svg
       aria-hidden
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="xMidYMid slice"
-      className="pointer-events-none absolute inset-x-0 top-0 h-[780px] w-full [mask-image:linear-gradient(180deg,#000_0%,#000_50%,transparent_100%)]"
+      className="pointer-events-none absolute inset-x-0 top-0 h-[780px] w-full fill-star [mask-image:linear-gradient(180deg,#000_0%,#000_50%,transparent_100%)] light:hidden"
     >
       {stars.map((star, i) => (
-        <circle key={i} cx={star.x} cy={star.y} r={star.r} fill="#C9D2E3" fillOpacity={star.opacity} />
+        <circle key={i} cx={star.x} cy={star.y} r={star.r} fillOpacity={star.opacity} />
       ))}
     </svg>
   );

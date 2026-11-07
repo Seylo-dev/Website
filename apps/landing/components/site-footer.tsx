@@ -3,7 +3,7 @@ import { LogoMark } from "./logo";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-slate-400/10">
+    <footer className="border-t border-line">
       <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-5.5 gap-y-3 px-6 py-7 text-[13.5px] text-ink-muted">
         <span className="flex items-center gap-2 text-ink-soft">
           <LogoMark size={18} />

@@ -1,6 +1,5 @@
-import Image from "next/image";
 import { captures, themeShots } from "@/lib/captures";
-import { Chips, Shot } from "./shot";
+import { Chips, Shot, ThemeImage } from "./shot";
 
 const whiteLabel = [
   "Panel name",
@@ -39,14 +38,7 @@ export function BrandSection() {
         {themeShots.map(({ preset, note, capture }) => (
           <li key={preset} className="rise flex min-w-0 flex-col gap-3">
             <div className="shot overflow-hidden rounded-lg">
-              <Image
-                src={capture.src}
-                alt={capture.alt}
-                width={capture.width}
-                height={capture.height}
-                unoptimized
-                className="block h-auto w-full"
-              />
+              <ThemeImage capture={capture} className="block h-auto w-full" />
             </div>
             <div className="flex flex-col">
               <span className="text-[15px] font-semibold text-ink">{preset}</span>

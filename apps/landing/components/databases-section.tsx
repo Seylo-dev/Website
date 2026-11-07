@@ -4,11 +4,11 @@ import { Shot } from "./shot";
 
 // The engines and their badges as the panel shows them (apps/web service kind badges).
 const engines = [
-  { name: "PostgreSQL", badge: "PG", tone: "bg-sky-400/14 text-sky-300" },
-  { name: "MySQL", badge: "MY", tone: "bg-sky-400/14 text-sky-300" },
-  { name: "MariaDB", badge: "MDB", tone: "bg-sky-400/14 text-sky-300" },
-  { name: "MongoDB", badge: "MGO", tone: "bg-green-400/14 text-green-300" },
-  { name: "Redis", badge: "RDS", tone: "bg-red-400/14 text-red-300" },
+  { name: "PostgreSQL", badge: "PG", tone: "bg-tone-sky text-tone-sky-fg" },
+  { name: "MySQL", badge: "MY", tone: "bg-tone-sky text-tone-sky-fg" },
+  { name: "MariaDB", badge: "MDB", tone: "bg-tone-sky text-tone-sky-fg" },
+  { name: "MongoDB", badge: "MGO", tone: "bg-tone-green text-tone-green-fg" },
+  { name: "Redis", badge: "RDS", tone: "bg-tone-red text-tone-red-fg" },
 ];
 
 const facts: { title: string; body: string; icon: Icon }[] = [
@@ -53,7 +53,7 @@ export function DatabasesSection() {
         </p>
         <ul aria-label="Engines" className="mt-2 flex flex-wrap justify-center gap-2">
           {engines.map((engine) => (
-            <li key={engine.name} className="flex items-center gap-2 rounded-lg bg-surface py-1.5 pr-3 pl-1.5">
+            <li key={engine.name} className="lift flex items-center gap-2 rounded-lg bg-surface py-1.5 pr-3 pl-1.5">
               <span
                 aria-hidden
                 className={`flex h-6 min-w-9 items-center justify-center rounded-md px-1 font-mono text-[11px] font-semibold ${engine.tone}`}

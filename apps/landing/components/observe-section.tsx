@@ -58,7 +58,7 @@ export function ObserveSection() {
         </div>
       </div>
 
-      <div className="rise flex flex-col gap-4 rounded-2xl bg-surface p-5 sm:p-6 lg:flex-row lg:items-center lg:gap-10">
+      <div className="rise lift flex flex-col gap-4 rounded-2xl bg-surface p-5 sm:p-6 lg:flex-row lg:items-center lg:gap-10">
         <div className="flex flex-col gap-1.5 lg:max-w-[440px]">
           <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Alerts where you already look</h3>
           <p className="text-[14.5px] leading-[1.6] text-ink-card">

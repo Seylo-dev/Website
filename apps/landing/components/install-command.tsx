@@ -32,8 +32,8 @@ export function InstallCommand({ command }: { command: string }) {
       type="button"
       onClick={copy}
       aria-label="Copy the install command"
-      className={`flex h-14.5 w-[640px] max-w-full cursor-pointer items-center gap-3.5 rounded-[10px] border bg-surface py-0 pr-2.25 pl-5 text-left text-ink-body shadow-[0_10px_30px_rgba(2,6,23,0.45)] transition-colors ${
-        copied ? "border-green-500/40" : "border-slate-400/16 hover:border-slate-400/30"
+      className={`flex h-14.5 w-[640px] max-w-full cursor-pointer items-center gap-3.5 rounded-[10px] border bg-surface py-0 pr-2.25 pl-5 text-left text-ink-body shadow-[var(--shadow-command)] transition-colors ${
+        copied ? "border-field-line-done" : "border-field-line hover:border-field-line-hover"
       }`}
     >
       <span className="font-mono text-[15.5px] text-accent-bright" aria-hidden>
