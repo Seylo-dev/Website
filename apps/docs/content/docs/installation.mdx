@@ -60,7 +60,7 @@ Open the link. It works once and expires after one hour. Create the owner with a
 
 Setup then asks for a few optional things, each of which you can skip and change later in **Settings**:
 
-- **Panel domain**: a hostname for the panel itself, with HTTPS. Without one, the panel stays on `http://<server-ip>:3000`.
+- **Panel domain**: a hostname for the panel itself, with HTTPS. Without one, the panel stays on `http://<server-ip>:3000`, unencrypted (see below).
 - **Node wildcard domain**: see the next step.
 - **First project**: a group for your first services.
 
@@ -69,6 +69,10 @@ If the link expired before you used it, run this on the server to get a new one:
 ```bash
 seylo panel setup-link
 ```
+
+<Callout type="warn" title="Plain HTTP until the panel has a domain">
+On `http://<server-ip>:3000` the setup link, your password and your session cookie cross the network unencrypted. Browsers also send a cookie of `http://<server-ip>` to every port of that address, including a service someone else runs there. So set the **Panel domain** before you invite anyone. To stay off plain HTTP from the very first sign-in, open the link through an SSH tunnel instead: run `ssh -L 3000:127.0.0.1:3000 root@203.0.113.10` on your computer and open the same link with `http://localhost:3000` in place of `http://203.0.113.10:3000`.
+</Callout>
 
 </Step>
 <Step>

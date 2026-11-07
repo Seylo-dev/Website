@@ -7,13 +7,24 @@ The same `seylo` binary that runs on your nodes is also a command line for your 
 
 ## Install
 
-Each [release on GitHub](https://github.com/Seylo-dev/App/releases) has the binary for every platform: `seylo_darwin_arm64` and `seylo_darwin_amd64` for macOS, `seylo_linux_amd64` and `seylo_linux_arm64`, and `seylo_windows_amd64.exe` and `seylo_windows_arm64.exe`, with a `checksums.txt`.
+Each [release on GitHub](https://github.com/Seylo-dev/App/releases) has the binary for every platform: `seylo_darwin_arm64` and `seylo_darwin_amd64` for macOS, `seylo_linux_amd64` and `seylo_linux_arm64`, and `seylo_windows_amd64.exe` and `seylo_windows_arm64.exe`. Next to them, `checksums.txt` lists the SHA-256 of every file and `checksums.txt.minisig` is its signature with the release key. Check both before you run the binary: the signature proves the list comes from the Seylo release, and the checksum proves the binary is the one on the list.
+
+You need [minisign](https://jedisct1.github.io/minisign/) for the signature: `brew install minisign`, `apt install minisign` or `dnf install minisign`. Set `FILE` to your platform's file:
 
 ```bash
-curl -fsSLo seylo https://github.com/Seylo-dev/App/releases/latest/download/seylo_darwin_arm64
-chmod +x seylo && sudo mv seylo /usr/local/bin/
+FILE=seylo_darwin_arm64
+BASE=https://github.com/Seylo-dev/App/releases/latest/download
+curl -fsSL -O "$BASE/$FILE" -O "$BASE/checksums.txt" -O "$BASE/checksums.txt.minisig"
+
+minisign -Vm checksums.txt -P RWTwvrETQsecIkFOCm1ceiZwfxVq6sFfiEmJfWnUVv7UBIn0jWm2h1ip &&
+  shasum -a 256 -c --ignore-missing checksums.txt &&
+  chmod +x "$FILE" && sudo mv "$FILE" /usr/local/bin/seylo
 seylo version
 ```
+
+minisign prints `Signature and comment signature verified` with the release in the trusted comment (`seylo 0.1.1 checksums.txt`), and `shasum` prints `seylo_darwin_arm64: OK`. If either check fails, the binary is not installed: delete the files and download them again. On Linux, `sha256sum -c --ignore-missing checksums.txt` does the same as `shasum`. On Windows, install minisign with `scoop install minisign`, run the same `minisign` command, and compare `(Get-FileHash seylo_windows_amd64.exe).Hash` with the file's line in `checksums.txt`.
+
+The public key is the release key from [Security](/security#signed-releases).
 
 ## Sign in
 

@@ -21,6 +21,8 @@ The person who created the panel is its first owner. Only owners change owner ro
 
 The person opens the link and creates their account. **Invites** lists links that were not used yet; **Revoke** makes one stop working.
 
+Give the panel a [domain](/self-hosting/the-panel#give-the-panel-a-domain) before you invite anyone. On `http://<server-ip>:3000` passwords and session cookies cross the network unencrypted, and a service a member runs on `http://<server-ip>:<port>` would receive the session cookies of everyone who uses the panel on that address.
+
 Inviting an admin, and making someone an admin or owner, hands out lasting access, so in the browser it needs a sign-in from the last 15 minutes: otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first. Member invites, sharing and lowering a role do not ask.
 
 ## Sharing projects and services

@@ -36,6 +36,12 @@ As soon as the domain reaches the node, Traefik requests a certificate and the r
 With Cloudflare's proxy (orange cloud) on, set SSL/TLS to **Full (strict)**. Flexible mode sends plain HTTP to the node, which redirects to HTTPS, which loops.
 </Callout>
 
+### The panel behind Cloudflare
+
+The panel's own domain can be proxied by Cloudflare too, with the same **Full (strict)** setting. Requests then reach the node from Cloudflare's addresses, not the visitor's, and Cloudflare passes the visitor's address in its `CF-Connecting-IP` header. Anyone can send that header, so the panel and its API believe it only on requests that came from Cloudflare's published address ranges through the node's own Traefik, its trusted proxy. On any other request, for example one sent straight to the node's IP, the header is ignored and the connection's own address counts.
+
+That way sign-in limits, **Sessions**, the activity log and the command line approval page see each visitor's own address, instead of a few Cloudflare addresses that many people share.
+
 ### Domain options
 
 | Option | What it does |
