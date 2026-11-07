@@ -5,9 +5,9 @@ unauthenticated:
 
 | Route | What |
 | --- | --- |
-| `POST /telemetry` | Anonymous ping from a panel: `{ installId, version, nodes, services }`. Stored as one row per install per day, install id hashed. 60 pings per hour per IP. |
+| `POST /telemetry` | Anonymous ping from a panel: `{ installId, version, nodes, services }`. Stored as one row per install per day, install id hashed. 60 pings per hour per IP (IPv6: per /64). |
 | `GET /telemetry/summary?days=30` | Daily totals and the version spread. Needs `Authorization: Bearer $STATS_TOKEN`; 404 when the token isn't set. |
-| `POST /l` | Upload a troubleshoot report (Markdown body, max 512 KB, 20 uploads per hour per IP). Refused with 422 if it still contains something that looks like a secret. Returns `{ id, url, expiresAt, deleteToken }`. |
+| `POST /l` | Upload a troubleshoot report (Markdown body, max 512 KB, 20 uploads per hour per IP, IPv6 per /64). Refused with 422 if it still contains something that looks like a secret. Returns `{ id, url, expiresAt, deleteToken }`. |
 | `GET /l/:id` | The report as a locked-down HTML page (no scripts, no remote images, `noindex`). `GET /l/:id/raw` returns the Markdown. |
 | `DELETE /l/:id` | Deletes a report early with `Authorization: Bearer <deleteToken>`. |
 | `GET /install.sh` | The installer from the latest GitHub release, served only after it matches the release's signed manifest, cached for 5 minutes. On the `install.` host it is also served at `/`, which is what `curl -fsSL https://install.seylo.dev \| sudo sh` hits. `X-Installer-Version` and `X-Installer-Sha256` name the release and the hash. |
@@ -84,3 +84,6 @@ SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
 - `src/reports/redaction.ts`: the secret patterns a report is checked against. The agent redacts
   before upload; this is the second line of defence. Add a rule here with a test in
   `test/redaction.test.ts` when a new kind of credential shows up in reports.
+- `src/client-ip.ts`: the rate-limit key. With `TRUST_PROXY=true` it is the last `X-Forwarded-For` hop (what
+  Traefik appended), or `cf-connecting-ip` when that hop is in Cloudflare's ranges, kept in the same file.
+  Update the list when Cloudflare announces a change to https://www.cloudflare.com/ips/.

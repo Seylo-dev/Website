@@ -28,8 +28,9 @@ export interface Config {
   /** Public base URL that report links are built on, without a trailing slash: `https://seylo.dev/l`. */
   reportBaseUrl: string;
   /**
-   * Read the client IP from proxy headers for rate limiting. Only safe when the API is reachable
-   * through the proxy alone, otherwise anyone can pick their own rate-limit key.
+   * Read the client IP from proxy headers for rate limiting: the last X-Forwarded-For hop, and
+   * cf-connecting-ip when that hop is a Cloudflare address (see client-ip.ts). Only safe when every
+   * request comes through a proxy that appends that hop, otherwise anyone can pick their own key.
    */
   trustProxy: boolean;
   /** Bearer token for GET /telemetry/summary. Null disables the endpoint. */

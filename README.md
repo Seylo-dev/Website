@@ -37,9 +37,11 @@ Dockerfile:
 | docs    | `apps/docs/Dockerfile`    | `docs.seylo.dev`                     |                                             |
 | api     | `apps/api/Dockerfile`     | `api.seylo.dev`, `install.seylo.dev` | `DATABASE_URL`, see below                   |
 
-The api image trusts proxy headers (`cf-connecting-ip`, `X-Forwarded-For`) for its rate limits, so the api must
-only be reachable through Cloudflare: limit the Easypanel host's ports 80 and 443 to Cloudflare's IP ranges (or
-use Authenticated Origin Pulls).
+The api image sets `TRUST_PROXY=true`: its rate limits key on the last `X-Forwarded-For` hop, the address that
+connected to Easypanel's Traefik, and on `cf-connecting-ip` only when that address is in Cloudflare's IP ranges
+(the list is in `apps/api/src/client-ip.ts`). A client that skips Cloudflare and talks to the host directly is
+limited by its own address, whatever headers it sends. The api container must stay reachable through Traefik only
+(no published port), since Traefik is what appends that last hop.
 
 Every image listens on port 80, Easypanel's default, so there is nothing to type in the domain's port.
 
