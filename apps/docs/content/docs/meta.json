@@ -50,6 +50,7 @@
     "self-hosting/updates",
     "self-hosting/backups",
     "self-hosting/telemetry",
+    "security",
     "self-hosting/uninstall",
     "---Reference---",
     "reference/cli",

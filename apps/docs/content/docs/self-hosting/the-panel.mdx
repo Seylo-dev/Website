@@ -19,7 +19,9 @@ Service logs are not stored by the panel. They stay on each node and are streame
 
 ## Give the panel a domain
 
-After installation the panel answers on `http://<server-ip>:3000`. Point an `A` record at the panel's node and set the hostname as **Panel domain** in **Settings → General**. The panel gets a certificate like any other service; the page shows **Waiting for DNS**, **Getting a certificate**, then **Active**.
+After installation the panel answers on `http://<server-ip>:3000`, which is plain HTTP: passwords and the session cookie cross the network unencrypted, and browsers send a cookie of `http://<server-ip>` to every port of that address, including services other people run there. Set a domain before you invite anyone; until then, reach the panel through an SSH tunnel (`ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, then `http://localhost:3000`).
+
+Point an `A` record at the panel's node and set the hostname as **Panel domain** in **Settings → General**. The panel gets a certificate like any other service; the page shows **Waiting for DNS**, **Getting a certificate**, then **Active**.
 
 Once the domain is active:
 
@@ -34,6 +36,7 @@ To go back to IP:port, clear **Panel domain**. Nodes that moved to the domain fr
 
 A domain is worth setting early:
 
+- it is what puts the panel on HTTPS; set it before you invite people,
 - passkeys need it,
 - GitHub needs an address it can reach to deliver webhooks,
 - nodes you add later join through it, with no certificate pin to carry around.
