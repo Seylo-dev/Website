@@ -8,7 +8,10 @@ import type { InstallerSource } from "../src/installer/source";
 
 export const REPORT_BASE_URL = "https://site.test/l";
 
-const noInstaller: InstallerSource = { get: async () => null };
+const noInstaller: InstallerSource = {
+  get: async () => null,
+  health: () => ({ state: "pending", serving: null, lastCheck: null }),
+};
 
 /**
  * Where a test's data lives. SQLite in memory always; Postgres too when SITE_API_PG_URL points at

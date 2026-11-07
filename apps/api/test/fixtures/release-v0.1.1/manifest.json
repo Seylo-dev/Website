@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "version": "0.1.1",
+  "releasedAt": "2026-11-06T22:49:03.707940843Z",
+  "changelogUrl": "https://github.com/Seylo-dev/App/releases/tag/v0.1.1",
+  "panel": {
+    "image": "ghcr.io/seylo-dev/seylo:0.1.1",
+    "digest": "sha256:c2f4e64c5dfd517bb58eb368d5817b086c7f0ec6cf059be716573372929f3518"
+  },
+  "agents": {
+    "linux-amd64": {
+      "url": "https://github.com/Seylo-dev/App/releases/download/v0.1.1/seylo_linux_amd64",
+      "sha256": "d18963f0ab3e24c4767a7fe1833251c631a55095f1173ea3981c3d9beb271caa",
+      "size": 24301728
+    },
+    "linux-arm64": {
+      "url": "https://github.com/Seylo-dev/App/releases/download/v0.1.1/seylo_linux_arm64",
+      "sha256": "3b4bebcd88387412d9a65db8645c4405b01ae1ae822db518f3e448823bb8fc45",
+      "size": 22347936
+    }
+  },
+  "installer": {
+    "url": "https://github.com/Seylo-dev/App/releases/download/v0.1.1/install.sh",
+    "sha256": "42def138746c9ef9671d2872e2f1ba43eb16724568556fbf17dfb5bdabc64c6d",
+    "size": 35406
+  }
+}

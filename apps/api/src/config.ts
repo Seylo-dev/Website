@@ -2,9 +2,17 @@ import { resolve } from "node:path";
 import brand from "../../../brand/brand.json";
 
 export interface InstallerConfig {
-  /** Where the latest release's installer lives. GitHub redirects this to the newest release asset. */
-  releaseUrl: string;
-  /** How long a fetched installer is served before asking GitHub again. */
+  /**
+   * The app repo's releases page, `https://github.com/<repo>/releases`. Each check resolves
+   * `<releasesUrl>/latest` to a tag once and downloads every file from `<releasesUrl>/download/<tag>/`.
+   */
+  releasesUrl: string;
+  /**
+   * The minisign key release manifests are signed with, from brand.json. Deliberately not an
+   * environment variable: nothing in the deployment can point the API at another key.
+   */
+  publicKey: string;
+  /** How long a verified installer is served before checking the release again. */
   cacheSeconds: number;
   /** Served when the release can't be fetched and nothing is cached. Null = no fallback. */
   localPath: string | null;
@@ -48,8 +56,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     trustProxy: env.TRUST_PROXY === "true",
     statsToken: env.STATS_TOKEN || null,
     installer: {
-      releaseUrl:
-        env.INSTALLER_RELEASE_URL ?? `https://github.com/${brand.github.repo}/releases/latest/download/install.sh`,
+      releasesUrl: (env.INSTALLER_RELEASES_URL ?? `https://github.com/${brand.github.repo}/releases`).replace(
+        /\/+$/,
+        "",
+      ),
+      publicKey: brand.minisignPublicKey,
       cacheSeconds: Number(env.INSTALLER_CACHE_SECONDS ?? 300),
       localPath: env.INSTALL_SCRIPT_PATH ?? (production ? null : devInstallerPath),
     },

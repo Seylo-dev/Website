@@ -14,14 +14,16 @@ export function installerRoutes(source: InstallerSource) {
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
       });
     }
-    return new Response(installer.script, {
-      headers: {
-        // text/plain so opening the URL in a browser shows the script instead of downloading it.
-        "content-type": "text/plain; charset=utf-8",
-        "cache-control": "public, max-age=300",
-        "x-installer-origin": installer.origin,
-      },
-    });
+    const headers: Record<string, string> = {
+      // text/plain so opening the URL in a browser shows the script instead of downloading it.
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "public, max-age=300",
+      "x-installer-origin": installer.origin,
+    };
+    // The release and the hash its signed manifest names, so a download can be checked by hand.
+    if (installer.version) headers["x-installer-version"] = installer.version;
+    if (installer.sha256) headers["x-installer-sha256"] = installer.sha256;
+    return new Response(installer.script, { headers });
   }
 
   return new Elysia({ name: "installer" }).get("/install.sh", serve).get("/", ({ request }) => {

@@ -92,7 +92,7 @@ describe("database errors", () => {
     const broken = createApp({
       config: { trustProxy: true, statsToken: "s", reportBaseUrl: REPORT_BASE_URL },
       sql: failing,
-      installer: { get: async () => null },
+      installer: { get: async () => null, health: () => ({ state: "pending", serving: null, lastCheck: null }) },
     }).app;
     const logged = spyOn(console, "error").mockImplementation(() => {});
     try {

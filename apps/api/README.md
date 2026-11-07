@@ -10,8 +10,8 @@ unauthenticated:
 | `POST /l` | Upload a troubleshoot report (Markdown body, max 512 KB, 20 uploads per hour per IP). Refused with 422 if it still contains something that looks like a secret. Returns `{ id, url, expiresAt, deleteToken }`. |
 | `GET /l/:id` | The report as a locked-down HTML page (no scripts, no remote images, `noindex`). `GET /l/:id/raw` returns the Markdown. |
 | `DELETE /l/:id` | Deletes a report early with `Authorization: Bearer <deleteToken>`. |
-| `GET /install.sh` | The installer from the latest GitHub release, cached for 5 minutes. On the `install.` host it is also served at `/`, which is what `curl -fsSL https://install.seylo.dev \| sudo sh` hits. |
-| `GET /healthz` | `ok` |
+| `GET /install.sh` | The installer from the latest GitHub release, served only after it matches the release's signed manifest, cached for 5 minutes. On the `install.` host it is also served at `/`, which is what `curl -fsSL https://install.seylo.dev \| sudo sh` hits. `X-Installer-Version` and `X-Installer-Sha256` name the release and the hash. |
+| `GET /healthz` | JSON: `status` (`ok` or `degraded`) and `installer` (what is served and how the last release check went). 200 unless there is no verified installer to serve, then 503. |
 
 Reports expire 30 days after upload: reads hide them right away and an hourly sweep deletes them.
 
@@ -56,8 +56,24 @@ SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
 
 - `install.seylo.dev` and `api.seylo.dev` both point at this process.
 - The landing page rewrites `/l/*` here, so report links read `https://seylo.dev/l/<id>`.
-- The installer fetch only accepts a body that starts with `#!`, so a GitHub error page can never be
-  piped into someone's shell. If GitHub is down the last good copy keeps being served.
+- `curl | sudo sh` runs the installer as root before it can check anything itself, so this API checks
+  it first (`src/installer/source.ts`). Every check, at boot and then every 5 minutes:
+  1. resolves `releases/latest` to a tag, once, and downloads `manifest.json`, `manifest.json.minisig`
+     and `install.sh` from that tag, so the three can never come from two releases;
+  2. verifies the manifest's minisign signature with `minisignPublicKey` from `brand/brand.json`
+     (`src/installer/minisign.ts`, the same check as the panel's);
+  3. requires the manifest's `version` to be the tag's and `sha256(install.sh)` to equal
+     `installer.sha256` in the manifest (and its `size`, when set), and the script to start with `#!`.
+
+  Only a script that passes all of it is cached and served. When a check fails (GitHub down, a
+  release without a manifest, a replaced `install.sh`, a bad signature), the last good copy keeps being
+  served, the log gets an `[installer]` error line (`!!! REFUSED` when the files did not check out) and
+  `/healthz` shows `installer.state: "stale"` with the reason. Failed checks are retried every 30 seconds.
+  With no good copy at all, `/install.sh` answers 503 and so does `/healthz` (`"failing"`).
+
+- The release key is not an environment variable on purpose. When the app repo's key changes, change
+  `brand/brand.json` here in the same release, or the site keeps serving the last installer signed with
+  the old key.
 
 ## Code map
 

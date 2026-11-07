@@ -31,7 +31,14 @@ export function createApp({ config, sql, installer }: AppDeps) {
       set.status = 500;
       return "Internal server error";
     })
-    .get("/healthz", () => "ok")
+    // 200 while there is a verified installer to serve (or none was checked yet), even when the
+    // latest check failed: `installer.state` says "stale" then. 503 only when /install.sh can't
+    // serve anything.
+    .get("/healthz", ({ set }) => {
+      const health = installer.health();
+      if (health.state === "failing") set.status = 503;
+      return { status: health.state === "ok" || health.state === "pending" ? "ok" : "degraded", installer: health };
+    })
     .use(
       telemetryRoutes({
         store: createTelemetryStore(sql),
