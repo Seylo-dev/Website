@@ -160,7 +160,7 @@ When ufw or firewalld is active, the installer adds rules for what Seylo needs a
 | 3000 (panel port) | You, until the panel has a domain | The panel, published by Docker, on the panel server |
 | 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | The panel, published by Docker, on the panel server |
 | 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | The agent; the installer allows it in ufw |
-| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | Traefik, published by Docker; it only serves nodes with a certificate from the panel |
+| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | Traefik, published by Docker; it only serves nodes with a certificate from the panel. A joining node also allows it in ufw from the panel's address when the join URL is an IP address, which Docker's rules bypass (see below) |
 | IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | The agent: open each port you want reachable |
 
 Ports published by Docker bypass ufw and firewalld: Docker sends their traffic through its own rules before the host firewall sees it. So 80, 443, 3000, 3443 and 5757 answer from everywhere whatever ufw says, and closing them in ufw does not close them. To limit who reaches them, use your provider's firewall (security groups), which sits outside the server, or rules in Docker's `DOCKER-USER` chain.
