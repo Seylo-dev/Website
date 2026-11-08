@@ -9928,7 +9928,7 @@
       "post": {
         "operationId": "boxes.create",
         "summary": "Create a Box",
-        "description": "Creates a code-server workspace in a project on one node, with a persistent home volume. It joins the project network, so it reaches the project's services on that node by name.",
+        "description": "Creates a code-server workspace in a project on one node, with a persistent home volume. It joins the project network, so it reaches the project's services on that node by name. It starts right away, which needs services.deploy in the project.",
         "tags": [
           "boxes"
         ],
@@ -9971,8 +9971,11 @@
                     "type": "string"
                   },
                   "repository": {
+                    "minLength": 1,
                     "maxLength": 500,
-                    "pattern": "^https://",
+                    "pattern": "^https://[^/@\\s]+(/\\S*)?$",
+                    "description": "https:// git URL, without a user name or token in it.",
+                    "errorMessage": "put no user name or token in a repository URL: everyone who can view the Box would see it. Clone a private repository from the Box's terminal instead",
                     "type": "string"
                   },
                   "idleMinutes": {
@@ -12247,7 +12250,7 @@
       "post": {
         "operationId": "compose.create",
         "summary": "Create a compose stack",
-        "description": "Creates a compose stack and one member service per compose service on one node (members share volumes, so they stay on the same node). Deploys every member when deployNow is true.",
+        "description": "Creates a compose stack and one member service per compose service on one node (members share volumes, so they stay on the same node). Deploys every member when deployNow is true. Beyond services.create, members' environment: blocks need env.edit and deploying needs services.deploy in the project.",
         "tags": [
           "compose"
         ],
@@ -13198,7 +13201,7 @@
       "get": {
         "operationId": "compose.get",
         "summary": "Get a compose stack's file",
-        "description": "Returns where a stack's compose file comes from (with the pasted file) and the member services it created.",
+        "description": "Returns where a stack's compose file comes from (with the pasted file) and the member services it created. A pasted file holds the members' environment values, so it comes back empty with fileHidden true unless the caller holds env.view on the stack and every member.",
         "tags": [
           "compose"
         ],
@@ -13233,7 +13236,8 @@
                   "required": [
                     "stack",
                     "source",
-                    "members"
+                    "members",
+                    "fileHidden"
                   ],
                   "properties": {
                     "stack": {
@@ -14561,9 +14565,8 @@
                               "type": "string"
                             },
                             "yaml": {
-                              "minLength": 1,
                               "maxLength": 524288,
-                              "description": "The compose file (docker-compose.yml).",
+                              "description": "The compose file, empty when hidden.",
                               "type": "string"
                             }
                           }
@@ -15039,6 +15042,9 @@
                           }
                         }
                       }
+                    },
+                    "fileHidden": {
+                      "type": "boolean"
                     }
                   }
                 }
@@ -15356,7 +15362,7 @@
       "post": {
         "operationId": "compose.update",
         "summary": "Change a compose stack's file",
-        "description": "Replaces a stack's compose file. With dryRun the result is the member diff (create, update, delete) and nothing changes; without it members are created, updated or deleted to match, and changed members are deployed.",
+        "description": "Replaces a stack's compose file. With dryRun the result is the member diff (create, update, delete) and nothing changes; without it members are created, updated or deleted to match, and changed members are deployed (env.edit on the stack when a member's env changes, services.deploy when a member is created or changed).",
         "tags": [
           "compose"
         ],
@@ -16489,7 +16495,7 @@
           }
         },
         "x-op-kind": "query",
-        "x-permission": "service:services.logs",
+        "x-permission": "service:logs.view",
         "x-mcp": true
       }
     },
@@ -17341,7 +17347,7 @@
       "post": {
         "operationId": "databases.create",
         "summary": "Create a database",
-        "description": "Creates a Postgres, MySQL, MariaDB, Mongo, Redis, Valkey, KeyDB, Dragonfly or ClickHouse service in a project on one node, with generated credentials (or the ones given) and a data volume. Postgres takes variant pgvector for an image with the vector extension. databases.engines lists versions, variants and notices (KeyDB gets no security fixes; prefer Valkey). Other services on the same node reach it at <name>:<port>; services on other nodes need exposure.",
+        "description": "Creates a Postgres, MySQL, MariaDB, Mongo, Redis, Valkey, KeyDB, Dragonfly or ClickHouse service in a project on one node, with generated credentials (or the ones given) and a data volume. Postgres takes variant pgvector for an image with the vector extension. databases.engines lists versions, variants and notices (KeyDB gets no security fixes; prefer Valkey). Other services on the same node reach it at <name>:<port>; services on other nodes need exposure. It starts right away, which needs services.deploy in the project.",
         "tags": [
           "databases"
         ],
@@ -22175,7 +22181,7 @@
       "post": {
         "operationId": "dockerHub.create",
         "summary": "Create an app from a Docker Hub image",
-        "description": "Creates an app service that runs a Docker Hub image pinned to a tag, with its main port, a volume per mount path and a .env, then deploys it unless deployNow is false. A public main port gets the node's automatic domain when the node has a wildcard domain, otherwise IP:port until a domain is added. Use dockerHub.inspect first to read the image's ports, volumes and env defaults.",
+        "description": "Creates an app service that runs a Docker Hub image pinned to a tag, with its main port, a volume per mount path and a .env, then deploys it unless deployNow is false. A public main port gets the node's automatic domain when the node has a wildcard domain, otherwise IP:port until a domain is added. Use dockerHub.inspect first to read the image's ports, volumes and env defaults. Beyond services.create, an env needs env.edit and deploying needs services.deploy in the project.",
         "tags": [
           "dockerHub"
         ],
@@ -32565,7 +32571,7 @@
       "get": {
         "operationId": "git.listInternalHosts",
         "summary": "List a project's internal git hosts",
-        "description": "Lists the git hosts a project's nodes may clone from internal addresses (private, loopback, link-local, a node's own and the like): recorded when an admin saved a source with an internal host there, by git.allowInternalHost, or by the first start of 0.2 for sources saved before. approvedBy is null for hosts the first start recorded (or whose admin account is gone); usedBy counts the project's generic git and compose stack sources on the host.",
+        "description": "Lists the git hosts a project's nodes may clone from internal addresses (private, loopback, link-local, a node's own and the like): recorded when an admin saved a source with an internal host there, by git.allowInternalHost, or by the first start of 0.2 for sources saved before. approvedBy is null for hosts the first start recorded (or whose admin account is gone); usedBy counts the project's sources that clone from the host: generic git and compose stack git sources by URL, GitHub sources as github.com, and git provider sources by their connection's host.",
         "tags": [
           "git"
         ],
@@ -32613,10 +32619,7 @@
                         ],
                         "properties": {
                           "host": {
-                            "minLength": 1,
-                            "maxLength": 260,
-                            "pattern": "^[A-Za-z0-9.:\\[\\]-]+$",
-                            "description": "A host as recorded for a project, for example \"gitea.lan\", \"10.0.0.7:3000\" or \"[fd00::7]:3000\".",
+                            "description": "A host as recorded for a project (host[:port] of a git URL, lower case), for example \"gitea.lan\", \"git_srv.lan\", \"10.0.0.7:3000\" or \"[fd00::7]:3000\".",
                             "type": "string"
                           },
                           "approvedBy": {
@@ -32703,9 +32706,9 @@
                   },
                   "host": {
                     "minLength": 1,
-                    "maxLength": 260,
-                    "pattern": "^[A-Za-z0-9.:\\[\\]-]+$",
-                    "description": "A host as recorded for a project, for example \"gitea.lan\", \"10.0.0.7:3000\" or \"[fd00::7]:3000\".",
+                    "maxLength": 4500,
+                    "pattern": "^\\S+$",
+                    "description": "A host as recorded for a project (host[:port] of a git URL, lower case), for example \"gitea.lan\", \"git_srv.lan\", \"10.0.0.7:3000\" or \"[fd00::7]:3000\".",
                     "type": "string"
                   }
                 }
@@ -37302,7 +37305,7 @@
       "get": {
         "operationId": "gitProviders.list",
         "summary": "List git provider connections",
-        "description": "Lists the panel's GitLab, Gitea/Forgejo and Bitbucket connections by name, kind and host (never the token), so people can pick one for a service's source. The account and user name are shown to people who manage connections only. Empty for callers who may create or edit services nowhere.",
+        "description": "Lists the panel's GitLab, Gitea/Forgejo and Bitbucket connections by name, kind and host (never the token), so people can pick one for a service's source. The account and user name are shown to people who manage connections only. Empty, with hidden true, for callers who may create or edit services nowhere.",
         "tags": [
           "gitProviders"
         ],
@@ -37324,7 +37327,8 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "items"
+                    "items",
+                    "hidden"
                   ],
                   "properties": {
                     "items": {
@@ -37439,6 +37443,10 @@
                           }
                         }
                       }
+                    },
+                    "hidden": {
+                      "description": "True when the caller may not see the connections: the list is then empty whatever is connected, and a provider source shows its repository and branch read-only.",
+                      "type": "boolean"
                     }
                   }
                 }
@@ -40995,7 +41003,7 @@
       "post": {
         "operationId": "maintenance.set",
         "summary": "Set a service's maintenance page",
-        "description": "Turns a service's maintenance mode on or off and sets its own page or message. Fields left out keep their value; html null falls back to the global page. Takes effect on the node right away, without a deploy.",
+        "description": "Turns a service's maintenance mode on or off and sets its own page or message. Fields left out keep their value; html null falls back to the global page. Takes effect on the node right away, without a deploy. The page is also the down page, and custom HTML is served with a Content-Security-Policy that blocks scripts and frames; styles, images and fonts load inline or over HTTPS.",
         "tags": [
           "maintenance"
         ],
@@ -41136,7 +41144,7 @@
       "post": {
         "operationId": "maintenance.setGlobal",
         "summary": "Set the global maintenance page",
-        "description": "Turns panel-wide maintenance mode on or off and sets the global page and message. Fields left out keep their value; html null goes back to the built-in page. The Panel project is never put in maintenance.",
+        "description": "Turns panel-wide maintenance mode on or off and sets the global page and message. Fields left out keep their value; html null goes back to the built-in page. The Panel project is never put in maintenance. Custom HTML is served with a Content-Security-Policy that blocks scripts and frames; styles, images and fonts load inline or over HTTPS.",
         "tags": [
           "maintenance"
         ],
@@ -42464,6 +42472,104 @@
         },
         "x-op-kind": "query",
         "x-permission": "nodes.manage",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/nodes.choices": {
+      "get": {
+        "operationId": "nodes.choices",
+        "summary": "List nodes to place a service on",
+        "description": "Lists the nodes a new service can go on (every node that is not disabled, panel node first) with only what a create form needs: name, online or offline, wildcard domain and CPU architecture. For anyone who may create services somewhere (services.create on a project) and for nodes.view; anyone else gets an empty list. nodes.list has the full rows.",
+        "tags": [
+          "nodes"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "nodes"
+                  ],
+                  "properties": {
+                    "nodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "status",
+                          "wildcardDomain",
+                          "arch"
+                        ],
+                        "properties": {
+                          "id": {
+                            "pattern": "^[a-z0-9]{16}$",
+                            "description": "Panel-issued id.",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "online",
+                                "type": "string"
+                              },
+                              {
+                                "const": "offline",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "wildcardDomain": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "arch": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "signed-in",
         "x-mcp": true
       }
     },
@@ -53146,7 +53252,7 @@
       "post": {
         "operationId": "services.create",
         "summary": "Create an app or cron service",
-        "description": "Creates an app or cron service in a project on one node. The source can be set now or later (services.setSource, github.connectRepo). Nothing runs until the first deploy, unless deployNow is true. Databases, Boxes, compose stacks and templates have their own create ops.",
+        "description": "Creates an app or cron service in a project on one node. The source can be set now or later (services.setSource, github.connectRepo). Nothing runs until the first deploy, unless deployNow is true (which needs services.deploy in the project). Databases, Boxes, compose stacks and templates have their own create ops.",
         "tags": [
           "services"
         ],
@@ -64023,7 +64129,7 @@
       "post": {
         "operationId": "templates.create",
         "summary": "Install a template",
-        "description": "Runs the template and creates its services in the project on one node, with generated passwords stored as secrets, then deploys them unless deployNow is false. Fails without creating anything when a name conflicts.",
+        "description": "Runs the template and creates its services in the project on one node, with generated passwords stored as secrets, then deploys them unless deployNow is false. Fails without creating anything when a name conflicts. Beyond services.create it needs env.edit for the template's env, files.write for file mounts, domains.edit for custom domains and services.deploy to deploy (a template with a database always starts it).",
         "tags": [
           "templates"
         ],

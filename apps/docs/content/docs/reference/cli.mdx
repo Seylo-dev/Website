@@ -32,7 +32,7 @@ Usage:
   seylo agent [flags]
 
 Flags:
-      --can-build            allow builds on this node (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
+      --can-build            let this node build; the panel's owner still turns Can build on for it under Nodes (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
       --force                join again although this node already joined a panel (keeps the rest of config.yml)
   -h, --help                 help for agent
       --insecure             accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
@@ -64,7 +64,7 @@ Usage:
   seylo join <panel-url> --token <token> [flags]
 
 Flags:
-      --can-build            allow builds on this node (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
+      --can-build            let this node build; the panel's owner still turns Can build on for it under Nodes (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
       --force                join again although this node already joined a panel (keeps the rest of config.yml)
   -h, --help                 help for join
       --insecure             accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
