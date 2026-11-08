@@ -46,7 +46,7 @@ Pick one of two flags. The script refuses to run without exactly one:
 
 Both delete every recovery code, since they are keyed with the old key, and print whose. Those people make new ones in **Settings → Security**.
 
-The script is not a `seylo` command yet: it runs from the panel's image, on the panel's node, with the panel stopped. Stop the agent first so it does not start the panel again, and start it once the script is done:
+The script is not a `seylo` command yet: it runs from the panel's image, on the panel's node, with the panel stopped. Run the block as root (`sudo -i` first). Stop the agent first so it does not start the panel again, and start it once the script is done:
 
 ```bash
 systemctl stop seylo                      # the agent; services keep running
@@ -57,9 +57,8 @@ docker stop "$PANEL"
 docker run --rm -v /var/lib/seylo/panel:/var/lib/seylo/panel -e SEYLO_DATA_DIR=/var/lib/seylo/panel \
   "$IMAGE" bun apps/panel/dist/rotate-master-key.js --new-panel-identity
 
-systemctl start seylo
-seylo panel start                         # starts the panel with the new key
-seylo panel status
+systemctl start seylo                     # the agent starts the panel again by itself, with the new key
+seylo panel status                        # only if it says stopped: seylo panel start
 ```
 
 Use `--keep-panel-identity` in place of `--new-panel-identity` when only `master.key` leaked. The script prints how many values it sealed again and, with `--new-panel-identity`, every node to join again.
