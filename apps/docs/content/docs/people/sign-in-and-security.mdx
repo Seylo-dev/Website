@@ -52,6 +52,8 @@ The **Security change** alert (see [Alerts and notifications](/features/notifica
 
 You get recovery codes once, right after turning it on. Each signs you in once if you lose your authenticator; save them somewhere safe. The page tells you how many are left and makes new ones on request (the old ones stop working). Turning the authenticator off needs a current code or an unused recovery code, and deletes the recovery codes.
 
+After a sign-in with a recovery code, the panel warns when three or fewer are left. New in 0.2: the sign-in step offers **Use a recovery code** only while the account has an unused one. Once they are used up, or [`seylo panel rotate-key`](/self-hosting/backups#if-a-copy-leaked) deleted them, it takes only a code from the authenticator app and says "This account has no recovery codes left. If you lose your authenticator app, an owner can remove this account and invite you again." Sign in with the app and make new codes here.
+
 ## Passkeys
 
 **Passkeys → Add a passkey** lets you sign in with Touch ID, Windows Hello, your phone or a security key instead of a password. Passkey sign-in checks that it is really you on the device, so it does not ask for a 2FA code on top.

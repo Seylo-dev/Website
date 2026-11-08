@@ -107,6 +107,10 @@ Expected, once. Sessions made before 0.2 have no session key, so the panel asks 
 New in 0.2. Another site on the same address set a second session cookie, so the panel uses neither. Clear the browser's cookies for the panel's address and sign in again. See [Sessions](/people/sign-in-and-security#sessions).
 </Accordion>
 
+<Accordion title="Sign-in offers no recovery code">
+New in 0.2. The account has no unused recovery codes: they were used up, or `seylo panel rotate-key` deleted them. The sign-in step then takes only a code from the authenticator app and says "This account has no recovery codes left." Sign in with the app and make new codes in **Settings → Security**. Without the app, an owner can remove the account and invite the person again. See [Authenticator app](/people/sign-in-and-security#authenticator-app-2fa).
+</Accordion>
+
 <Accordion title="Every node went offline after reinstalling the panel">
 New in 0.2. Nodes remember the panel they joined and refuse a panel installed from scratch, a restored `panel.db` of another panel, or a panel after a master key rotation with `--new-panel-identity`. `seylo logs` on a node says "answers as another panel" or "answers with another panel identity key". Join each node again with a new command from **Add node** and `--force` added. After a key rotation, `seylo panel rotate-key` printed the exact command for each node, with the new pin. `--force` keeps the node's own settings in `/var/lib/seylo/config.yml`. See [The panel's identity](/guides/adding-nodes#the-panels-identity).
 </Accordion>

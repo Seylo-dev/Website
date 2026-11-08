@@ -44,7 +44,7 @@ Pick one of two flags. The command refuses to run without exactly one:
 | `--new-panel-identity` | `panel.db` leaked, usually together with `master.key` (a copy of the data dir, a backup) | Drops the panel's identity key, which signs database web UI and Box tickets and proves the panel to its nodes, and the load balancer CA; the panel makes new ones when it starts. It also replaces `agent-tls.key`, the key nodes pin while the panel has no domain, since it is in the same copy, so the pin changes. Every node then refuses the panel until it is joined again with `seylo join --force` (see [The panel's identity](/guides/adding-nodes#the-panels-identity)); the command prints the exact command for each node. |
 | `--keep-panel-identity` | Only `master.key` leaked; `panel.db` never did | Seals the identity key and the load balancer CA again with the new key and keeps `agent-tls.key`, so nodes keep working |
 
-Both delete every recovery code, since they are keyed with the old key, and print whose. Those people make new ones in **Settings → Security**.
+Both delete every recovery code, since they are keyed with the old key, and print whose. Those people make new ones in **Settings → Security**; until then, sign-in offers them no recovery code.
 
 Run it as root on the panel's node:
 
