@@ -152,20 +152,24 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --yes
 
 ## Firewalls
 
-When ufw or firewalld is active, the installer opens what Seylo needs and prints what is left to you:
+When ufw or firewalld is active, the installer adds rules for what Seylo needs and prints what is left to you:
 
-| Port | Who needs it | Opened by the installer |
+| Port | Who needs it | How it is served |
 | --- | --- | --- |
-| 80, 443 | Everyone: your sites | Yes |
-| 3000 (panel port) | You, until the panel has a domain | Yes, on the panel server |
-| 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | Yes, on the panel server |
-| 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | Yes (ufw) |
-| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | A joining node allows it from the panel's address when the join URL is an IP address; allow it from your other nodes yourself |
-| IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | No: open each port you want reachable |
+| 80, 443 | Everyone: your sites | Traefik, published by Docker |
+| 3000 (panel port) | You, until the panel has a domain | The panel, published by Docker, on the panel server |
+| 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | The panel, published by Docker, on the panel server |
+| 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | The agent; the installer allows it in ufw |
+| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | Traefik, published by Docker; it only serves nodes with a certificate from the panel |
+| IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | The agent: open each port you want reachable |
 
-The IP:port addresses the panel shows are served by the agent itself, not published through Docker, so the host firewall applies to them. Docker's own published ports bypass ufw, which is why Seylo does not use them. When a node's firewall is on, the panel shows the command that opens each port next to the address, and the node health check names the ones that are still closed.
+Ports published by Docker bypass ufw and firewalld: Docker sends their traffic through its own rules before the host firewall sees it. So 80, 443, 3000, 3443 and 5757 answer from everywhere whatever ufw says, and closing them in ufw does not close them. To limit who reaches them, use your provider's firewall (security groups), which sits outside the server, or rules in Docker's `DOCKER-USER` chain.
 
-Cloud firewalls (security groups) are not touched: allow the same ports there.
+The IP:port addresses the panel shows are served by the agent itself, not published through Docker, so the host firewall applies to them. When a node's firewall is on, the panel shows the command that opens each port next to the address, and the node health check names the ones that are still closed.
+
+### Keeping the panel private
+
+To reach the panel only over a VPN such as Tailscale or WireGuard, close 3000 and 3443 in your provider's firewall and open the panel at the server's VPN address (`http://<VPN address>:3000`). VPN traffic arrives inside the server, so the provider's firewall does not stop it. Open it at that address the first time too: join commands use the address you set the panel up at, so your other nodes then reach it over the VPN as well and need to be on it. Leave 80 open while the panel or your sites use Let's Encrypt certificates, and 443 for your sites.
 
 ## Docker live-restore
 
