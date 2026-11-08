@@ -51,6 +51,7 @@ const tagNames: Record<string, string> = {
   settings: "Settings",
   setup: "Setup",
   system: "System",
+  tailscale: "Tailscale",
   telemetry: "Telemetry",
   templates: "Templates",
   terminals: "Console and shell",
