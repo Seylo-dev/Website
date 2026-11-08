@@ -6,14 +6,9 @@ export function BrandLogo() {
     <span className="inline-flex items-center gap-2.5">
       <svg width={24} height={24} viewBox="0 0 28 28" aria-hidden="true">
         <rect width="28" height="28" rx="7" fill="#2563EB" />
-        <path
-          d="M18.5 9.2c-1.4-1.3-3.4-1.8-5.2-1.3-2.4.6-3.2 3.1-1.2 4.4.9.6 2.2.9 3.4 1.3 2.6.8 3 3.6.7 4.9-1.9 1.1-4.5.7-6.1-.8"
-          stroke="#FFFFFF"
-          strokeWidth="2.1"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <rect x="5.5" y="6.25" width="13.5" height="4" rx="1.5" fill="#FFFFFF" />
+        <rect x="9" y="12" width="13.5" height="4" rx="1.5" fill="#FFFFFF" />
+        <rect x="5.5" y="17.75" width="13.5" height="4" rx="1.5" fill="#FFFFFF" />
       </svg>
       <span className="text-[15px] font-semibold">{brand.name}</span>
       <span className="rounded-md bg-fd-accent px-1.75 py-0.5 text-[11.5px] font-medium text-fd-accent-foreground">
