@@ -27,6 +27,6 @@ That is all: no hostnames, domains, IP addresses, emails, project or service nam
 
 ## How often and where
 
-With telemetry on, the panel sends the report every 24 hours, at a time spread over the day so panels don't all report at once. It goes to `https://api.seylo.dev/telemetry`. The receiving end keeps one row per install per day and drops any other field, so even the exact send times are not stored.
+With telemetry on, the panel sends the report every 24 hours, at a time spread over the day so panels don't all report at once. It goes to `https://api.seylo.dev/telemetry`. The receiving end keeps one row per install per day and drops any other field, so even the exact send times are not stored. It also caps how many new installs it counts per day, per address and in total, so made-up install ids can't fill its database; a panel turned away by that cap is counted with its next report.
 
 Turning telemetry off stops the reports at once.

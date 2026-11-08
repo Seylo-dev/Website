@@ -29,7 +29,7 @@ export interface DatabaseOptions {
   bootWaitMs?: number;
 }
 
-// Two small tables, so plain SQL with idempotent CREATEs instead of a migration tool. If a table
+// Three small tables, so plain SQL with idempotent CREATEs instead of a migration tool. If a table
 // ever needs a change, add an `ALTER TABLE ... ADD COLUMN` step here guarded so it runs once.
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS telemetry_daily (
@@ -48,6 +48,13 @@ const SCHEMA = [
     expires_at        BIGINT NOT NULL  -- unix ms
   )`,
   `CREATE INDEX IF NOT EXISTS reports_expires_at ON reports (expires_at)`,
+  // What the site took in per day, against the budgets in daily-limits.ts.
+  `CREATE TABLE IF NOT EXISTS daily_budget (
+    day  TEXT   NOT NULL, -- YYYY-MM-DD, UTC
+    kind TEXT   NOT NULL, -- reportBytes, telemetryInstalls
+    used BIGINT NOT NULL,
+    PRIMARY KEY (day, kind)
+  )`,
 ];
 
 // A few short queries per request and an hourly sweep: a handful of connections is plenty.

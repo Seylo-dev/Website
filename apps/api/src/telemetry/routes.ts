@@ -3,10 +3,16 @@ import { Elysia, t } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 import { clientKey } from "../client-ip";
 import { safeEqual } from "../crypto";
+import { createDailyKeyLimit, type DailyBudget } from "../daily-limits";
+import { secondsUntilUtcMidnight } from "../utc-day";
 import type { TelemetryStore } from "./store";
 
 interface TelemetryRoutesOptions {
   store: TelemetryStore;
+  /** New installs the site counts per day from everyone together. */
+  budget: DailyBudget;
+  /** New installs one address (IPv6: one /64) may start a row for per day. Tests lower it. */
+  newInstallsPerDayPerIp?: number;
   trustProxy: boolean;
   statsToken: string | null;
   /** The listening server (null under `app.handle()`): the address of a connection comes from it. */
@@ -16,8 +22,19 @@ interface TelemetryRoutesOptions {
 // The panel pings about once an hour; this leaves room for many panels behind one NAT
 // while keeping a single client from flooding the table.
 const PINGS_PER_HOUR_PER_IP = 60;
+// A panel pings once a day, so this is how many panels one address can stand for. Without it, one
+// address could start a row with a made-up install id on every allowed ping: 1,440 a day.
+export const NEW_INSTALLS_PER_DAY_PER_IP = 100;
 
-export function telemetryRoutes({ store, trustProxy, statsToken, getServer }: TelemetryRoutesOptions) {
+export function telemetryRoutes({
+  store,
+  budget,
+  newInstallsPerDayPerIp = NEW_INSTALLS_PER_DAY_PER_IP,
+  trustProxy,
+  statsToken,
+  getServer,
+}: TelemetryRoutesOptions) {
+  const newInstalls = createDailyKeyLimit({ max: newInstallsPerDayPerIp });
   return new Elysia({ name: "telemetry" })
     .use(
       rateLimit({
@@ -33,8 +50,26 @@ export function telemetryRoutes({ store, trustProxy, statsToken, getServer }: Te
     )
     .post(
       "/telemetry",
-      async ({ body, set }) => {
-        await store.record(body);
+      async ({ body, request, set }) => {
+        const now = new Date();
+        // An install that already pinged today only updates its row: nothing new is stored.
+        if (await store.refresh(body, now)) {
+          set.status = 204;
+          return;
+        }
+        // A new row. The address's own daily count first, so an address past it takes nothing
+        // from the shared budget.
+        if (!newInstalls.take(clientKey(request, getServer(), trustProxy), now)) {
+          set.status = 429;
+          set.headers["retry-after"] = String(secondsUntilUtcMidnight(now));
+          return { error: "too_many_installs", message: "Too many new installs from this address today." };
+        }
+        if (!(await budget.take("telemetryInstalls", 1, now))) {
+          set.status = 503;
+          set.headers["retry-after"] = String(secondsUntilUtcMidnight(now));
+          return { error: "daily_limit", message: "The site has counted all the installs it takes today." };
+        }
+        await store.record(body, now);
         set.status = 204;
       },
       {

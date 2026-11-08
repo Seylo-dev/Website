@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import brand from "../../../brand/brand.json";
 import { loadConfig } from "../src/config";
+import { DEFAULT_DAILY_BUDGETS } from "../src/daily-limits";
 
 describe("config", () => {
   test("serves install.sh from the app repo's releases, checked with the release key in brand.json", () => {
@@ -26,5 +27,22 @@ describe("config", () => {
     expect(config.installer.releasesUrl).toBe("https://mirror.test/releases");
     expect(config.installer.publicKey).toBe(brand.minisignPublicKey);
     expect(config.installer.localPath).toBe("/x");
+  });
+
+  test("daily budgets: 2 GiB of reports and 50,000 new installs unless set, 0 turns one off", () => {
+    expect(loadConfig({}).budgets).toEqual(DEFAULT_DAILY_BUDGETS);
+    expect(DEFAULT_DAILY_BUDGETS).toEqual({ reportBytes: 2 * 1024 ** 3, telemetryInstalls: 50_000 });
+    expect(loadConfig({ REPORT_MIB_PER_DAY: "512", TELEMETRY_INSTALLS_PER_DAY: " 0 " }).budgets).toEqual({
+      reportBytes: 512 * 1024 ** 2,
+      telemetryInstalls: 0,
+    });
+    expect(loadConfig({ REPORT_MIB_PER_DAY: "" }).budgets.reportBytes).toBe(DEFAULT_DAILY_BUDGETS.reportBytes);
+  });
+
+  test("a budget that isn't a whole number stops the API instead of being guessed at", () => {
+    for (const value of ["2GiB", "-1", "1.5", "1e9", "9999999999"]) {
+      expect(() => loadConfig({ REPORT_MIB_PER_DAY: value })).toThrow("REPORT_MIB_PER_DAY must be a whole number");
+    }
+    expect(() => loadConfig({ TELEMETRY_INSTALLS_PER_DAY: "lots" })).toThrow("TELEMETRY_INSTALLS_PER_DAY");
   });
 });

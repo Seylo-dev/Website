@@ -18,13 +18,18 @@ export interface CreatedReport extends StoredReport {
 // The timestamps are BIGINT columns, which Postgres returns as strings.
 type ReportRow = { id: string; body: string; createdAt: number | string; expiresAt: number | string };
 
+/**
+ * The text as it is stored. Postgres TEXT can't hold a NUL byte (SQLSTATE 22021) and log lines with
+ * binary garbage in them do carry one, so it becomes U+FFFD, the mark the page shows for it anyway.
+ * Replaced, not removed, so no two pieces the secret check saw apart are joined into one. U+FFFD
+ * is 3 bytes in UTF-8, so the stored body can be up to 3 times the upload.
+ */
+export const storedReportBody = (text: string) => text.replaceAll("\0", "\uFFFD");
+
 export function createReportStore(sql: SQL) {
   return {
     async create(text: string, now = Date.now()): Promise<CreatedReport> {
-      // Postgres TEXT can't hold a NUL byte (SQLSTATE 22021) and log lines with binary garbage in
-      // them do carry one, so it becomes U+FFFD, the mark the page shows for it anyway. Replaced,
-      // not removed, so no two pieces the secret check saw apart are joined into one.
-      const body = text.replaceAll("\0", "\uFFFD");
+      const body = storedReportBody(text);
       // 128 random bits: the link is the only thing protecting a report, so it must not be guessable.
       const report = { id: randomToken(16), body, createdAt: now, expiresAt: now + REPORT_TTL_MS };
       const deleteToken = randomToken(24);

@@ -1,10 +1,17 @@
 import { createApp } from "./app";
-import { loadConfig } from "./config";
+import { type Config, loadConfig } from "./config";
 import { type Database, openDatabase } from "./db";
 import { createInstallerSource } from "./installer/source";
 import { MAX_REPORT_BYTES } from "./reports/routes";
 
-const config = loadConfig();
+let config: Config;
+try {
+  config = loadConfig();
+} catch (error) {
+  // A setting that isn't usable: say which and stop.
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+}
 
 let db: Database;
 try {

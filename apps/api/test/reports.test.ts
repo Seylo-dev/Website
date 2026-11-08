@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { createApp } from "../src/app";
+import { DEFAULT_DAILY_BUDGETS } from "../src/daily-limits";
 import { MAX_REPORT_BYTES } from "../src/reports/routes";
 import { REPORT_TTL_MS } from "../src/reports/store";
 import { backends, closeTestDatabases, REPORT_BASE_URL, request, testApp } from "./helpers";
@@ -71,6 +72,31 @@ describe.each(backends)("troubleshoot reports ($name)", (backend) => {
     expect(await reports.purgeExpired(REPORT_TTL_MS)).toBe(1);
   });
 
+  test("stops taking reports from every address once the day's bytes are spent", async () => {
+    const { app } = await testApp({ backend, budgets: { reportBytes: 100 } });
+    const warn = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      // A refused upload takes nothing from the budget.
+      expect((await app.handle(upload(`token=ghp_${"a".repeat(36)} ${"x".repeat(60)}`, "192.0.2.1"))).status).toBe(422);
+      expect((await app.handle(upload("x".repeat(60), "192.0.2.1"))).status).toBe(201);
+      // Another address, still under its own hourly limit, gets the 503 too.
+      const refused = await app.handle(upload("x".repeat(41), "198.51.100.1"));
+      expect(refused.status).toBe(503);
+      expect(await refused.json()).toMatchObject({ error: "daily_limit" });
+      const retryAfter = Number(refused.headers.get("retry-after"));
+      expect(retryAfter).toBeGreaterThan(0);
+      expect(retryAfter).toBeLessThanOrEqual(86_400);
+      // What is left still fits. A NUL byte counts as the 3 bytes of U+FFFD it is stored as.
+      expect((await app.handle(upload("\u0000".repeat(14), "203.0.113.1"))).status).toBe(503);
+      expect((await app.handle(upload("x".repeat(40), "203.0.113.1"))).status).toBe(201);
+      expect((await app.handle(upload("x", "203.0.113.2"))).status).toBe(503);
+      // Reading is never affected.
+      expect((await app.handle(request("/l/AAAAAAAAAAAAAAAAAAAAAA"))).status).toBe(404);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   test("rate limits uploads per client", async () => {
     const { app } = await testApp({ backend });
     const statuses: number[] = [];
@@ -90,7 +116,7 @@ describe("database errors", () => {
       throw Object.assign(new Error("Connection timeout after 10s"), { code: "ERR_POSTGRES_CONNECTION_TIMEOUT" });
     }) as unknown as import("bun").SQL;
     const broken = createApp({
-      config: { trustProxy: true, statsToken: "s", reportBaseUrl: REPORT_BASE_URL },
+      config: { trustProxy: true, statsToken: "s", reportBaseUrl: REPORT_BASE_URL, budgets: DEFAULT_DAILY_BUDGETS },
       sql: failing,
       installer: { get: async () => null, health: () => ({ state: "pending", serving: null, lastCheck: null }) },
     }).app;

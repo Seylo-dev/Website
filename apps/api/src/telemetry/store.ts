@@ -1,5 +1,6 @@
 import type { SQL } from "bun";
 import { sha256Hex } from "../crypto";
+import { utcDay } from "../utc-day";
 
 export interface TelemetryPing {
   /** Random id the panel generates once at install. Hashed before it is stored. */
@@ -21,8 +22,6 @@ export interface VersionTotals {
   installs: number;
 }
 
-const utcDay = (now: Date) => now.toISOString().slice(0, 10);
-
 // Postgres returns COUNT and SUM as strings (they are BIGINT there); SQLite returns numbers.
 type Counted<T> = { [K in keyof T]: T[K] extends number ? number | string : T[K] };
 
@@ -33,6 +32,18 @@ type Counted<T> = { [K in keyof T]: T[K] extends number ? number | string : T[K]
  */
 export function createTelemetryStore(sql: SQL) {
   return {
+    /**
+     * Updates today's row of an install that already pinged today. False when it has none yet:
+     * then `record` starts one, which is what the daily budget counts.
+     */
+    async refresh(ping: TelemetryPing, now = new Date()): Promise<boolean> {
+      const result = await sql`
+        UPDATE telemetry_daily SET version = ${ping.version}, nodes = ${ping.nodes}, services = ${ping.services}
+        WHERE day = ${utcDay(now)} AND install_hash = ${sha256Hex(ping.installId)}
+      `;
+      return result.count > 0;
+    },
+
     async record(ping: TelemetryPing, now = new Date()): Promise<void> {
       await sql`
         INSERT INTO telemetry_daily (day, install_hash, version, nodes, services)
