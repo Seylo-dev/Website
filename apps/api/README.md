@@ -55,7 +55,8 @@ SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
 ## Where it sits
 
 - `install.seylo.dev` and `api.seylo.dev` both point at this process.
-- The landing page rewrites `/l/*` here, so report links read `https://seylo.dev/l/<id>`.
+- The landing page redirects `/l` and `/l/*` here with a 307, so report links read `https://seylo.dev/l/<id>`
+  and uploads to `https://seylo.dev/l` arrive here from the visitor, through Cloudflare.
 - `curl | sudo sh` runs the installer as root before it can check anything itself, so this API checks
   it first (`src/installer/source.ts`). Every check, at boot and then every 5 minutes:
   1. resolves `releases/latest` to a tag, once, and downloads `manifest.json`, `manifest.json.minisig`

@@ -37,6 +37,7 @@ Collects what someone helping you would ask for (versions, health check results,
 - `--dry-run` (or `--print`) prints the report instead of uploading it, so you can read it first.
 - The upload is refused if the report still contains something that looks like a secret. Nothing is stored in that case.
 - Anyone with the link can read the report. It is not indexed by search engines and is deleted after 30 days.
+- The upload goes to `seylo.dev`, which redirects it to `api.seylo.dev`, so the node needs outbound HTTPS to both. The link opens on `api.seylo.dev` as well.
 
 ## Common problems
 

@@ -11,13 +11,14 @@ bun run build    # standalone output, what the Dockerfile ships
 bun run start    # serves the build (Next warns about standalone; it still works)
 ```
 
-| Var            | Default                 | What                                                                    |
-| -------------- | ----------------------- | ----------------------------------------------------------------------- |
-| `PORT`         | `3000`                  | Port for `dev` and `start`                                              |
-| `SITE_API_URL` | `http://localhost:4000` | The site API. `/l` and `/l/*` (troubleshoot reports) are proxied there. |
+| Var    | Default | What                       |
+| ------ | ------- | -------------------------- |
+| `PORT` | `3000`  | Port for `dev` and `start` |
 
-`SITE_API_URL` is read at build time (the rewrite is baked into the build). The Dockerfile defaults it to
-`https://api.seylo.dev`.
+`/l` and `/l/*` (troubleshoot uploads and report links) redirect with a 307 to the site API's public URL from
+`brand/brand.json` (`https://api.seylo.dev`), in dev too. To try reports against a local API, talk to it
+directly: `seylo troubleshoot --site http://localhost:4000` and `http://localhost:4000/l/<id>`. The root README
+("Deploy on Easypanel") says why this is a redirect and not a proxy.
 
 Names, URLs and the GitHub repo come from `brand/brand.json` through `lib/site.ts`.
 

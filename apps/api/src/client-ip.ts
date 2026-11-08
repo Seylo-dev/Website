@@ -137,7 +137,8 @@ function lastHop(header: string | null): Address | null {
  *
  * Without `trustProxy` that is the address of the connection. With it, the API sits behind a proxy
  * that appends the address connecting to it to X-Forwarded-For and is the only way in: on Easypanel,
- * visitor -> Cloudflare -> Traefik -> this container. Traefik also answers clients that skip
+ * visitor -> Cloudflare -> Traefik -> this container. Troubleshoot uploads come that way too: the
+ * landing redirects seylo.dev/l here instead of proxying it. Traefik also answers clients that skip
  * Cloudflare: their cf-connecting-ip reaches the API untouched, and so can the start of their
  * X-Forwarded-For (Traefik keeps it when its forwardedHeaders trust the sender), so:
  *

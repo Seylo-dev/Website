@@ -4,12 +4,12 @@ The repo behind [seylo.dev](https://seylo.dev): the landing page, the docs and t
 workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and the templates) lives in
 [Seylo-dev/App](https://github.com/Seylo-dev/App).
 
-| Folder                               | Stack                 | Serves                                                    |
-| ------------------------------------ | --------------------- | --------------------------------------------------------- |
-| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4   | `seylo.dev`; proxies `seylo.dev/l/*` (reports) to the API |
-| [`apps/docs`](apps/docs)             | Next 16, Fumadocs     | `docs.seylo.dev`, with the API and CLI references         |
-| [`apps/api`](apps/api)               | Bun, Elysia, Postgres | `api.seylo.dev` (telemetry, reports), `install.seylo.dev` |
-| [`tools/hero-shot`](tools/hero-shot) | Playwright            | The landing's hero image, captured from a running panel   |
+| Folder                               | Stack                 | Serves                                                      |
+| ------------------------------------ | --------------------- | ----------------------------------------------------------- |
+| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4   | `seylo.dev`; redirects `seylo.dev/l/*` (reports) to the API |
+| [`apps/docs`](apps/docs)             | Next 16, Fumadocs     | `docs.seylo.dev`, with the API and CLI references           |
+| [`apps/api`](apps/api)               | Bun, Elysia, Postgres | `api.seylo.dev` (telemetry, reports), `install.seylo.dev`   |
+| [`tools/hero-shot`](tools/hero-shot) | Playwright            | The landing's hero image, captured from a running panel     |
 
 Names, domains and the GitHub repos come from [`brand/brand.json`](brand/brand.json).
 
@@ -43,6 +43,12 @@ connected to Easypanel's Traefik, and on `cf-connecting-ip` only when that addre
 limited by its own address, whatever headers it sends. The api container must stay reachable through Traefik only
 (no published port), since Traefik is what appends that last hop.
 
+`seylo troubleshoot` uploads its reports to `seylo.dev/l`, and report links read `seylo.dev/l/<id>`. The landing
+answers both with a 307 to `api.seylo.dev` (the api URL in `brand/brand.json`), which keeps the method and the
+body, so uploads come in through Cloudflare and Traefik like every other api request and are limited per visitor.
+Don't turn it back into a proxy: the landing would then be the visitor, and every upload from everyone would share
+one 20-an-hour budget.
+
 Every image listens on port 80, Easypanel's default, so there is nothing to type in the domain's port.
 
 The api keeps telemetry and reports in Postgres and needs no volume. Add a Postgres service to the same
@@ -55,8 +61,10 @@ are not copied to Postgres. Export them first if they matter, then remove the vo
 Nothing else is needed. Optional:
 
 - `STATS_TOKEN` on the api: enables `GET /telemetry/summary` (see `apps/api/.env.example` for the rest).
-- `SITE_API_URL` on the landing and `NEXT_PUBLIC_SITE_URL` on the docs, only if the domains change. They are
-  baked in at build time (Easypanel passes env to the build), so redeploy after changing them.
+- `NEXT_PUBLIC_SITE_URL` on the docs, only if the domains change. It is baked in at build time (Easypanel passes
+  env to the build), so redeploy after changing it.
+
+The landing needs no variables.
 
 To try an image locally: `docker build -f apps/docs/Dockerfile -t seylo-docs . && docker run -p 3001:80 seylo-docs`.
 
