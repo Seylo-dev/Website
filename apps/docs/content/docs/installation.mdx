@@ -9,7 +9,7 @@ description: Install the panel and the first node on one server with one command
 | --- | --- |
 | System | Linux with systemd, x86-64 (amd64) or ARM64. Ubuntu 22.04 and 24.04 and Debian 12 are tested; RHEL, Rocky, AlmaLinux and CentOS 9 and Fedora 40 or newer should work. |
 | Kernel | Linux 5.6 or newer, with cgroup v2 |
-| Docker | Docker Engine 23 or newer (25 or newer recommended), installed from Docker's packages with a `docker.service` unit, and the buildx plugin (`docker-buildx-plugin`, part of Docker's packages) on nodes that build. The snap package does not work. The installer can install Docker for you. |
+| Docker | Docker Engine 23 or newer (25 or newer recommended), installed from Docker's packages with a `docker.service` unit, and the buildx plugin (`docker-buildx-plugin`, part of Docker's packages) on nodes that build. The snap package does not work. When Docker is missing, the installer installs it for you. Docker 28 or newer is best on the panel server if you close its IP address (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)). |
 | Ports | 80 and 443 for your sites, 3000 for the panel until it has a domain, and 3443 on the panel server for other nodes' agents. See [Firewalls](#firewalls) for the rest. |
 | Tools | OpenSSL 3 or `minisign`, to check the release signature. Current distributions ship OpenSSL 3. |
 | Memory | 1 GB works for a small panel node; 2 GB or more is recommended once you build images on it |
@@ -32,30 +32,37 @@ Without arguments the installer sets up the panel and makes this server its firs
 1. checks the system (Linux, systemd, CPU architecture),
 2. checks that ports 80 and 443, the panel's port (3000) and the agents' TLS port (3443) are free, and stops if another program holds one of them (nginx or Apache, for example), before it changes anything,
 3. downloads the release manifest and checks its signature with OpenSSL 3 or `minisign`; it stops if the signature is wrong or neither tool is there,
-4. checks Docker and offers to install it with the official script from get.docker.com if it is missing. It refuses snap Docker, Docker without a `docker.service` unit and Docker older than 23, and turns on Docker's live-restore so services keep running while Docker restarts (see below),
+4. checks Docker, and installs it with the official script from get.docker.com when it is missing, without asking (new in 0.2.1, see [Docker](#docker)). It refuses snap Docker, Docker without a `docker.service` unit and Docker older than 23, and turns on Docker's live-restore so services keep running while Docker restarts (see below),
 5. downloads the `seylo` binary, checks its SHA-256 against the signed manifest and installs it to `/usr/local/bin/seylo`,
 6. writes the `seylo.service` systemd unit,
 7. opens ports 80, 443, the panel's port and the agents' TLS port in ufw or firewalld when one of them is active,
 8. starts the panel container, pinned to the image digest in the signed manifest, and joins this server to it as a node.
 
-It ends with the link to create the owner account:
+It starts with one line that names the release and what the run does, such as `Seylo 0.2.1 installer - the panel and a node on this server`, and ends with a block that holds the link to create the owner account:
 
 ```text
 ==> Starting the panel
-Starting the panel (ghcr.io/seylo-dev/seylo:0.2.0@sha256:...)...
+Starting the panel (ghcr.io/seylo-dev/seylo:0.2.1@sha256:...)...
 
-The panel is running. Open this link within an hour to create the owner account:
-
-  http://203.0.113.10:3000/setup?t=seylo_setup_...
-
-This link is plain HTTP: the setup token, your password and your session cross the network unencrypted.
-Open it only from a network you trust, or through an SSH tunnel (ssh -L 3000:localhost:3000 <user>@<server>,
-then the same path on http://localhost:3000). Set a panel domain in the setup wizard to switch to HTTPS.
-
-If 203.0.113.10 is not this server's public address, use the public one with the same path.
+╭────────────────────────────────────────────────────────────────────────
+│ The panel is running. Open this link to create the owner account:
+│
+│   http://203.0.113.10:3000/setup?t=seylo_setup_...
+│
+│ It works once, within an hour (until 21:34 UTC).
+│ If 203.0.113.10 is not this server's public address, use the public one
+│ with the same path.
+│ Tip: the panel uses plain HTTP until it has a domain. Add one in the
+│ setup wizard to switch to HTTPS.
+│
+│ Next: open it in a browser, create the owner account and follow the
+│ setup wizard.
+│ A new link when this one expires: seylo panel setup-link
+│ Docs: https://docs.seylo.dev
+╰────────────────────────────────────────────────────────────────────────
 ```
 
-The installer of 0.1 printed the same without the plain HTTP lines.
+New in 0.2.1: on a terminal the output has colors, check marks and that framed block. `NO_COLOR=1` turns the colors off. In a log, a pipe or CI it stays plain text, with `+`, `|` and `-` for the frame and every sentence on one line. The block counts the warnings printed above it, if there were any. The 0.2 installer printed the link with three lines of warning about plain HTTP under it, and 0.1 the link alone.
 
 </Step>
 <Step>
@@ -76,10 +83,10 @@ If the link expired before you used it, run this on the server to get a new one:
 seylo panel setup-link
 ```
 
-<Callout type="warn" title="Plain HTTP until the panel has a domain">
-On `http://<server-ip>:3000` the setup link, your password and your session cookie cross the network unencrypted. Browsers also send a cookie of `http://<server-ip>` to every port of that address, including a service someone else runs there. So set the **Panel domain** before you invite anyone. To stay off plain HTTP from the very first sign-in, open the link through an SSH tunnel instead: run `ssh -L 3000:127.0.0.1:3000 root@203.0.113.10` on your computer and open the same link with `http://localhost:3000` in place of `http://203.0.113.10:3000`.
+<Callout title="Plain HTTP until the panel has a domain">
+On `http://<server-ip>:3000` the setup link, your password and your session cookie cross the network unencrypted. Browsers also send a cookie of `http://<server-ip>` to every port of that address, including a service someone else runs there. So set the **Panel domain** before you invite anyone. To stay off plain HTTP from the very first sign-in, open the link through an SSH tunnel instead: run `ssh -L 3000:127.0.0.1:3000 root@203.0.113.10` on your computer and open the same link with `http://127.0.0.1:3000` in place of `http://203.0.113.10:3000`.
 
-New in 0.2: the installer and `seylo panel setup-link` print this warning under an `http://` link, and every page the panel serves over plain HTTP shows **This connection is not encrypted** with the tunnel command for its port. Through the tunnel (`localhost`) the warning goes away.
+Changed in 0.2.1: the installer and `seylo panel setup-link` print one tip under an `http://` link instead of a warning, and the setup and sign-in pages show nothing. Inside the panel, pages on plain HTTP show one line, **HTTPS is off until the panel has a domain.**, with **Set a domain** and the tunnel command under **More** (see [Give the panel a domain](/self-hosting/the-panel#give-the-panel-a-domain)).
 </Callout>
 
 </Step>
@@ -107,7 +114,7 @@ The agent detects Pelican or Pterodactyl Wings on the node. If that Wings build 
 Pass options after `sh -s --`:
 
 ```bash
-curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docker
+curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --name de1
 ```
 
 | Option | What it does |
@@ -122,14 +129,14 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 | `--image <ref>` | Panel image (default: the release's image, pinned by the digest in its signed manifest) |
 | `--allow-unsigned` | Install a release without checking its signature, for development builds that have no release key |
 | `--name <name>` | Node name shown in the panel (default: the hostname; a re-join keeps the current one) |
-| `--can-build` | Set `can_build` in the joining node's `config.yml`. Only the panel's own node from the installer starts building with it; any other node builds once an owner or admin turns on **Build images on this node** in the panel (new in 0.2, see [Join a server](/guides/adding-nodes#join-a-server)). |
-| `--no-can-build` | Clear `can_build` on a node that joins again. Without `--can-build` or `--no-can-build`, a re-join keeps the current setting. |
+| `--can-build` | Only sets `can_build` in the joining node's `config.yml`. Whether the panel sends a node builds is chosen with **Build images on this node** in **Add node** when the join command is made (on by default since 0.2.1), and later on **Nodes**; the node can't change it (see [Join a server](/guides/adding-nodes#join-a-server)). |
+| `--no-can-build` | Clear `can_build` in `config.yml` on a node that joins again. Without `--can-build` or `--no-can-build`, a re-join keeps the current setting. |
 | `--pin <sha256:...>` | Panel certificate pin, for joining (the Add node command carries it) |
 | `--insecure` | Join a panel at a plain `http://` URL on another server; the agent's traffic is then unencrypted |
 | `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node, and since 0.2 its other settings in `config.yml`); install the panel although another program holds 80 or 443 |
-| `--install-docker` | Install Docker without asking if it is missing |
-| `--no-docker-install` | Never install Docker; stop if it is missing |
-| `--yes`, `-y` | Answer yes to questions (implies `--install-docker`) |
+| `--no-docker-install` | Never install Docker; stop if it is missing. Without it, a missing Docker is installed (see [Docker](#docker)). |
+| `--install-docker` | Also reinstall Docker with the script from get.docker.com when it is installed but does not start. Before 0.2.1: install Docker without asking when it is missing. |
+| `--yes`, `-y` | The same as `--install-docker`; the installer asks nothing since 0.2.1 |
 | `--data-dir <dir>` | Data folder (default `/var/lib/seylo`) |
 | `--release-url <url>` | Download releases from a mirror of the GitHub releases page |
 | `--binary <path>` | Install this binary instead of downloading one |
@@ -140,15 +147,29 @@ Running the installer again is safe: it updates the binary and the systemd unit 
 
 New in 0.2: it never installs an older release than the node runs. `install.seylo.dev` serves the latest stable release, so on a node whose agent (or, on the panel's node, the panel) runs a pre-release or a release the panel updated it to, the installer stops before it changes anything and names that release. Update nodes from the panel instead, re-run with `--version <that release>` to reinstall it, or add `--downgrade` to install the older one anyway. A `--binary` is installed as given.
 
+### Docker
+
+New in 0.2.1: when the server has no Docker, the installer installs it with the official script from get.docker.com, without asking, for a panel install and for a join alike. It says so as it starts. `--no-docker-install` makes it stop there instead.
+
+A Docker that is installed but does not answer is started with `systemctl start docker`. If it still does not answer, the installer stops before it changes anything and points at `systemctl status docker` and `journalctl -u docker`: whatever stops this Docker (a broken `/etc/docker/daemon.json`, a masked unit) would stop a new one too. To reinstall it with get.docker.com anyway, add `--install-docker`; that replaces the distribution's `docker.io`, `containerd` and `runc` packages with Docker's own.
+
+It still stops, with what to do, for snap Docker, Docker older than 23 and a distribution that get.docker.com does not support (it supports Ubuntu, Debian, Raspberry Pi OS, CentOS, Fedora and RHEL): install Docker by hand from [Docker's docs](https://docs.docker.com/engine/install/) and run the installer again.
+
 ### Without a terminal
 
-The installer asks one question, whether to install Docker when it is missing, and it can only ask on a terminal. With no terminal (cloud-init, automation, a CI job, `ssh` without `-t`), give the answer after `sh -s --`:
+New in 0.2.1: the installer asks nothing, so it runs the same with no terminal (cloud-init, automation, a CI job, `ssh` without `-t`), and a `join` command from **Add node** works as it is. `--yes` and `--install-docker` still work; they only matter for a Docker that does not start.
 
-```bash
-curl -fsSL https://install.seylo.dev | sudo sh -s -- --yes
-```
+Installers before 0.2.1 asked whether to install a missing Docker. Without a terminal they stopped before installing anything and said to re-run with `--install-docker` (the v0.1.0 one stopped with `cannot create /dev/tty`). A join command from a 0.2.1 pre-release panel still runs that older installer, the latest stable one, so **Add node** says to add `--install-docker` at its end for a server without Docker.
 
-`--yes` or `--install-docker` installs Docker when it is missing and changes nothing when it is there. The same goes for a `join` command from **Add node**: add the flag at its end. Without either flag and without a terminal, the installer stops before it installs anything and says to re-run with `--install-docker`. That message needs the v0.1.1 installer or newer; the v0.1.0 one stopped with `cannot create /dev/tty` instead.
+### Exit status
+
+New in 0.2.1: a join waits up to a minute for the agent's first connection and ends with a block that says whether it connected (see [Join a server](/guides/adding-nodes#join-a-server)). The exit status says what happened, for cloud-init, Terraform and scripts:
+
+| Status | When |
+| --- | --- |
+| `0` | Installed. Also for a join that can't reach the panel yet: the agent keeps trying, and the join token stays valid for the rest of its hour. |
+| `3` | A join the panel refused: a used or expired token, a wrong `--pin`, or a node that was removed or disabled. That command never works: make a new one in **Add node**. |
+| `1` | Any other error. |
 
 ## Firewalls
 
@@ -157,19 +178,21 @@ When ufw or firewalld is active, the installer adds rules for what Seylo needs a
 | Port | Who needs it | How it is served |
 | --- | --- | --- |
 | 80, 443 | Everyone: your sites | Traefik, published by Docker |
-| 3000 (panel port) | You, until the panel has a domain | The panel, published by Docker, on the panel server |
-| 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | The panel, published by Docker, on the panel server |
+| 3000 (panel port) | You, until the panel has a domain | The panel, published by Docker, on the panel server. Since 0.2.1 the panel can publish it on `127.0.0.1` only (**Serve on IP address**). |
+| 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | The panel, published by Docker, on the panel server. Since 0.2.1 the panel can publish it on `127.0.0.1` only (**Agents' port**). |
 | 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | The agent; the installer allows it in ufw |
 | 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | Traefik, published by Docker; it only serves nodes with a certificate from the panel. A joining node also allows it in ufw from the panel's address when the join URL is an IP address, which Docker's rules bypass (see below) |
 | IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | The agent: open each port you want reachable |
 
-Ports published by Docker bypass ufw and firewalld: Docker sends their traffic through its own rules before the host firewall sees it. So 80, 443, 3000, 3443 and 5757 answer from everywhere whatever ufw says, and closing them in ufw does not close them. To limit who reaches them, use your provider's firewall (security groups), which sits outside the server, or rules in Docker's `DOCKER-USER` chain.
+Ports published by Docker bypass ufw and firewalld: Docker sends their traffic through its own rules before the host firewall sees it. So 80, 443, 3000, 3443 and 5757 answer from everywhere whatever ufw says, and closing them in ufw does not close them. To limit who reaches them, use your provider's firewall (security groups), which sits outside the server, or rules in Docker's `DOCKER-USER` chain. For 3000 and 3443, 0.2.1 has a switch of its own: once the panel has a domain or is on your tailnet, the **Panel domain** card in **Settings → General** closes them on the server itself (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)).
 
 The IP:port addresses the panel shows are served by the agent itself, not published through Docker, so the host firewall applies to them. When a node's firewall is on, the panel shows the command that opens each port next to the address, and the node health check names the ones that are still closed.
 
 ### Keeping the panel private
 
-To reach the panel only over a VPN such as Tailscale or WireGuard, close 3000 and 3443 in your provider's firewall and open the panel at the server's VPN address (`http://<VPN address>:3000`). VPN traffic arrives inside the server, so the provider's firewall does not stop it. Open it at that address the first time too: join commands use the address you set the panel up at, so your other nodes then reach it over the VPN as well and need to be on it. Leave 80 open while the panel or your sites use Let's Encrypt certificates, and 443 for your sites.
+With Tailscale, the panel does it itself since 0.2.1: **Settings → Tailscale** serves it on your tailnet at `https://<machine>.<tailnet>.ts.net`, and **Lock to Tailscale** then closes 3000, and 3443 when no other node needs it (see [The panel on Tailscale](/self-hosting/tailscale)).
+
+For another VPN such as WireGuard, close 3000 and 3443 in your provider's firewall and open the panel at the server's VPN address (`http://<VPN address>:3000`). VPN traffic arrives inside the server, so the provider's firewall does not stop it. Open it at that address the first time too: join commands use the address you set the panel up at, so your other nodes then reach it over the VPN as well and need to be on it. Leave 80 open while the panel or your sites use Let's Encrypt certificates, and 443 for your sites.
 
 ## Docker live-restore
 
@@ -211,9 +234,9 @@ Everything Seylo keeps on a node is in one folder:
 
 | Path | What it is |
 | --- | --- |
-| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell` and `git_proxy_resolves` |
+| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell`, `git_proxy_resolves` and, since 0.2.1, `no_tailnet` |
 | `agent.key` | The node's private key; it signs every connection to the panel |
-| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
+| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)), and since 0.2.1 `tailnet.sock`, where Tailscale Serve sends the panel's tailnet requests (see [The panel on Tailscale](/self-hosting/tailscale#how-it-works)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
 | `services/<id>/volumes/<name>` | Service volumes. New in 0.2: `services/` and each `services/<id>/` are mode 0700, so only root reaches the volumes and file mounts under them; the agent closes older folders when it starts. |
 | `services/<id>/files` | File mounts, mode 0700. New in 0.2: one folder per version of the service's settings, so a deploy that fails, and the old version it rolls back to, keep their own files |
 | `logs/<service id>/` | Service logs, kept across deploys |
@@ -235,7 +258,7 @@ New in 0.2: the panel container runs as uid and gid 61000, which no login user h
 ```bash
 seylo status          # the agent, its panel connection and the services on this node
 seylo health          # the node health checks, with a fix for each failure
-seylo panel status    # the panel's state, version and URL
+seylo panel status    # the panel's state, version, URL, where its ports answer and its tailnet address
 seylo troubleshoot    # upload a redacted report and get a link to share
 ```
 

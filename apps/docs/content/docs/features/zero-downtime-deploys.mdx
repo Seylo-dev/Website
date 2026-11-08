@@ -18,6 +18,8 @@ New in 0.2, on nodes with the 0.2 agent:
 - Each version of a service's settings gets its own copy of the config files (file mounts), so the previous version keeps its own files when a deploy fails, also after a later restart. Before, a failed deploy's files were already in place for the old version.
 - If the agent stops or crashes during the health check (an agent update, `seylo restart`), it rolls the deploy back, and finishes that when it starts again, instead of adopting the unverified version as live and reporting success.
 
+New in 0.2.1: IP:port addresses, such as the one a new app answers on before it has a domain, keep serving through a deploy too. They stay on the old version until the switch, and a connection that arrives during the switch waits up to 5 seconds for the new container instead of being dropped. In 0.2.0, requests to such an address could hang or be reset for about a second around each deploy.
+
 The node also checks the new settings before it starts anything, for example that volume names are valid and that an image from the panel's registry belongs to this service. When it refuses them, the deploy fails at once with the node's reason ("The node refused the new settings: ...") and a **Deploy failed** alert, instead of waiting for the health timeout. The previous version keeps running, and the other services on that node are not affected.
 
 Deploys of one service run one at a time; a deploy started while another runs waits in line. **Cancel deploy** in the service header stops one that has not switched yet.

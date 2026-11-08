@@ -1,0 +1,210 @@
+---
+title: The panel on Tailscale
+description: Serve the panel on your own tailnet through the Tailscale on the panel's server, and close its public IP address and port if you like.
+---
+
+New in 0.2.1. **Settings → Tailscale** serves the panel on your tailnet at `https://<machine>.<tailnet>.ts.net`, through the Tailscale that runs on the panel's server: your own `tailscaled`, signed in to your own tailnet. Seylo adds no Tailscale software or image and stores no Tailscale key. The agent on the panel's node talks to `tailscaled` over its local socket and keeps one Tailscale Serve entry that sends the server's tailnet name to the panel.
+
+Serving the panel on the tailnet only adds a way in. Closing the public `http://<server-ip>:3000` is a separate step, **Lock to Tailscale**, which you take from the tailnet address itself.
+
+## What you need
+
+- The panel and its node's agent on 0.2.1 (see [Updates](/self-hosting/updates)).
+- Tailscale 1.104.4 or newer on the panel's server. The card says when it is older.
+- MagicDNS on for the tailnet (it is on for new tailnets). HTTPS certificates are optional: without them the panel is served on `http://<machine>.<tailnet>.ts.net` inside the tailnet, which Tailscale encrypts from end to end anyway.
+- The owner account, in a browser that signed in or [confirmed it's you](/people/sign-in-and-security#confirm-its-you) within the last 15 minutes. Admins see the card but can't change it, and API keys, MCP and the assistant can't use any of it.
+
+## Set it up
+
+<Steps>
+<Step>
+
+### Install Tailscale on the server
+
+**Settings → Tailscale → Install on the server** opens the panel node's **Shell** view with the install command typed in:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+```
+
+Check it, then press Enter. The panel types it and never runs it for you. This needs the [host shell](/guides/host-shell) turned on for that node; without it, the Shell view shows the command to run over SSH instead.
+
+</Step>
+<Step>
+
+### Sign the server in
+
+Click **Sign in to Tailscale**, then **Open the sign-in link**, and sign in with your Tailscale account. The link works for 10 minutes. Whoever opens it puts the server on their tailnet, so only the owner gets it, and the panel never stores it or writes it to the activity log. The first sign-in from the panel also turns off Tailscale DNS on the server (see [Tailscale DNS](#tailscale-dns)).
+
+Over SSH, the same is:
+
+```bash
+sudo tailscale up --accept-dns=false
+```
+
+The card then says **Signed in to `<tailnet>` as `<machine>`**, with the machine's tailnet addresses and its key expiry date. A tailnet that approves new machines by hand shows **Needs approval** until an admin approves the server under **Machines** in the Tailscale admin console.
+
+</Step>
+<Step>
+
+### Once, in the Tailscale admin console
+
+- **DNS**: check that MagicDNS is on. Click **Enable HTTPS** if you want the panel on `https://` (**Turn on HTTPS** on the card opens the page).
+- **Machines**: on this server, choose **Disable key expiry** (see [Key expiry](#key-expiry)).
+- Optional: limit who reaches the panel (see [Who on the tailnet reaches the panel](#who-on-the-tailnet-reaches-the-panel)).
+
+</Step>
+<Step>
+
+### Serve the panel on the tailnet
+
+Turn on **Serve the panel on my tailnet**. The card shows the **Tailnet URL**, `https://<machine>.<tailnet>.ts.net`, with **Open**. Nothing restarts and nothing closes: the panel keeps answering on its IP address and port, and on its domain.
+
+</Step>
+<Step>
+
+### Open it on the tailnet
+
+Open the URL on a device in your tailnet and sign in there. The first load can take a few seconds while Tailscale gets the certificate. On that page the card says **You are on the tailnet now**.
+
+</Step>
+<Step>
+
+### Lock to Tailscale (optional)
+
+On the tailnet page, **Lock to Tailscale** lists what will change. Copy the commands under **Ways back in**, tick **I saved these**, then click **Lock to Tailscale**:
+
+- **Serve on IP address** turns off: `http://<server-ip>:3000` then answers only on the server itself (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)).
+- The agents' port (3443) closes too when no other node connects over it. Nodes that do keep it open.
+- Tick **Remove the panel domain** to remove the domain as well. A domain you keep stays public, through the server's proxy.
+
+The panel restarts once, for a few seconds. The button works only on the tailnet URL: that is the proof you can still reach the panel once the public port is closed.
+
+</Step>
+</Steps>
+
+## What changes once it is locked
+
+- API keys, `seylo login`, scripts and MCP clients on `http://<server-ip>:3000` stop working. Point them at the tailnet URL.
+- GitHub webhooks can't reach a panel that is only on the tailnet. The panel polls GitHub for new commits instead (see [Deploy on push](/guides/github-and-git#deploy-on-push)).
+- Passkeys work on the panel domain only. On the tailnet, sign in with your password and authenticator app.
+- Links in alert emails open only on devices in your tailnet.
+- Nodes still connect over the domain or the agents' port. Nodes over the tailnet are not part of 0.2.1.
+
+## Who on the tailnet reaches the panel
+
+Every device that the tailnet's access rules allow can open the panel's sign-in page. Tailscale's default policy allows everything, and on a shared tailnet that includes other people's devices. The card's **Access rules** part shows a grant that lets only you reach the panel, filled in with your login and the server's tailnet address:
+
+```json
+{
+  "grants": [{ "src": ["you@example.com"], "dst": ["100.101.102.103"], "ip": ["tcp:443"] }]
+}
+```
+
+It is `tcp:80` on a tailnet without HTTPS certificates. Put it in place of the allow-all rule in the tailnet policy (**Open access controls** on the card), next to the rules your other devices need.
+
+### The server's firewall
+
+On Linux, Tailscale adds a firewall rule ahead of ufw that accepts everything that arrives on `tailscale0`. With the allow-all policy, every port of the server is then open to every device on the tailnet, whatever ufw says. This comes from installing Tailscale, not from Seylo, and the card says so next to **Install on the server**. Limit it with the grant above. Or start Tailscale with `--netfilter-mode=off` (for example `sudo tailscale up --accept-dns=false --netfilter-mode=off`): it adds no firewall rules, Serve keeps working, and SSH over the tailnet then needs a ufw rule of its own, such as `ufw allow in on tailscale0 to any port 22 proto tcp`.
+
+<Callout type="warn" title="Keep a way in that is not the tailnet">
+Don't limit SSH to `tailscale0` unless you have another way into the server, such as your provider's console. The panel can't tell when an access rule change or a removed device locks you out of the tailnet, so it reopens nothing for you then (see [Locked out of the panel](/troubleshooting#locked-out-of-the-panel)).
+</Callout>
+
+## Tailscale DNS
+
+The first sign-in from the panel starts Tailscale with Tailscale DNS off, like `--accept-dns=false`. The server keeps its own resolvers, so image pulls, git clones and certificates don't depend on the tailnet's DNS. When the server uses Tailscale DNS anyway, the card warns and **Turn off Tailscale DNS** turns it off. The panel never turns it on, and changes nothing else in the server's Tailscale settings.
+
+The card also warns when the server sends its traffic through an exit node or advertises subnet routes. The panel never changes either.
+
+## Key expiry
+
+Tailscale keys expire after 180 days by default, and then the server drops off the tailnet and the tailnet URL stops working. The card shows the date with a **Disable key expiry** link to the admin console. 14 days before the key expires, the panel raises **The Tailscale key of `<node>` expires on `<date>`**.
+
+After an expired key, sign the server in again on the server itself:
+
+```bash
+sudo tailscale up --accept-dns=false --force-reauth
+```
+
+## How it works
+
+- The panel listens on a unix socket, `/var/lib/seylo/panel/tailnet.sock`: mode 0600, owned by the panel's user, in the panel's 0700 folder, so only root, where `tailscaled` runs, and the panel itself can connect to it. It always listens, so turning Serve on or off never restarts the panel.
+- The agent keeps one entry in `tailscaled`'s Serve config: `https://<machine>.<tailnet>.ts.net/` (port 443, or `http://` on port 80 without HTTPS certificates) to `unix:/var/lib/seylo/panel/tailnet.sock`. **The Serve entry Seylo owns** on the card shows it. Every other Serve entry stays as it was. When another entry already uses that address, or Funnel is on for it, the agent leaves it alone and the card says **Another Serve entry uses this address**.
+- The agent looks every 30 seconds, puts the entry back when something removed it (`tailscale serve reset`, for example), and checks once a minute that the panel answers through it.
+- Restarting or updating the agent doesn't touch the path: `tailscaled` sends requests straight to the panel's socket.
+- The panel answers only on the server's full tailnet name. The short machine name and the tailnet address redirect to it, any other name gets `421`, and a request that came from the internet through Funnel gets `403`.
+- Serve tells the panel the tailnet device's address and the device's Tailscale login. The activity log records both, but the panel never signs anyone in with them: you still sign in with your password, authenticator app or GitHub.
+- Serve belongs to the tailnet you turned it on for. When the server signs in to another tailnet, the agent removes the entry, the panel answers nothing there and raises a **Security change** alert that names both tailnets. **Serve on `<tailnet>`** on the card serves it there.
+- Turning Serve on raises a **Security change** alert too, naming the tailnet and who turned it on.
+
+What the agent does with Tailscale, and nothing more: it reads its status and settings, keeps that one Serve entry, starts an interactive sign-in and turns Tailscale DNS off. It never runs `tailscale up`, `down` or `logout`, never changes routes, exit nodes or the firewall, never turns on Funnel and never reads `/var/lib/tailscale`. Nothing about Tailscale is kept in `panel.db` or its backups, and `seylo troubleshoot` removes sign-in links and `tskey-` keys from its report.
+
+## If the tailnet stops working
+
+While IP access is open, nothing happens: the panel keeps answering on IP:port and on its domain.
+
+While it is locked, **If the domain stops working** on the **Panel domain** card in **Settings → General** decides, for the domain and the tailnet alike (see [If the private path stops working](/self-hosting/the-panel#if-the-private-path-stops-working)):
+
+- **Reopen IP access**, the default: once the panel's agent has reported for 5 minutes that the tailnet path does not work (Tailscale stopped or signed out, the entry gone, the panel not answering through it), `http://<server-ip>:3000` answers again and **The panel stopped answering on the tailnet** says so. It closes again by itself once the tailnet or the domain has worked for an hour. An agent that is offline or restarting changes nothing.
+- **Keep IP access closed**: it stays closed, and only the ways back in below help.
+
+The panel also raises **Tailscale on `<node>` needs a new sign-in** and **Tailscale on `<node>` waits for approval** while Serve is on.
+
+## Ways back in
+
+When the tailnet does not let you in:
+
+1. An SSH tunnel to the server:
+
+   ```bash
+   ssh -L 3000:127.0.0.1:3000 root@<server-ip>
+   ```
+
+   then open `http://127.0.0.1:3000`. Use `127.0.0.1`, not `localhost`: Docker publishes the closed port on IPv4 only. With another `--port`, put it after `127.0.0.1:`.
+
+2. On the server, as root, reopen IP access:
+
+   ```bash
+   sudo seylo panel ip-access on
+   ```
+
+   It turns **Serve on IP address** and the agents' port back on and sets **If the domain stops working** back to **Reopen IP access**. The panel restarts twice, a few seconds each.
+
+3. Read Tailscale's state without the panel. It works while the agent or the panel is down, and prints the sign-in link when Tailscale waits for one:
+
+   ```bash
+   seylo panel tailscale status
+   ```
+
+   Then sign in again with `sudo tailscale up --accept-dns=false`, adding `--force-reauth` after an expired key.
+
+4. Take the panel off the tailnet on the server itself:
+
+   ```bash
+   sudo seylo panel tailscale off
+   ```
+
+   It writes `no_tailnet: true` to `/var/lib/seylo/config.yml`, removes the Serve entry and restarts the agent, which from then on adds no entry and refuses sign-in and DNS changes from the panel. Tailscale itself keeps running. The card says the panel is turned off on the server. `sudo seylo panel tailscale on` undoes it. Joining the node again with `seylo join --force` keeps the setting.
+
+5. A panel domain you kept.
+
+`seylo panel status` shows where things stand, for example:
+
+```text
+IP access: closed (127.0.0.1:3000); agents' port: open (0.0.0.0:3443)
+Tailnet: active (https://panel.tail1234.ts.net)
+```
+
+## Turn it off
+
+Turn off **Serve the panel on my tailnet**. The agent removes the entry; nothing restarts. When the tailnet is the only way in that works and IP access is closed, turning Serve off reopens IP access and says the address that answers again. In **Keep IP access closed** mode it asks first (**Reopen and turn off**).
+
+To remove Tailscale from the server, turn Serve off first, then uninstall it with the system's package manager. The card then shows **Not installed** again.
+
+## Not in 0.2.1
+
+- Nodes connecting over the tailnet: they use the panel domain or the agents' port.
+- Apps on the tailnet.
+- Passkeys on the tailnet name.
+- Signing in with your Tailscale identity.

@@ -58,6 +58,8 @@ To open one you need:
 - a browser session that signed in or confirmed it's you within the last 15 minutes. API keys and MCP tokens are refused, even ones that may do everything,
 - host shells turned on for the node, the node online, and a 0.2 agent on it.
 
+New in 0.2.1: **Install on the server** in **Settings → Tailscale** opens the panel node's **Shell** view with the Tailscale install command typed in. Check it, then press Enter: the panel never presses Enter for you, and it types only commands from a short fixed list, nothing a link can make up. When host shells are off for the node, or you can't open one, the view shows the command to run over SSH instead. See [The panel on Tailscale](/self-hosting/tailscale).
+
 ## Limits
 
 - At most 2 host shells per node are open at once.

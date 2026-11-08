@@ -132,7 +132,31 @@ New in 0.2. The panel no longer gives nodes a backup destination's keys, and age
 </Accordion>
 
 <Accordion title="A new node never builds">
-New in 0.2. Nodes start with **Build images on this node** off, also when joined with `--can-build`; only the panel's own node from the installer starts with it on. An owner or admin turns it on in the node's settings (see [Node settings](/guides/adding-nodes#node-settings)). Builds that fail with "docker buildx is not installed on this node" need Docker's `docker-buildx-plugin` package on the build node.
+Whether a new node builds is chosen when its join command is made: **Build images on this node** in **Add node**, ticked by default since 0.2.1. `--can-build` on the node changes nothing in the panel. A node joined with the box unticked, with a command made before the update to 0.2.1, or on 0.2, starts without builds: an owner or admin turns on **Can build** on **Nodes** (see [Build nodes](/guides/adding-nodes#build-nodes)). A node that shows **docker buildx is missing** next to **Can build** gets no automatic builds, and builds that fail with "docker buildx is not installed on this node" or "has no docker buildx" need Docker's `docker-buildx-plugin` package on that node.
+</Accordion>
+
+<Accordion title="Services build on their own node now, not on the panel's">
+New in 0.2.1. Services build on their own node first when it can build, and nodes that join with the default join command can. A small node shows a warning next to **Can build** (**Less than 2 GB of memory**, **Only one CPU core**): turn **Can build** off for it on **Nodes**, or set the service's **Build node**. See [Where builds run](/guides/github-and-git#where-builds-run).
+</Accordion>
+
+<Accordion title='The join ends with "not connected to the panel yet" or "refused this node"'>
+New in 0.2.1, the installer waits up to a minute for the agent's first connection. **Installed, but not connected to the panel yet** means the server could not reach the panel: the block names the address and port, and the panel's server must accept connections there (3443 for a panel without a domain), with no firewall or cloud security group in the way. The agent keeps trying; `seylo status` shows the last error. **Installed, but the panel refused this node** (exit status 3) means the token was used or expired, the pin is wrong, or the node was removed or disabled: make a new join command in **Add node** and run it. See [Join a server](/guides/adding-nodes#join-a-server).
+</Accordion>
+
+<Accordion title="The installer stops: Docker is installed but not running">
+New in 0.2.1. The installer tried `systemctl start docker` and Docker still did not answer. Look at `systemctl status docker` and `journalctl -u docker`, often a broken `/etc/docker/daemon.json`, fix it and run the installer again. To replace that Docker with the one from get.docker.com instead, add `--install-docker`; it replaces the distribution's `docker.io`, `containerd` and `runc` packages. See [Docker](/installation#docker).
+</Accordion>
+
+<Accordion title="The panel answers again on its IP address although Serve on IP address is off">
+New in 0.2.1. With **Reopen IP access** (the default), the panel reopens `http://<server-ip>:3000` when the domain failed 2 checks in a row or the tailnet did not work for 5 minutes, raises an alert, and closes it again once a private path has worked for an hour; the **Panel domain** card says when. It also stays open while a node connects over plain `http://`, or the panel's own node connects over the server's public address, since closing would cut those off; the card names them and the fix. See [If the private path stops working](/self-hosting/the-panel#if-the-private-path-stops-working).
+</Accordion>
+
+<Accordion title="Settings → Tailscale says Not installed, Stopped or Needs approval">
+New in 0.2.1. **Not installed**: the panel's agent found no `tailscaled` socket at `/var/run/tailscale/tailscaled.sock`; install Tailscale (**Install on the server**), or set `tailscale_socket` in `/var/lib/seylo/config.yml` when it lives elsewhere. **Stopped**: Tailscale is signed in but stopped, and only the server starts it again: `sudo tailscale up --accept-dns=false`. **Needs approval**: approve the machine under **Machines** in the Tailscale admin console. On the server, `seylo panel tailscale status` shows the same without the panel. See [The panel on Tailscale](/self-hosting/tailscale).
+</Accordion>
+
+<Accordion title="The tailnet URL does not open">
+New in 0.2.1. Check the card in **Settings → Tailscale**: Serve must be **Active**, and the server signed in. **Another Serve entry uses this address** means another entry in the server's Serve config, or Funnel, already holds that name and port; remove it (`tailscale serve status` lists them). Open the full name, `https://<machine>.<tailnet>.ts.net`: another name gets `421`. The device you open it on must be in the same tailnet and allowed by its access rules. On the first load, wait a few seconds for the certificate. After the server signed in to another tailnet, Serve is off there until the owner clicks **Serve on `<tailnet>`**.
 </Accordion>
 
 <Accordion title="Running the installer again stops: the node runs a newer release">
@@ -143,6 +167,21 @@ New in 0.2. `install.seylo.dev` serves the latest stable release, and the instal
 New in 0.2. A private address passes only when it is a node's **Public address** as set in the node's settings, or when an admin allows internal targets in **Settings → General → Uptime checks**. The addresses a node detects about itself no longer count. See [Uptime checks](/features/uptime-checks#where-checks-run-from).
 </Accordion>
 </Accordions>
+
+## Locked out of the panel
+
+New in 0.2.1. With **Serve on IP address** off, the panel answers on `http://<server-ip>:3000` only on its own server, and the domain or the tailnet is the way in (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)). When neither lets you in:
+
+1. **Wait a few minutes**, if **If the domain stops working** is on **Reopen IP access**, the default. The panel reopens IP:port by itself once the domain failed 2 checks in a row (5 to 10 minutes) or the tailnet did not work for 5 minutes, and sends an alert. It needs the panel and its node's agent running for that.
+2. **Open an SSH tunnel** from your computer: `ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, then open `http://127.0.0.1:3000`. It works in every mode, also while the agent is down: Docker keeps the panel's port on `127.0.0.1`. Use `127.0.0.1`, not `localhost`, and with another `--port`, put it after `127.0.0.1:`.
+3. **Reopen it from the server**: `sudo seylo panel ip-access on` turns both switches back on and sets the panel back to **Reopen IP access**. The panel restarts twice. It says so when the agent is down or not connected; start it with `systemctl start seylo` and run the command again.
+4. **For the tailnet**, on the server: `seylo panel tailscale status` shows Tailscale's state and the sign-in link without the panel. Sign in again with `sudo tailscale up --accept-dns=false` (`--force-reauth` after an expired key), or take the panel off the tailnet with `sudo seylo panel tailscale off`.
+
+`seylo panel status` on the server shows how Docker publishes the panel's ports right now and the tailnet entry, for example `IP access: closed (127.0.0.1:3000); agents' port: open (0.0.0.0:3443)`.
+
+What the panel can't see, so it reopens nothing for it: a tailnet access rule that shuts out your devices, or your computer removed from the tailnet, while the server stays on it. Only SSH and the commands above help then. So don't limit SSH on the server to the tailnet (`tailscale0`) unless you have another way in, such as your provider's web console.
+
+With **Keep IP access closed**, the panel never reopens by itself: only steps 2 to 4 and the domain itself get you back in.
 
 ## Still stuck
 

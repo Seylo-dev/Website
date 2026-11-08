@@ -5,7 +5,7 @@ description: Join more servers to the panel, set where builds run, and manage a 
 
 ## Join a server
 
-On **Nodes**, click **Add node**, then **Create join command** (if you signed in more than 15 minutes ago, the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first). The command has a single-use token that is valid for one hour. Run it as root on the new server:
+On **Nodes**, click **Add node**. Leave **Build images on this node** ticked, or untick it for a server that should only run services (see [Build nodes](#build-nodes)). Then click **Create join command** (if you signed in more than 15 minutes ago, the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first). The command has a single-use token that is valid for one hour. Run it as root on the new server:
 
 ```bash
 curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>' --version '<version>'
@@ -13,14 +13,20 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel
 
 The command pipes the installer from `install.seylo.dev`, which serves it only after checking it against the signed release (see [What the installer checks](/security#what-the-installer-checks)). `--version` is the panel's own release: the installer takes the agent from that release's signed manifest, so the node gets the agent of the panel's version. A panel built without a release (a development build) leaves `--version` out, and the node gets the latest stable release. New in 0.2: on 0.1, the command had no `--version`, so a new node got the latest stable agent, whatever release the panel ran.
 
-The installer checks the server, installs Docker if you agree, installs the agent as the `seylo.service` systemd unit and joins the panel. The agent creates its own Ed25519 key pair; the panel stores the public key, and every later connection is a signed challenge, so the token is useless after the first use. The node shows up on **Nodes** a few seconds later.
+The installer checks the server, installs Docker when it is missing (without asking since 0.2.1, see [Docker](/installation#docker)), installs the agent as the `seylo.service` systemd unit and joins the panel. The agent creates its own Ed25519 key pair; the panel stores the public key, and every later connection is a signed challenge, so the token is useless after the first use. The node shows up on **Nodes** a few seconds later.
 
-A new node does not build images until an owner or admin turns on **Build images on this node** in its settings (see [Node settings](#node-settings)); only the panel's own node from the installer starts with it on. New in 0.2: on 0.1, `--can-build` on the join command turned it on, so whoever held a join token could make the node a build node.
+New in 0.2.1: the installer then waits up to a minute for the agent's first connection and ends with a block that says how it went:
+
+- **This server is a node of the panel now.** It connected.
+- **Installed, but not connected to the panel yet.** The block names the address the server could not reach and what to check: the panel server must accept connections on that port (3443 is the agents' port of a panel without a domain), and no firewall or cloud security group on the way may block it. The agent keeps trying in the background, and `seylo status` shows where it stands. The installer exits with status 0.
+- **Installed, but the panel refused this node.** The token was used or expired, the pin is wrong, or the node was removed or disabled. That command never works: make a new one in **Add node** and run it. The installer exits with status 3 (see [Exit status](/installation#exit-status)).
 
 A node only needs outbound access to the panel, plus inbound ports 80 and 443 for the sites it serves. The panel never connects to a node, so a node behind NAT works. Load balancing between nodes adds port 5757, and the IP:port addresses the panel hands out need their own ports; see [Firewalls](/installation#firewalls).
 
 <Callout title="The agent's connection is always encrypted">
 With a panel domain, the join command uses `https://<panel domain>` and its public certificate. Without one, it uses the panel's agent port, `https://<panel IP>:3443`, with `--pin sha256:...`: the panel's own key, made once at install, which the agent then trusts and nothing else. The panel server needs port 3443 open to your nodes (the installer opens it in ufw or firewalld). The agent refuses a plain `http://` panel on another server unless you add `--insecure`.
+
+A command made on the panel's tailnet URL still uses the domain or the agents' port: nodes don't connect over the tailnet in 0.2.1. Once every node connects over the domain, the panel can close the agents' port (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)).
 </Callout>
 
 Then add a wildcard DNS record for the node so its services get automatic domains:
@@ -31,6 +37,19 @@ Then add a wildcard DNS record for the node so its services get automatic domain
 
 and set `de2.example.com` as the node's **Wildcard domain** in its settings.
 
+### Build nodes
+
+New in 0.2.1: whether a new node builds images is chosen in **Add node**, with **Build images on this node**, which is ticked by default. The choice is part of the join command, and once a command is on screen the dialog says which it makes. To change it, click **Change**: that revokes the command on screen, so only one stays valid, and you create a new one. A command that was already used can't be changed; set **Can build** for its node in the list instead.
+
+- The node itself can't change it: `--can-build` on the node only sets `can_build` in its `config.yml`.
+- A node that joins again (`--force`, or after a master key rotation) keeps its own **Can build**, on or off.
+- Join commands made before the panel's update to 0.2.1 still make nodes that don't build.
+- Nodes that joined before 0.2.1 keep their setting. Turn on **Can build** on **Nodes** for the ones that should build.
+
+A build node gets the source, git credentials and build-time variables of everything it builds, from any project, and the images it builds run on every node (see [Where builds run](/guides/github-and-git#where-builds-run)). Untick the box for servers you do not fully trust. Services build on their own node first, so with the default, services on a joined node build there instead of on the panel's node. Nodes that are a poor fit show a warning next to **Can build**: **Less than 2 GB of memory**, **Only one CPU core** or **docker buildx is missing**. A node whose agent reports no docker buildx gets no automatic builds; install `docker-buildx-plugin` on it (Docker from get.docker.com has it).
+
+In 0.2, a new node never built until an owner or admin turned it on. On 0.1, `--can-build` on the join command turned it on.
+
 ## When the panel gets a domain
 
 Nodes that joined over `https://<panel IP>:3443` move to the [panel domain](/self-hosting/the-panel#give-the-panel-a-domain) by themselves once it is active. The panel asks each of them to reconnect; the agent connects to `https://<panel domain>`, checks the certificate against the server's trusted certificate authorities and that the same panel answers there, and only then saves the new address in `/var/lib/seylo/config.yml`. The old pinned address stays as a fallback: if the domain stops answering for 5 minutes (removed, or its DNS changed), the node reconnects through it and moves on to the next domain by itself. The node's sheet on **Nodes** shows the address it uses under **Connects to**. The panel's own node keeps connecting over the server's loopback.
@@ -40,7 +59,9 @@ A move that fails (for example because the node does not trust the domain's cert
 Two kinds of node do not move by themselves:
 
 - Nodes that joined over plain HTTP (`--insecure`) never move: nothing on a plain connection proves the new address comes from your panel. Run a new join command from **Add node** on them with `--force` added. The node keeps its key, so the panel keeps the same node and its services.
-- Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too.
+- Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too. New in 0.2.1: while nodes connect over the domain, **Settings → General** asks before it removes or changes it, and names them.
+
+While the agents' port is closed (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)), nodes have no fallback either, and the panel makes no join command until the port is open again or the domain is active.
 
 ## The panel's identity
 
@@ -83,7 +104,7 @@ The **Settings** action on a node:
 | **Name**, **Location**, **Tags** | How the node shows up in the panel |
 | **Public address** | Where people and other nodes reach this server, when it is not the detected address: for example the public IP of a cloud server (AWS, Google Cloud, Azure, Oracle) whose network interface only has a private one. Used for IP:port links, exposed databases, load balancing and join commands. Uptime checks may also target it when it is a private address (see [Uptime checks](/features/uptime-checks#where-checks-run-from)). A git server on it, as on any of the node's addresses, needs an owner or admin to allow it per project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)). The panel server's is filled in from the address you opened the setup link at, when it knows no public address of its own. The node health check warns while no public address is known. |
 | **Wildcard domain** | New services on this node get `<name>.<this domain>`. Point the wildcard `A` record at the node first. |
-| **Build images on this node** | Allow builds here. The node then gets the source, git credentials and build-time variables of everything it builds, from any project, and the images it builds run on every node, so turn it on only for nodes you trust like the panel. Small nodes usually leave this off. Off for new nodes, except the panel's own node from the installer. |
+| **Build images on this node** | Allow builds here. The node then gets the source, git credentials and build-time variables of everything it builds, from any project, and the images it builds run on every node, so keep it on only for nodes you trust like the panel. Small nodes usually leave this off. A new node starts with what its join command chose in **Add node** (on by default since 0.2.1; see [Build nodes](#build-nodes)). |
 | **Builds at once** | How many builds run in parallel; the rest wait in a queue |
 | **Logs per service (MB)**, **Keep logs (days)** | How much service log history the node keeps |
 | **Game servers first** | Only on nodes with Wings, see [Running next to Wings](/guides/running-next-to-wings) |

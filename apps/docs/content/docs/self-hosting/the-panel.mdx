@@ -1,6 +1,6 @@
 ---
 title: The panel
-description: How the panel runs, how to give it a domain, how to brand it, and what to do when it is down.
+description: How the panel runs, how to give it a domain, how to stop it answering on its IP address, how to brand it, and what to do when it is down.
 ---
 
 ## How it runs
@@ -19,9 +19,11 @@ Service logs are not stored by the panel. They stay on each node and are streame
 
 ## Give the panel a domain
 
-After installation the panel answers on `http://<server-ip>:3000`, which is plain HTTP: passwords and the session cookie cross the network unencrypted, and browsers send a cookie of `http://<server-ip>` to every port of that address, including services other people run there. Set a domain before you invite anyone; until then, reach the panel through an SSH tunnel (`ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, then `http://localhost:3000`). New in 0.2: every page the panel serves over plain HTTP shows **This connection is not encrypted** with the tunnel command for its port; through the tunnel itself it does not.
+After installation the panel answers on `http://<server-ip>:3000`, which is plain HTTP: passwords and the session cookie cross the network unencrypted, and browsers send a cookie of `http://<server-ip>` to every port of that address, including services other people run there. Set a domain before you invite anyone. Until then, reach the panel through an SSH tunnel (`ssh -L 3000:127.0.0.1:3000 root@<server-ip>`, then `http://127.0.0.1:3000`), or serve it on your tailnet (see [The panel on Tailscale](/self-hosting/tailscale)).
 
-Point an `A` record at the panel's node and set the hostname as **Panel domain** in **Settings → General**. The panel gets a certificate like any other service; the page shows **Waiting for DNS**, **Getting a certificate**, then **Active**.
+Changed in 0.2.1: pages on plain HTTP show one calm line at the top, **HTTPS is off until the panel has a domain.**, with **Set a domain** and, under **More**, the SSH tunnel command for the page's port. **Dismiss** hides it in that browser. The setup and sign-in pages show nothing, and neither do pages opened through the tunnel (`localhost`, `127.0.0.1`) or on the tailnet URL. In 0.2, every plain HTTP page, the setup page included, showed an orange **This connection is not encrypted** box.
+
+Point an `A` record at the panel's node, type the hostname in **Panel domain** on the **Panel domain** card in **Settings → General**, and click **Save domain**. The panel gets a certificate like any other service; the card shows **Waiting for DNS**, **Getting a certificate**, then **Active**.
 
 The panel checks the domain every 5 minutes until it is active, and about once an hour after that. New in 0.2.1: the state shows when it was last checked, and **Check now** next to it checks at once, for example right after you changed the record (once every 10 seconds). Saving the domain again checks it at once too.
 
@@ -34,14 +36,15 @@ Once the domain is active:
 
 Nodes that joined over plain HTTP (`--insecure`) stay on their address; run a new join command on them with `--force` added. The node keeps its key, so the panel keeps the same node and its services. Details, and what happens to nodes when you later remove or change the domain, are in [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain).
 
-To go back to IP:port, clear **Panel domain**. Nodes that moved to the domain from the panel's IP come back through their fallback address by themselves after 5 minutes of failed connects, so expect them offline for a few minutes.
+To go back to IP:port, clear **Panel domain**. Nodes that moved to the domain from the panel's IP come back through their fallback address by themselves after 5 minutes of failed connects, so expect them offline for a few minutes. New in 0.2.1: while nodes connect over the domain, removing or changing it asks first (**Remove the panel domain?** or **Change the panel domain?**) and names them, since a node that joined over the domain has no fallback and stays offline until it is joined again with `--force`.
 
 A domain is worth setting early:
 
 - it is what puts the panel on HTTPS; set it before you invite people,
 - passkeys need it,
 - GitHub needs an address it can reach to deliver webhooks,
-- nodes you add later join through it, with no certificate pin to carry around.
+- nodes you add later join through it, with no certificate pin to carry around,
+- with it, the panel can stop answering on its IP address (see [Serve on IP address](#serve-on-ip-address)).
 
 **Default node** on the same page is where new services go when nobody picks a node.
 
@@ -61,6 +64,108 @@ Nodes reach a proxied panel domain through Cloudflare too. The agent's connectio
 
 Cloudflare refuses request bodies over 100 MB on its Free and Pro plans (200 MB on Business, 500 MB on Enterprise). Through a proxied panel domain, larger uploads fail with `413`: a file over that size in a volume's **Files** browser, or an archive for an [upload source](/guides/images-and-uploads#upload) (up to 512 MB). Upload those through the SSH tunnel, or turn the proxy off (DNS only) while you upload.
 
+## Serve on IP address
+
+New in 0.2.1. Docker publishes the panel's port past ufw and firewalld (see [Firewalls](/installation#firewalls)), so before 0.2.1 closing it took your provider's firewall. Now the **Panel domain** card has two switches. Both are on by default, which is how 0.2.0 behaves:
+
+| Switch | Off means |
+| --- | --- |
+| **Serve on IP address** | `http://<server-ip>:3000` answers only on the server itself (`127.0.0.1`). The domain keeps working, because the server's proxy reaches the panel over Docker's network, and so does the panel node's own agent, which connects over `127.0.0.1`. |
+| **Agents' port** | Port 3443 answers only on the server itself, and nodes reach the panel over the domain. It closes only together with **Serve on IP address**. |
+
+The agent recreates the panel container with the port published on `127.0.0.1` only, which closes it whatever the host firewall says. Each change restarts the panel once, for a few seconds. `3000` and `3443` are the defaults; a panel installed with `--port` or `--agent-tls-port` shows its own numbers.
+
+To turn it off:
+
+<Steps>
+<Step>
+
+### Get a way in that is not IP:port
+
+Set the panel domain and wait for **Active**, or serve the panel on your tailnet (see [The panel on Tailscale](/self-hosting/tailscale)). The card lists these under **Ways in without IP:port**, each **Working** or **Not working**, and marks the one you are on with **You are here**.
+
+</Step>
+<Step>
+
+### Open the panel there
+
+Open `https://<panel domain>`, or the tailnet URL, and sign in there. A switch turns off only from a page that came in over a working private path: that proves you can still reach the panel once the port closes.
+
+</Step>
+<Step>
+
+### Save the ways back in
+
+Copy the commands under **Ways back in**: the SSH tunnel and `sudo seylo panel ip-access on` (see [Ways back in](#ways-back-in)).
+
+</Step>
+<Step>
+
+### Turn off Serve on IP address
+
+Turn off **Serve on IP address**. The dialog shows the SSH tunnel command, and that API keys, the CLI and scripts on `http://<server-ip>:3000` stop working: point them at the domain first. Confirm with **Turn off**. The panel restarts for a few seconds, then the card says **IP access is closed**.
+
+</Step>
+<Step>
+
+### Optional: the agents' port
+
+Turn off **Agents' port** once every other node connects over the domain (**Connects to** in each node's sheet on **Nodes**). Nodes that joined over the agents' port move to the domain by themselves while it is active (see [When the panel gets a domain](/guides/adding-nodes#when-the-panel-gets-a-domain)). A panel without other nodes can close it right away.
+
+</Step>
+</Steps>
+
+Only the owner turns things off, from a browser that signed in or confirmed it's you within the last 15 minutes; API keys, MCP and the assistant can't. When something stands in the way, the card says **Can't turn it off yet** and lists why, each with its fix:
+
+- no private path works yet, or this page came in over IP:port,
+- the panel node's agent is offline, or too old (update it in **Settings → Updates**),
+- an update is running,
+- a node connects over plain `http://` (it joined with `--insecure`), online or offline: closing would cut it off. Run the https join command from **Add node** on it, with `--force` added,
+- a node has not connected since the panel was updated, so the panel can't tell how it connects: bring it online once, or disable it on **Nodes**,
+- the panel's own node connects over the server's public address instead of `127.0.0.1` (it was joined again with an **Add node** command). The card shows the command that joins it on `127.0.0.1` again,
+- for the agents' port: nodes that don't connect over the domain yet.
+
+Turning a switch back on is always allowed for owners and admins, from a browser or an API key (not MCP or the assistant). Every close and every reopen raises a **Security change** alert and is in the activity log. While the panel's server runs Docker older than 28, the card and the node's **Docker Engine** health check warn that machines on the same local network may still reach ports on `127.0.0.1`: update Docker from the node's page.
+
+### If the private path stops working
+
+**If the domain stops working** on the same card decides what happens when no private path works any more: the domain failed 2 checks in a row (5 to 10 minutes), or the tailnet did not work for 5 minutes. While IP access is closed, the panel checks its domain every 5 minutes, also once it is active.
+
+- **Reopen IP access**, the default: `http://<server-ip>:3000` answers again and an alert says so. It closes again by itself once a private path has worked for an hour. That gives back what 0.2.0 does, never less.
+- **Keep IP access closed**: it stays closed, and only the SSH tunnel, the server command and the domain itself get you back in. Only the owner picks it, after ticking **I saved the recovery commands below**, with **Keep it closed**.
+
+Some changes reopen at once: removing or changing the domain while it is the only working path, and a panel container that does not start with the port closed (the agent puts the open one back, and the card says so). In **Keep IP access closed** mode, the panel refuses to remove or change the domain while it is the only way in: switch to **Reopen IP access** first.
+
+### Ways back in
+
+When the domain or the tailnet does not let you in:
+
+1. An SSH tunnel, from your computer:
+
+   ```bash
+   ssh -L 3000:127.0.0.1:3000 root@<server-ip>
+   ```
+
+   then open `http://127.0.0.1:3000`. Use `127.0.0.1`, not `localhost`: Docker publishes the closed port on IPv4 only. It keeps the port there even while the agent is down.
+
+2. On the panel's server, as root:
+
+   ```bash
+   sudo seylo panel ip-access on
+   ```
+
+   It turns both switches back on and sets **If the domain stops working** back to **Reopen IP access**. The panel restarts twice, a few seconds each, and the activity log records it as done from the server's command line.
+
+3. The domain itself, once it answers again.
+
+4. **Reopen IP access**, which does it for you unless you chose **Keep IP access closed**.
+
+More in [Locked out of the panel](/troubleshooting#locked-out-of-the-panel).
+
+## On your tailnet
+
+New in 0.2.1. **Settings → Tailscale** serves the panel on your own tailnet, through the Tailscale on the panel's server, and **Lock to Tailscale** closes its IP address and port from there. See [The panel on Tailscale](/self-hosting/tailscale).
+
 ## Look and branding
 
 **Settings → Appearance** changes how the panel looks for everyone who uses it:
@@ -78,11 +183,14 @@ Services keep running. Nodes keep restarting crashed containers, routing traffic
 On the panel's node:
 
 ```bash
-seylo panel status       # its state, version and URL
+seylo panel status       # its state, version and URL, where its ports answer and its tailnet address
 seylo panel logs -f      # its output
 seylo panel start        # start it if it was stopped
 seylo panel setup-link   # a new owner setup link, while no owner exists
+seylo panel ip-access on # answer on http://<server-ip>:3000 again
 ```
+
+New in 0.2.1: `seylo panel status` also says how Docker publishes the panel's ports, for example `IP access: closed (127.0.0.1:3000); agents' port: open (0.0.0.0:3443)`, and adds a `Tailnet:` line on a server that runs Tailscale.
 
 If a copy of `/var/lib/seylo/panel/` leaked, `sudo seylo panel rotate-key` gives the panel a new `master.key` (see [If a copy leaked](/self-hosting/backups#if-a-copy-leaked)).
 

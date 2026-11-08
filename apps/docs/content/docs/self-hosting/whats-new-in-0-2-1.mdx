@@ -1,0 +1,41 @@
+---
+title: What's new in 0.2.1
+description: The panel on your tailnet, closing the panel's IP address, build nodes by default, a quieter installer that installs Docker, and the fixes from the 0.2.0 install tests.
+---
+
+0.2.1 updates a 0.2.0 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.1** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand. Coming from 0.1, read [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) too.
+
+## New
+
+- **The panel on your tailnet.** **Settings → Tailscale** serves the panel at `https://<machine>.<tailnet>.ts.net` through the Tailscale on the panel's server: install it from the panel node's **Shell** view, sign the server in from the card, then turn on **Serve the panel on my tailnet**. Nothing about Tailscale is stored in the panel. See [The panel on Tailscale](/self-hosting/tailscale).
+- **Close the panel's IP address.** The **Panel domain** card in **Settings → General** has **Serve on IP address** and **Agents' port**. Off, `http://<server-ip>:3000` and port 3443 answer only on the server itself, which ufw could never do for ports Docker publishes. Only the owner turns them off, from the domain or the tailnet. When that path stops working, IP access reopens by itself unless you chose **Keep IP access closed**, and `sudo seylo panel ip-access on` on the server always gets you back in. See [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address).
+- **Lock to Tailscale.** One checklist on the tailnet page closes IP access, the agents' port when no other node needs it and, if you tick it, removes the panel domain.
+- **Check now** for the panel domain, and panel domains proxied by Cloudflare. See [Behind Cloudflare's proxy](/self-hosting/the-panel#behind-cloudflares-proxy).
+- **`seylo panel status`** shows how Docker publishes the panel's ports and the panel's tailnet address. **`seylo panel tailscale status|off|on`** reads or stops the panel on the tailnet without the panel.
+- **Hide projects.** **Hide project** in a project's menu takes it out of your own sidebar and home page, for example the **Panel** project (see [Project](/concepts#project)).
+- **Copy fields** copy on a click anywhere on them, not only on the copy icon.
+
+## Changed
+
+- **New nodes build images by default.** **Add node** has **Build images on this node**, ticked by default, and the join command carries the choice. Services build on their own node first, so services on a node that joined with the default build there instead of on the panel's node. This partly reverses a 0.2 security fix: untick the box for servers you do not fully trust, since a build node gets the source and build secrets of everything it builds. Join commands made before the update, and nodes that joined before it, keep 0.2.0's behavior. See [Build nodes](/guides/adding-nodes#build-nodes) and [Security](/security#a-compromised-node).
+- **Builds skip nodes without docker buildx.** A node whose agent reports no buildx gets no automatic builds and shows **docker buildx is missing** next to **Can build**. Its **Docker buildx** health check now runs whenever the panel sends it builds.
+- **The installer installs Docker when it is missing**, without asking, with or without a terminal. `--no-docker-install` stops instead. See [Docker](/installation#docker).
+- **The installer's output** has colors and a framed block at the end with the setup link, how long it works and the next step. Logs and pipes still get plain text.
+- **A join waits for the agent's first connection** and says whether it connected, could not reach the panel yet (exit status 0, the agent keeps trying) or was refused (exit status 3). See [Exit status](/installation#exit-status).
+- **No scary plain HTTP warning.** The installer prints one tip under the setup link, the setup and sign-in pages show nothing, and other pages show one line, **HTTPS is off until the panel has a domain.**, which you can dismiss.
+- **Removing or changing the panel domain asks first** while nodes connect over it, and names them.
+
+## Fixed
+
+- The agent step of an update on the panel's own node could hang and fail after 10 minutes with "The update did not finish in time." A busy node now gets its update again, and the panel node's agent waits for the panel's update to finish (see [How a node updates](/self-hosting/updates#how-a-node-updates)).
+- An update step that ran out of time raised no alert. It now raises **Update to `<version>` did not finish on `<node>`**, a node's step is tried once more after 5 minutes, and the alert resolves by itself when the node gets there.
+- **Settings → Updates** on a release candidate said it stays on the pre-release before the panel had checked for updates.
+- IP:port addresses, such as a new app's address before it has a domain, could hang or reset requests for about a second around each deploy (see [Zero-downtime deploys](/features/zero-downtime-deploys)).
+- An installed Docker that does not start now stops the installer with what to check, instead of a reinstall over it.
+- **Docker buildx** on a build node is checked with the same Docker config builds use, so a plugin that builds can't find no longer passes.
+
+## After the update
+
+- Nodes that joined before 0.2.1 keep **Can build** as it was. Turn it on on **Nodes** for the ones that should build, and install `docker-buildx-plugin` on any node that shows **docker buildx is missing**.
+- Join commands you made before the update still make nodes that don't build. Make new ones if you want builders.
+- Serve on IP address, the agents' port and Tailscale stay as in 0.2.0 until you change them: open on IP:port, no tailnet.

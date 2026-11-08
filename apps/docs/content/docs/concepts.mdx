@@ -17,11 +17,13 @@ A Linux server with Docker and the Seylo agent. The agent is one static binary, 
 - runs one-off jobs the panel asks for: builds, commands, file access, backups, cleanup,
 - streams logs, metrics and events back, and keeps important events (crashes, deploy results, cron runs, backups) on disk until the panel has them.
 
-A node can be allowed to build images (**Can build**) or only run images built elsewhere. Nodes that join, unlike the panel's own node, only run images until an owner or admin allows builds, because a build node gets the source and build secrets of everything it builds (see [Where builds run](/guides/github-and-git#where-builds-run)).
+A node can be allowed to build images (**Can build**) or only run images built elsewhere. Whoever creates a node's join command chooses, with **Build images on this node** in **Add node**, ticked by default since 0.2.1; an owner or admin can change it later on **Nodes**. A build node gets the source and build secrets of everything it builds, so untick it for servers you do not fully trust (see [Where builds run](/guides/github-and-git#where-builds-run)).
 
 ## Project
 
 A group of services with its own private Docker network. Services in a project reach each other by service name (`db:5432`); services in other projects can't reach them at all.
+
+New in 0.2.1: **Hide project** in a project's menu, in the sidebar or on its card on the home page, takes it out of your sidebar and home page, for example the protected **Panel** project. It changes only your own view, and nothing is hidden by default. **Hidden (N)** at the end of the sidebar's projects, and **Show hidden** on the home page, show them again without unhiding; **Unhide** is in the same menu. Hidden projects still open from direct links, search, the command palette and the projects pages.
 
 <Callout title="Private networks are per node">
 A project's network exists on each node separately; no network spans nodes. If a service points at an internal address of a service on another node, the environment editor underlines it in red. Expose the target (databases get TLS) and use its exposed address, or move the two services onto one node.

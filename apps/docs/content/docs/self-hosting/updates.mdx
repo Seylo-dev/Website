@@ -64,6 +64,11 @@ New in 0.2: when the panel's update to a release was rolled back, automatic runs
 3. It swaps the binary in and restarts. Containers keep running through the restart; the agent adopts them when it comes back. New in 0.2: while a deploy on the node is in its health check, the agent waits with the swap until it is done, at most 5 minutes, so the update does not roll that deploy back.
 4. The new agent confirms once it has reconnected to the panel. If it does not within 3 minutes, the guard puts the old binary back and restarts it.
 
+New in 0.2.1, for steps that take too long:
+
+- A node that is busy with another update gets its update again, after 5 seconds, then twice as long each time up to a minute. On the panel's own node, the agent also waits up to a minute for the panel's update to let go before it answers busy. In 0.2.0, the agent step on the panel's node could hang there and fail after 10 minutes with "The update did not finish in time."
+- A step that does not finish within 10 minutes fails with that message and raises **Update to `<version>` did not finish on `<node>`** (or **Update of the panel to `<version>` did not finish**). A node's step is tried once more 5 minutes later. When the node gets there after all, the alert resolves by itself.
+
 Either way the panel gets exactly one result for the node.
 
 New in 0.2: a release the guard rolled back is held for that node, so a bad release does not keep restarting the agent, and with it builds, shells and consoles:
@@ -76,7 +81,7 @@ New in 0.2: a release the guard rolled back is held for that node, so a bad rele
 
 ## Upgrading from 0.1
 
-A 0.1.x panel sees 0.2.0 in **Settings → Updates** and updates to it the same way as to any other release: the panel first, then each node. A few security fixes in 0.2 change what people see afterwards, such as one more sign-in for everyone; [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) lists them and what to do about each.
+A 0.1.x panel sees the newest 0.2 release in **Settings → Updates** and updates to it the same way as to any other release: the panel first, then each node. A few security fixes in 0.2 change what people see afterwards, such as one more sign-in for everyone; [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) lists them and what to do about each.
 
 ## Docker
 

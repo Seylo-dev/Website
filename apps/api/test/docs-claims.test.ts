@@ -79,19 +79,78 @@ describe("docs match the app", () => {
       expect({ name, asset: /releases\/download\/\S*install\.sh/.test(text) }).toEqual({ name, asset: false });
       for (const line of text.split("\n").filter((l) => l.includes("sh -s -- join "))) {
         commands++;
-        expect({ name, line }).toEqual({ name, line: expect.stringMatching(/^curl -fsSL https:\/\/install\.seylo\.dev \| sudo sh -s -- join .* --version '<version>'$/) });
+        expect({ name, line }).toEqual({
+          name,
+          line: expect.stringMatching(
+            /^curl -fsSL https:\/\/install\.seylo\.dev \| sudo sh -s -- join .* --version '<version>'$/,
+          ),
+        });
       }
     }
     expect(commands).toBeGreaterThan(0);
   });
 
-  // apps/panel/src/agent-hub/handshake.ts decideHello: only the installer's panel node keeps can_build
-  // from its facts at join; any other node starts with Can build off until nodes.setCanBuild.
-  test("a joining node does not build until an owner or admin allows it", async () => {
+  // 0.2.1: apps/panel/src/modules/nodes/ops.ts createJoinToken stores `canBuild: input.canBuild ?? true` on
+  // the join token, apps/web/src/components/nodes/add-node.tsx ticks "Build images on this node" by
+  // default, and agent-hub/handshake.ts decideHello copies the token's value to a new node (a re-join keeps
+  // the row's value); the node's own --can-build only writes config.yml. Tokens from before the 0004
+  // migration have can_build false.
+  test("a joining node builds by default, chosen in Add node, not by the node", async () => {
     const text = await page("guides/adding-nodes.mdx");
-    expect(text).toContain("A new node does not build images until an owner or admin turns on **Build images on this node**");
+    expect(text).not.toContain("A new node does not build images until an owner or admin turns on");
+    expect(text).toContain("with **Build images on this node**, which is ticked by default");
+    expect(text).toContain("keeps its own **Can build**");
+    expect(text).toContain("Join commands made before the panel's update to 0.2.1 still make nodes that don't build");
     const options = table(await page("installation.mdx"), "Option");
-    expect(options.get("`--can-build`")?.[0]).toContain("Only the panel's own node from the installer starts building with it");
+    const canBuild = options.get("`--can-build`")?.[0] ?? "";
+    expect(canBuild).toContain("Only sets `can_build`");
+    expect(canBuild).toContain("on by default since 0.2.1");
+    expect(canBuild).not.toContain("Only the panel's own node from the installer starts building with it");
+    for (const name of ["concepts.mdx", "security.mdx", "troubleshooting.mdx", "guides/github-and-git.mdx"]) {
+      const other = await page(name);
+      expect({
+        name,
+        stale:
+          /only run images until an owner or admin|start with builds off, except|Nodes start with \*\*Build images on this node\*\* off/.test(
+            other,
+          ),
+      }).toEqual({ name, stale: false });
+    }
+  });
+
+  // 0.2.1: installer/install.sh.tmpl ensure_docker installs a missing Docker from get.docker.com without a
+  // question, with or without a terminal (--no-docker-install stops instead); --install-docker and --yes only
+  // matter for an installed Docker that does not start. The installer has no prompt left.
+  test("installation: the installer installs a missing Docker without asking", async () => {
+    const text = await page("installation.mdx");
+    expect(text).not.toContain("offers to install it");
+    expect(text).not.toContain("The installer asks one question");
+    const docker = /### Docker\n([\s\S]*?)\n### /.exec(text)?.[1] ?? "";
+    expect(docker).toContain("installs it with the official script from get.docker.com, without asking");
+    expect(docker).toContain("`--no-docker-install` makes it stop there instead");
+    const noTerminal = /### Without a terminal\n([\s\S]*?)\n### /.exec(text)?.[1] ?? "";
+    expect(noTerminal).toContain("the installer asks nothing");
+    const options = table(text, "Option");
+    expect(options.get("`--install-docker`")?.[0]).toContain("when it is installed but does not start");
+    expect(options.get("`--no-docker-install`")?.[0]).toContain("stop if it is missing");
+    for (const file of mdxFiles(docs)) {
+      const name = relative(docs, file);
+      if (name === "reference/cli.mdx") continue;
+      const other = await Bun.file(file).text();
+      expect({ name, asks: /installs Docker if you agree|offers to install Docker/.test(other) }).toEqual({
+        name,
+        asks: false,
+      });
+    }
+  });
+
+  // 0.2.1: installer/install.sh.tmpl JOIN_REFUSED_EXIT=3 for a join the panel refused; a panel it cannot
+  // reach yet exits 0 (the agent keeps trying).
+  test("installation: the exit status of a refused join is 3", async () => {
+    const rows = table(await page("installation.mdx"), "Status");
+    expect(rows.get("`3`")?.[0]).toContain("A join the panel refused");
+    expect(rows.get("`0`")?.[0]).toContain("can't reach the panel yet");
+    expect(rows.get("`1`")?.[0]).toContain("Any other error");
   });
 
   // apps/web/src/i18n/en/settings.ts sections.apiKeys. reference/cli.mdx is generated from the
@@ -140,11 +199,19 @@ describe("docs match the app", () => {
     expect(rows.get("`panel/`")?.[0]).toContain("agent-tls.key");
   });
 
-  // go/internal/cli/panel.go: only the 0.2 installer prints the plain-HTTP lines under the link.
-  test("installation: the sample installer output is from 0.2", async () => {
+  // 0.2.1: go/internal/cli/panel.go writeSetupLinkFile and plainHTTPTip (one calm tip instead of 0.2.0's
+  // three-line warning), installer/install.sh.tmpl panel_ready (the framed closing block).
+  test("installation: the sample installer output is from 0.2.1", async () => {
     const text = await page("installation.mdx");
     const sample = /```text\n==> Starting the panel\n([\s\S]*?)```/.exec(text)?.[1] ?? "";
-    expect(sample).toContain("This link is plain HTTP");
-    expect(sample).toMatch(/^Starting the panel \(ghcr\.io\/seylo-dev\/seylo:0\.2\.\d+@sha256:\.\.\.\)\.\.\.$/m);
+    expect(sample).not.toContain("This link is plain HTTP");
+    expect(sample).toMatch(/^Starting the panel \(ghcr\.io\/seylo-dev\/seylo:0\.2\.[1-9]\d*@sha256:\.\.\.\)\.\.\.$/m);
+    const flat = sample.replace(/\n│ /g, " ");
+    expect(flat).toContain("The panel is running. Open this link to create the owner account:");
+    expect(flat).toContain("It works once, within an hour");
+    expect(flat).toContain(
+      "Tip: the panel uses plain HTTP until it has a domain. Add one in the setup wizard to switch to HTTPS.",
+    );
+    expect(flat).toContain("A new link when this one expires: seylo panel setup-link");
   });
 });
