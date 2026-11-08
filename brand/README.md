@@ -17,3 +17,13 @@ and the app repo's) in sync when the brand or the domains change.
 
 `mark.svg` is the logo mark. The landing page inlines it (`apps/landing/components/logo.tsx`); the report pages
 show a plain accent square.
+
+## The mark
+
+Three rounded layers, the middle one sliding in: a new release joining a live stack. Brand blue `#2563EB`.
+
+- `mark.svg`: the mark on its blue tile (favicons, the panel, the site and docs logos)
+- `mark-glyph.svg`, `mark-white.svg`: the layers alone, in blue or white, for places that bring their own background
+- `app-icon-1024.png`: full-bleed square for app stores and home screens (the system rounds the corners)
+- `lockup-light.png`, `lockup-dark.png`: the mark with the name, set in Inter SemiBold
+
