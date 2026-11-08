@@ -32,7 +32,7 @@ Usage:
   seylo agent [flags]
 
 Flags:
-      --can-build            let this node build; the panel's owner still turns Can build on for it under Nodes (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
+      --can-build            only sets can_build in config.yml (--can-build=false clears it; a re-join without the flag keeps it). Whether the panel sends builds is chosen when the join command is made, and later under Nodes
       --force                join again although this node already joined a panel (keeps the rest of config.yml)
   -h, --help                 help for agent
       --insecure             accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
@@ -64,7 +64,7 @@ Usage:
   seylo join <panel-url> --token <token> [flags]
 
 Flags:
-      --can-build            let this node build; the panel's owner still turns Can build on for it under Nodes (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
+      --can-build            only sets can_build in config.yml (--can-build=false clears it; a re-join without the flag keeps it). Whether the panel sends builds is chosen when the join command is made, and later under Nodes
       --force                join again although this node already joined a panel (keeps the rest of config.yml)
   -h, --help                 help for join
       --insecure             accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
@@ -99,14 +99,47 @@ Usage:
   seylo panel [command]
 
 Available Commands:
+  ip-access   Open the panel on its IP address again
   logs        Show the panel service's logs
   rotate-key  Replace the panel's master.key after a leak and seal every secret again
   setup-link  Print a new one-time link to create the owner account
   start       Start the panel service
-  status      Show the panel service's state, version and URL
+  status      Show the panel service's state, version, URL, where its ports answer and its tailnet address
+  tailscale   See or stop the panel on this server's tailnet
 
 Flags:
   -h, --help   help for panel
+```
+
+#### `seylo panel ip-access`
+
+Open the panel on its IP address again
+
+```text
+Usage:
+  seylo panel ip-access [command]
+
+Available Commands:
+  on          Make the panel answer on http://<server ip>:<panel port> again
+
+Flags:
+  -h, --help   help for ip-access
+```
+
+##### `seylo panel ip-access on`
+
+Turns "Serve on IP address" and the agents' port back on, for when the panel
+domain or the tailnet stopped working while they were off. Restarts the panel
+(twice, a few seconds each). Run it as root on the server that runs the panel:
+
+  sudo seylo panel ip-access on
+
+```text
+Usage:
+  seylo panel ip-access on [flags]
+
+Flags:
+  -h, --help   help for on
 ```
 
 #### `seylo panel logs`
@@ -176,11 +209,69 @@ Flags:
 
 #### `seylo panel status`
 
-Show the panel service's state, version and URL
+Show the panel service's state, version, URL, where its ports answer and its tailnet address
 
 ```text
 Usage:
   seylo panel status [flags]
+
+Flags:
+  -h, --help   help for status
+```
+
+#### `seylo panel tailscale`
+
+See or stop the panel on this server's tailnet
+
+```text
+Usage:
+  seylo panel tailscale [command]
+
+Available Commands:
+  off         Remove the panel from this server's tailnet and keep it off
+  on          Undo `panel tailscale off`
+  status      Show this server's Tailscale and the panel's Serve entry, without the panel
+
+Flags:
+  -h, --help   help for tailscale
+```
+
+##### `seylo panel tailscale off`
+
+Writes no_tailnet: true to config.yml, restarts the agent and removes the panel's
+Tailscale Serve entry, so the agent adds none and refuses Tailscale sign-in and DNS
+changes from the panel. Tailscale itself keeps running. `seylo panel tailscale on` undoes it.
+
+```text
+Usage:
+  seylo panel tailscale off [flags]
+
+Flags:
+  -h, --help   help for off
+```
+
+##### `seylo panel tailscale on`
+
+Removes no_tailnet from config.yml and restarts the agent. It adds the panel's Serve
+entry again if the panel still has "Serve the panel on my tailnet" on.
+
+```text
+Usage:
+  seylo panel tailscale on [flags]
+
+Flags:
+  -h, --help   help for on
+```
+
+##### `seylo panel tailscale status`
+
+Reads the server's tailscaled directly, so it works while the agent or the panel is down:
+the state, the tailnet, the machine name, the panel's Serve entry, and the sign-in link
+when Tailscale waits for one.
+
+```text
+Usage:
+  seylo panel tailscale status [flags]
 
 Flags:
   -h, --help   help for status
