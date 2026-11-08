@@ -32,7 +32,7 @@ On a service's **Backups** tab, **Add schedule**:
 | **Keep newest** | How many backups this schedule keeps; older ones are deleted from the bucket |
 | **Stop the service while copying** | For files that change while being copied, like SQLite databases. The service is down for the length of the backup. |
 
-**Back up now** runs one at once. Backups made by hand are kept until you delete them.
+**Back up now** runs the service's first schedule at once, and each schedule's menu has a **Back up now** of its own. Such a run counts toward that schedule's **Keep newest**, so it can push the schedule's oldest backup out. On a database without a schedule, **Back up now** on the **Backups** tab makes a one-off dump to the first destination instead, which is kept until you delete it. The **Back up now** on a database's **Connection** tab needs a schedule.
 
 ### What a backup contains
 

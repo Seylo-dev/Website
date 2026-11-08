@@ -42,7 +42,7 @@ It ends with the link to create the owner account:
 
 ```text
 ==> Starting the panel
-Starting the panel (ghcr.io/seylo-dev/seylo:0.1.0@sha256:...)...
+Starting the panel (ghcr.io/seylo-dev/seylo:0.2.0@sha256:...)...
 
 The panel is running. Open this link within an hour to create the owner account:
 
@@ -157,7 +157,7 @@ When ufw or firewalld is active, the installer opens what Seylo needs and prints
 | 3000 (panel port) | You, until the panel has a domain | Yes, on the panel server |
 | 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | Yes, on the panel server |
 | 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | Yes (ufw) |
-| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | A joining node allows it from the panel's address; allow it from your other nodes yourself |
+| 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | A joining node allows it from the panel's address when the join URL is an IP address; allow it from your other nodes yourself |
 | IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | No: open each port you want reachable |
 
 The IP:port addresses the panel shows are served by the agent itself, not published through Docker, so the host firewall applies to them. Docker's own published ports bypass ufw, which is why Seylo does not use them. When a node's firewall is on, the panel shows the command that opens each port next to the address, and the node health check names the ones that are still closed.
@@ -182,6 +182,7 @@ Everything Seylo keeps on a node is in one folder:
       <File name="panel.db" />
       <File name="metrics.db" />
       <File name="master.key" />
+      <File name="agent-tls.key" />
     </Folder>
     <Folder name="services">
       <Folder name="<id>">
@@ -192,9 +193,12 @@ Everything Seylo keeps on a node is in one folder:
     <Folder name="logs" />
     <Folder name="builds" />
     <Folder name="registry" />
+    <Folder name="network" />
+    <Folder name="run" />
     <Folder name="state" />
     <Folder name="traefik" />
     <Folder name="tools" />
+    <Folder name="update" />
   </Folder>
 </Files>
 
@@ -202,15 +206,18 @@ Everything Seylo keeps on a node is in one folder:
 | --- | --- |
 | `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell` and `git_proxy_resolves` |
 | `agent.key` | The node's private key; it signs every connection to the panel |
-| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history) and `master.key`. Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
+| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
 | `services/<id>/volumes/<name>` | Service volumes |
 | `services/<id>/files` | File mounts |
 | `logs/<service id>/` | Service logs, kept across deploys |
 | `builds/` | Build workspaces and uploaded sources |
 | `registry/` | Image registry storage (panel node only) |
+| `network/` | Ports the agent picked for IP:port addresses, kept across restarts, and the key that signs tool session cookies on the node's edge listener |
+| `run/` | The agent's local socket (`agent.sock`), which the node commands such as `seylo status` talk to |
 | `state/` | The last desired state from the panel and reports waiting to be sent |
 | `traefik/` | Traefik's config, route files and certificates |
 | `tools/` | Pinned helper binaries (Railpack, Nixpacks) |
+| `update/` | The previous agent binary (`agent.prev`) and, on the panel's node, the copies of `panel.db` and `metrics.db` taken before each panel update (`panel-snapshots/`); see [Updates](/self-hosting/updates) |
 
 Keep a copy of `master.key` somewhere other than the server: it decrypts the secrets in `panel.db` (see [Backing up the panel](/self-hosting/backups)).
 

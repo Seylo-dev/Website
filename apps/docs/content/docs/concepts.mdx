@@ -39,7 +39,7 @@ Something that runs in a project:
 | Cron service | A command that runs on a schedule in a one-off container |
 | Box | VS Code in the browser (code-server) on the project network |
 
-Every service gets logs that survive deploys, metrics with history, a console, a shell, a **Files** browser for its volumes, notes, alert rules and a crash policy.
+Apps and compose members get logs that survive deploys, metrics with history, a console, a shell, a **Files** browser for their volumes, notes, alert rules and a crash policy. Cron services get the same except the console and the shell. Databases get logs, metrics, **Files**, a database shell, backups, notes and alert rules; Boxes get logs, metrics, **Files** and notes.
 
 ## Deployment
 
