@@ -32,12 +32,12 @@ Usage:
   seylo agent [flags]
 
 Flags:
-      --can-build            allow builds on this node
-      --force                join again although this node already joined a panel
+      --can-build            allow builds on this node (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
+      --force                join again although this node already joined a panel (keeps the rest of config.yml)
   -h, --help                 help for agent
       --insecure             accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
       --join string          join this panel before starting (with --token)
-      --name string          node name shown in the panel (default: the hostname)
+      --name string          node name shown in the panel (default: the hostname; a re-join keeps the one in config.yml)
       --pin string           panel certificate pin (sha256:<hex>) for a panel without a public certificate
       --token string         single-use join token from the panel's Add node dialog
       --trust-on-first-use   pin whatever certificate the panel presents on the first connection
@@ -64,11 +64,11 @@ Usage:
   seylo join <panel-url> --token <token> [flags]
 
 Flags:
-      --can-build            allow builds on this node
-      --force                join again although this node already joined a panel
+      --can-build            allow builds on this node (--can-build=false stops them; a re-join without the flag keeps config.yml's setting)
+      --force                join again although this node already joined a panel (keeps the rest of config.yml)
   -h, --help                 help for join
       --insecure             accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
-      --name string          node name shown in the panel (default: the hostname)
+      --name string          node name shown in the panel (default: the hostname; a re-join keeps the one in config.yml)
       --no-start             only write the config
       --pin string           panel certificate pin (sha256:<hex>) for a panel without a public certificate
       --token string         single-use join token from the panel's Add node dialog
@@ -100,6 +100,7 @@ Usage:
 
 Available Commands:
   logs        Show the panel service's logs
+  rotate-key  Replace the panel's master.key after a leak and seal every secret again
   setup-link  Print a new one-time link to create the owner account
   start       Start the panel service
   status      Show the panel service's state, version and URL
@@ -120,6 +121,31 @@ Flags:
   -f, --follow     keep printing new lines
   -h, --help       help for logs
   -n, --tail int   lines of history to show (default 200)
+```
+
+#### `seylo panel rotate-key`
+
+Replaces master.key in the panel's data dir and seals every stored secret again with the new key.
+Run it as root on the node that runs the panel, after a copy of the data dir (or of master.key) leaked.
+It stops the agent and the panel, runs the rotation from the panel's image, starts the agent again
+(which starts the panel) and prints what to do next. Services keep running throughout.
+
+  --new-panel-identity   panel.db leaked (a copy of the data dir, a backup): the panel's identity keys
+                         and the agents' TLS key are replaced too, so every node must be joined again;
+                         the command prints the nodes and the seylo join command for each.
+  --keep-panel-identity  only master.key leaked: the identity keys are sealed again, nodes keep working.
+
+Both delete recovery codes (people make new ones in Settings &gt; Security).
+
+```text
+Usage:
+  seylo panel rotate-key (--new-panel-identity | --keep-panel-identity) [flags]
+
+Flags:
+  -h, --help                  help for rotate-key
+      --keep-panel-identity   only master.key leaked: keep the panel's identity, nodes keep working
+      --new-panel-identity    panel.db leaked: replace the panel's identity keys and the agents' TLS key too (every node joins again)
+      --timeout duration      how long to wait for the panel to answer afterwards (default 3m0s)
 ```
 
 #### `seylo panel setup-link`
