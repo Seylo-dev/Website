@@ -69,13 +69,13 @@ Every request carries `x-seylo-timestamp` (Unix seconds). With a signing secret 
 | Update available | A new release, when auto-update is off |
 | Update failed | The panel or a node could not update |
 | Approval requested | An MCP client or the assistant asks to run something |
-| Security change | Someone approved a command line sign-in, created an API key, added a passkey, linked GitHub for sign-in, set or changed a password, or turned off two-factor sign-in; or many wrong passwords or (new in 0.2.0-rc.2) two-factor codes arrived for one account. See [Sign-in and security](/people/sign-in-and-security#security-alerts). New in 0.2: also when the owner allows [host shells](/guides/host-shell) on a node, and when someone opens one. |
+| Security change | Someone approved a command line sign-in, created an API key, added a passkey, linked GitHub for sign-in, set or changed a password, or turned off two-factor sign-in; or many wrong passwords or (new in 0.2) two-factor codes arrived for one account. See [Sign-in and security](/people/sign-in-and-security#security-alerts). New in 0.2: also when the owner allows [host shells](/guides/host-shell) on a node, and when someone opens one. |
 
 The **Node health check failed** alert also covers what a node reports between checks: Docker not answering, Traefik failing to start (for example because another program holds port 80 or 443), low memory, a clock that drifted from the panel's, and a node that could not move to the panel's domain (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)).
 
 When the problem goes away (the service stays up, the check passes again), the alert is resolved.
 
-The feed keeps an alert for 180 days after it was resolved. New in 0.2.0-rc.2: alerts nothing resolves, such as deploy, build, backup, cleanup and update results, go 180 days after they were raised; before, they stayed for good.
+The feed keeps an alert for 180 days after it was resolved. New in 0.2: alerts nothing resolves, such as deploy, build, backup, cleanup and update results, go 180 days after they were raised; before, they stayed for good.
 
 ## Rules
 

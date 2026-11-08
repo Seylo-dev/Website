@@ -116,17 +116,17 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 | `join --panel <url> --token <t>` | Add this server to an existing panel; the panel's **Add node** dialog gives you the full command, with `--version` set to the panel's own release. See [Adding nodes](/guides/adding-nodes). |
 | `uninstall [--purge]` | Remove the agent; see [Uninstall](/self-hosting/uninstall) |
 | `--version <v>` | Install this release instead of the installer's own, checked against that release's signed manifest. `install.seylo.dev` serves the installer of the latest stable release; the join commands from **Add node** add `--version` with the panel's release. |
-| `--downgrade` | Install the release although this node runs a newer one (new in 0.2.0-rc.2, see below) |
+| `--downgrade` | Install the release although this node runs a newer one (new in 0.2, see below) |
 | `--port <n>` | Port for the panel until it has a domain (default 3000) |
 | `--agent-tls-port <n>` | Port where other nodes' agents reach the panel over TLS with a pinned key until it has a domain (default 3443; `0` turns it off) |
 | `--image <ref>` | Panel image (default: the release's image, pinned by the digest in its signed manifest) |
 | `--allow-unsigned` | Install a release without checking its signature, for development builds that have no release key |
 | `--name <name>` | Node name shown in the panel (default: the hostname; a re-join keeps the current one) |
-| `--can-build` | Set `can_build` in the joining node's `config.yml`. Only the panel's own node from the installer starts building with it; any other node builds once an owner or admin turns on **Build images on this node** in the panel (new in 0.2.0-rc.2, see [Join a server](/guides/adding-nodes#join-a-server)). |
+| `--can-build` | Set `can_build` in the joining node's `config.yml`. Only the panel's own node from the installer starts building with it; any other node builds once an owner or admin turns on **Build images on this node** in the panel (new in 0.2, see [Join a server](/guides/adding-nodes#join-a-server)). |
 | `--no-can-build` | Clear `can_build` on a node that joins again. Without `--can-build` or `--no-can-build`, a re-join keeps the current setting. |
 | `--pin <sha256:...>` | Panel certificate pin, for joining (the Add node command carries it) |
 | `--insecure` | Join a panel at a plain `http://` URL on another server; the agent's traffic is then unencrypted |
-| `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node, and since 0.2.0-rc.2 its other settings in `config.yml`); install the panel although another program holds 80 or 443 |
+| `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node, and since 0.2 its other settings in `config.yml`); install the panel although another program holds 80 or 443 |
 | `--install-docker` | Install Docker without asking if it is missing |
 | `--no-docker-install` | Never install Docker; stop if it is missing |
 | `--yes`, `-y` | Answer yes to questions (implies `--install-docker`) |
@@ -138,7 +138,7 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 
 Running the installer again is safe: it updates the binary and the systemd unit and keeps the node's data and identity.
 
-New in 0.2.0-rc.2: it never installs an older release than the node runs. `install.seylo.dev` serves the latest stable release, so on a node whose agent (or, on the panel's node, the panel) runs a pre-release or a release the panel updated it to, the installer stops before it changes anything and names that release. Update nodes from the panel instead, re-run with `--version <that release>` to reinstall it, or add `--downgrade` to install the older one anyway. Before rc.2, a re-run quietly put the older agent next to the newer panel. A `--binary` is installed as given.
+New in 0.2: it never installs an older release than the node runs. `install.seylo.dev` serves the latest stable release, so on a node whose agent (or, on the panel's node, the panel) runs a pre-release or a release the panel updated it to, the installer stops before it changes anything and names that release. Update nodes from the panel instead, re-run with `--version <that release>` to reinstall it, or add `--downgrade` to install the older one anyway. A `--binary` is installed as given.
 
 ### Without a terminal
 
@@ -210,8 +210,8 @@ Everything Seylo keeps on a node is in one folder:
 | `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell` and `git_proxy_resolves` |
 | `agent.key` | The node's private key; it signs every connection to the panel |
 | `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
-| `services/<id>/volumes/<name>` | Service volumes. New in 0.2.0-rc.2: `services/` and each `services/<id>/` are mode 0700, so only root reaches the volumes and file mounts under them; the agent closes older folders when it starts. |
-| `services/<id>/files` | File mounts, mode 0700. New in 0.2.0-rc.2: one folder per version of the service's settings, so a deploy that fails, and the old version it rolls back to, keep their own files |
+| `services/<id>/volumes/<name>` | Service volumes. New in 0.2: `services/` and each `services/<id>/` are mode 0700, so only root reaches the volumes and file mounts under them; the agent closes older folders when it starts. |
+| `services/<id>/files` | File mounts, mode 0700. New in 0.2: one folder per version of the service's settings, so a deploy that fails, and the old version it rolls back to, keep their own files |
 | `logs/<service id>/` | Service logs, kept across deploys |
 | `builds/` | Build workspaces and uploaded sources |
 | `registry/` | Image registry storage (panel node only) |
@@ -224,7 +224,7 @@ Everything Seylo keeps on a node is in one folder:
 
 Keep a copy of `master.key` somewhere other than the server: it decrypts the secrets in `panel.db` (see [Backing up the panel](/self-hosting/backups)).
 
-New in 0.2.0-rc.2: the panel container runs as uid and gid 61000, which no login user has. Before, it ran as uid 1000, which on most cloud images is the default login user (`ubuntu`, `debian`, `ec2-user`), and that user could read `master.key` and `panel.db` without sudo. An upgraded panel's node moves the folder to the new user by itself, the first time its agent starts the panel after the update. A new panel install warns when an account on the server already has uid or gid 61000, since that account could read the folder.
+New in 0.2: the panel container runs as uid and gid 61000, which no login user has. On 0.1, it ran as uid 1000, which on most cloud images is the default login user (`ubuntu`, `debian`, `ec2-user`), and that user could read `master.key` and `panel.db` without sudo. An upgraded panel's node moves the folder to the new user by itself, the first time its agent starts the panel after the update. A new panel install warns when an account on the server already has uid or gid 61000, since that account could read the folder.
 
 ## If something goes wrong
 

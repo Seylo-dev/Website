@@ -10,7 +10,7 @@ To move a service to another project instead, or to make a copy of it, see [Clon
 ## What happens
 
 - **Without volumes**, the move is a normal zero-downtime rollout: the service starts on the new node, passes its health check, traffic switches, then the old copy goes.
-- **With volumes**, the old copy stops first, every volume is copied to the new node through the panel (nodes share no network), and then the new node starts the service. The service is down while the volumes copy, so large volumes take a while. New in 0.2.0-rc.2: while they copy, the service stays stopped on both nodes, and **Start**, **Open editor** for a Box and changes to its nodes or volumes are refused until the move ends, so nothing runs on a half-copied volume or deletes data the copy still reads. A clone of the service that copies its data is refused for the whole move.
+- **With volumes**, the old copy stops first, every volume is copied to the new node through the panel (nodes share no network), and then the new node starts the service. The service is down while the volumes copy, so large volumes take a while. New in 0.2: while they copy, the service stays stopped on both nodes, and **Start**, **Open editor** for a Box and changes to its nodes or volumes are refused until the move ends, so nothing runs on a half-copied volume or deletes data the copy still reads. A clone of the service that copies its data is refused for the whole move.
 
 If anything fails, the service stays on the old node. With volumes, the old node keeps its stopped copy and its data until the new node is live, so a failed move loses nothing.
 

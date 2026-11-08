@@ -52,7 +52,7 @@ Run it as root on the panel's node:
 sudo seylo panel rotate-key --new-panel-identity
 ```
 
-Use `--keep-panel-identity` in place of `--new-panel-identity` when only `master.key` leaked. The command and the rotation it runs are new in 0.2.0-rc.2, so update the panel and its node first. It:
+Use `--keep-panel-identity` in place of `--new-panel-identity` when only `master.key` leaked. The command needs 0.2 on the panel and on its node, so update both first. It:
 
 1. stops the agent, so it does not start the panel again; services keep running,
 2. stops the panel,

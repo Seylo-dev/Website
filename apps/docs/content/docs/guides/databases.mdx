@@ -43,7 +43,7 @@ The **Tools** section on the Connection tab has:
 
   New in 0.2, on nodes with a 0.2 agent: while a web UI is open, the node asks the panel about once a minute whether you may still use it. Removing your access, disabling you, or revoking the API key that opened it closes it within about a minute, open connections included. While the panel cannot answer (it is down, or older than 0.2), a session lasts an hour past the last answer, and 12 hours at most in any case. Web UI sessions from before the update are not accepted: open the web UI from the panel once more (the old one shows **Sign-in needed**). Boxes work the same way.
 
-  New in 0.2.0-rc.2, on nodes with the rc.2 agent: each web UI also has a login of its own, made anew on every agent start, which only the node's edge holds and adds to your requests. So other containers on the project network, such as code a member deployed there, cannot open the web UI and act as the database admin without the right to see the credentials.
+  New in 0.2, on nodes with a 0.2 agent: each web UI also has a login of its own, made anew on every agent start, which only the node's edge holds and adds to your requests. So other containers on the project network, such as code a member deployed there, cannot open the web UI and act as the database admin without the right to see the credentials.
 - **Database shell**: `psql`, `mysql`/`mariadb`, `mongosh`, `redis-cli`, `valkey-cli`, `keydb-cli` or `clickhouse-client`, already signed in, in the browser.
 
 ## Expose with TLS

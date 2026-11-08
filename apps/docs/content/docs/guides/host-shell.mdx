@@ -46,7 +46,7 @@ no_host_shell: true
 systemctl restart seylo
 ```
 
-Only someone with root on the node can set it, and the panel cannot change it. New in 0.2.0-rc.2: joining the node again with `seylo join --force` keeps it; before, a re-join dropped it. The agent checks both this and the panel's setting itself for every shell, so a panel that skipped its own check still gets nothing.
+Only someone with root on the node can set it, and the panel cannot change it. Joining the node again with `seylo join --force` keeps it. The agent checks both this and the panel's setting itself for every shell, so a panel that skipped its own check still gets nothing.
 
 ## Open a shell
 

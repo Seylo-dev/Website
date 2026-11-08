@@ -45,7 +45,7 @@ Under **Volumes**, pick **Start empty** (the default) or **Copy data**. A copy r
 - A database always stops for its copy and starts again afterwards, because a running database's files are not a usable copy.
 - While it runs, the clone's header shows **Copying the data of ...** with the size so far. Until it is done, neither the clone nor a source the copy stopped can deploy or start, and neither the clone nor its source can move to another node. A second copy from the same source is refused until the first ends.
 - A failed copy says why under the header. The clone keeps what arrived and can still start.
-- New in 0.2.0-rc.2: deleting the clone or the source ends its copy as failed, and starts a source the copy stopped. Before, a copy that waited for its turn stayed queued and kept the source from deploying, starting or moving.
+- Deleting the clone or the source ends its copy as failed, and starts a source the copy stopped.
 
 A database clone that starts empty gets new passwords. One with a copy of the data keeps the source's logins, since they are in the data.
 
@@ -91,7 +91,7 @@ Services and names you cannot see are counted, not named. When the list has anyt
 
 - **A running service** switches networks like a deploy, without a rebuild: its running containers join the new project's network, pass their health check there, traffic switches to them, and they leave the old network. On 0.2 agents the containers keep running; older agents start new ones, so databases restart once. The **Deployments** tab shows it as a deployment started by **move**. If the switch fails, the service goes back to the old project, with its shares and invite entries.
 - **A stopped or never-deployed service** changes project at once.
-- **A Git source on a private address** (or a host allowed in the old project for split-horizon DNS): when an owner or admin moves the service, the move allows its host in the new project, as saving the source there would. New in 0.2.0-rc.2: before, the move left the host behind and the next build failed. A member's move is blocked instead (see below) until an owner or admin allows the host in the new project (**Internal git hosts** in the project's **Settings** tab, or `git.allowInternalHost`; see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
+- **A Git source on a private address** (or a host allowed in the old project for split-horizon DNS): when an owner or admin moves the service, the move allows its host in the new project, as saving the source there would. A member's move is blocked instead (see below) until an owner or admin allows the host in the new project (**Internal git hosts** in the project's **Settings** tab, or `git.allowInternalHost`; see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
 ### What blocks a move
 

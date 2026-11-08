@@ -47,7 +47,7 @@ curl -X POST https://panel.example.com/api/v1/deployments.deploy \
 
 Fields an action does not know are dropped. A successful call answers `200` with the action's output as JSON. Ids are 16 characters of lowercase letters and digits; times are ISO 8601 strings. New in 0.2: a request body may be up to 1 MiB, or 2 MiB for `compose.preview`, `compose.create`, `compose.update`, `maintenance.set` and `maintenance.setGlobal`, and 4 MiB for `files.write` (0.1 took 4 MiB everywhere). A larger one gets `400 BAD_REQUEST`. Source archives go through their own upload endpoint, not through an action.
 
-New in 0.2.0-rc.2: answers of 1 KiB or more are compressed, with brotli or gzip, when the request's `Accept-Encoding` allows it.
+New in 0.2: answers of 1 KiB or more are compressed, with brotli or gzip, when the request's `Accept-Encoding` allows it.
 
 Long-running actions return right away. A deploy, for example, returns the new deployment; follow it with `deployments.get` and `deployments.log`.
 
@@ -75,7 +75,7 @@ Every error has the matching HTTP status and the same JSON body:
 | `APPROVAL_REQUIRED` | 403 | An AI tool called an action that needs a person's approval first |
 | `NOT_FOUND` | 404 | No such resource, or the caller can't see it |
 | `CONFLICT` | 409 | Conflicts with the current state, for example the protected panel service (`details.reason` says why) |
-| `RATE_LIMITED` | 429 | Too many requests; wait for the seconds in the `Retry-After` header. New in 0.2: `details.reason` `dockerHubRateLimit` means Docker Hub is limiting the panel, with `details.retryAfterSeconds`. New in 0.2.0-rc.2: `accountBrake` means too many wrong two-factor codes for the account (see [Password](/people/sign-in-and-security#password)) |
+| `RATE_LIMITED` | 429 | Too many requests; wait for the seconds in the `Retry-After` header. New in 0.2: `details.reason` `dockerHubRateLimit` means Docker Hub is limiting the panel, with `details.retryAfterSeconds`, and `accountBrake` means too many wrong two-factor codes for the account (see [Password](/people/sign-in-and-security#password)) |
 | `INTERNAL` | 500 | Something broke on the panel; the panel's log has the details |
 | `NOT_IMPLEMENTED` | 501 | The action, or the node it needs, cannot do this yet (for example an agent too old for a feature) |
 | `UNAVAILABLE` | 503 | A node or an outside service needed for this is unreachable (`details.reason` is `offline` when the node is). New in 0.2: also when the panel is busy receiving other request bodies; wait for `Retry-After` |
@@ -87,7 +87,7 @@ Each caller gets a bucket of 120 requests that refills at 20 per second. Sign-in
 Other limits a busy setup can reach (new in 0.2):
 
 - **Request bodies**: besides each request's own size limit (see [Request style](#request-style)), the panel holds at most 64 MiB of request bodies being received at once. Past that it answers `503 UNAVAILABLE` with `Retry-After: 5`.
-- **Live updates**: the web app's live socket takes 300 messages from one person, across all their tabs, then 30 a second; a socket past that is closed and reconnects after a pause, without signing anyone out. One socket follows at most 200 topics. New in 0.2.0-rc.2: on the live and terminal sockets, a text message over 16 KiB closes the socket (code 1009), and past 256 KiB, then 64 KiB a second, messages are dropped unread.
+- **Live updates**: the web app's live socket takes 300 messages from one person, across all their tabs, then 30 a second; a socket past that is closed and reconnects after a pause, without signing anyone out. One socket follows at most 200 topics. New in 0.2: on the live and terminal sockets, a text message over 16 KiB closes the socket (code 1009), and past 256 KiB, then 64 KiB a second, messages are dropped unread.
 
 ## Same actions, other doors
 

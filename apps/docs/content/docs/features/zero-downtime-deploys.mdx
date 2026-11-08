@@ -13,7 +13,7 @@ description: A new version only gets traffic after it passes its health check. U
 
 If the new version never passes within the health timeout, it is removed and the deploy is marked failed with the reason and the last log lines. The previous version stays live; nothing changes for your visitors.
 
-New in 0.2.0-rc.2, on nodes with the rc.2 agent:
+New in 0.2, on nodes with the 0.2 agent:
 
 - Each version of a service's settings gets its own copy of the config files (file mounts), so the previous version keeps its own files when a deploy fails, also after a later restart. Before, a failed deploy's files were already in place for the old version.
 - If the agent stops or crashes during the health check (an agent update, `seylo restart`), it rolls the deploy back, and finishes that when it starts again, instead of adopting the unverified version as live and reporting success.

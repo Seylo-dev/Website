@@ -89,7 +89,7 @@ Visitors see a page from the node's agent while a service is stopped, deploying 
 - Per service, in **Maintenance and down pages** on the Domains tab: turn on **Maintenance mode**, set a **Message**, or **Upload custom HTML**. Without its own page, the service uses the global one.
 - For everything, in **Settings → Maintenance pages**: **Maintenance mode for every service** makes every service answer with the maintenance page (HTTP 503) while the panel stays reachable. The global page is the built-in page with your message, or your own HTML.
 
-Custom pages are full HTML documents up to 512 KB, served with a strict Content-Security-Policy: scripts and frames do not run on them, styles load inline or over HTTPS, and images and fonts over HTTPS or as `data:` URLs. New in 0.2.0-rc.2: nodes send that policy, and `X-Content-Type-Options: nosniff`, with every page they serve, maintenance and down pages alike. Before, the policy was missing, so scripts on a custom page ran on the service's own domains.
+Custom pages are full HTML documents up to 512 KB, served with a strict Content-Security-Policy: scripts and frames do not run on them, styles load inline or over HTTPS, and images and fonts over HTTPS or as `data:` URLs. New in 0.2: nodes send that policy, and `X-Content-Type-Options: nosniff`, with every page they serve, maintenance and down pages alike. On 0.1, the policy was missing, so scripts on a custom page ran on the service's own domains.
 
 ## Certificate limits
 

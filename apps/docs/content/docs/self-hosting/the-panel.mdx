@@ -7,7 +7,7 @@ description: How the panel runs, how to give it a domain, how to brand it, and w
 
 The panel is one container: the API, the web app and the MCP server. It runs as the protected service of the **Panel** project on the node you installed it on, managed by that node's agent like any other service. Being protected means it can't be deleted, stopped, deployed or moved from the panel itself, so a wrong click can't take the panel down. It updates itself from **Settings → Updates** instead (see [Updates](/self-hosting/updates)).
 
-It runs as uid and gid 61000, which no login user has (new in 0.2.0-rc.2; before, it ran as uid 1000, often the server's default login user, see [Secrets at rest](/security#on-the-panels-node)). Its data is in `/var/lib/seylo/panel/` on that node, a folder only root and the panel can read (mode 0700):
+It runs as uid and gid 61000, which no login user has (new in 0.2; on 0.1, it ran as uid 1000, often the server's default login user, see [Secrets at rest](/security#on-the-panels-node)). Its data is in `/var/lib/seylo/panel/` on that node, a folder only root and the panel can read (mode 0700):
 
 | File | What it is |
 | --- | --- |

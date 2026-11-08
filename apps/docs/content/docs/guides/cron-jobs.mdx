@@ -31,4 +31,4 @@ For a job that is not tied to an app, create a service of its own: **Add a servi
 - Runs missed while the node's agent was down are not caught up.
 - A stopped service's cron jobs do not fire.
 - A failed run raises the **Cron job failed** alert; see [Alerts and notifications](/features/notifications).
-- The node reads the schedule, and it does not take `L`, `W` or `#`: the panel refuses those when you save. `7` works for Sunday, also as the end of a range like `1-7` or `MON-SUN`: since 0.2 the panel saves it as `0` (`1-7` as `1-6,0`) and reads schedules 0.1 saved that way, and since 0.2.0-rc.2 the node reads `7` as Sunday too. On 0.1 such a job never fired.
+- The node reads the schedule, and it does not take `L`, `W` or `#`: the panel refuses those when you save. `7` works for Sunday, also as the end of a range like `1-7` or `MON-SUN`: since 0.2 the panel saves it as `0` (`1-7` as `1-6,0`) and reads schedules 0.1 saved that way, and the node reads `7` as Sunday too. On 0.1 such a job never fired.

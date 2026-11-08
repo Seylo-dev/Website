@@ -13,7 +13,7 @@ After five wrong passwords or codes in a row from one address, sign-in for that 
 
 Past 50 wrong passwords for one email within 15 minutes, from any addresses, the account's owner gets a **Security change** alert and a brake starts. New in 0.2: while it is on, the panel checks at most one password for that email every 2.5 seconds, one at a time, however many addresses the guesses come from; the others get "Too many failed sign-ins for this email" with the seconds to wait. Addresses (or IPv6 /64s) that signed in to that account with the right password in the last 30 days skip the brake, so a guessing campaign does not keep you out. The brake never locks anyone out. An admin who enables a person again in **Settings → People** clears both.
 
-New in 0.2.0-rc.2: wrong two-factor codes have a brake per account too, since whoever guesses codes already has the password. From the 10th wrong code for one account within 15 minutes, from any addresses, the panel checks at most one authenticator code every 2.5 seconds, the wait doubling with every 10 more wrong codes up to one a minute; the others get "Too many wrong codes for this account" with the seconds to wait and do not use up the sign-in attempt. The account's owner gets one **Security change** alert. Addresses (or IPv6 /64s) where the account finished a sign-in in the last 30 days skip the brake, and recovery codes are never braked, so you always have a way in. It covers the sign-in step, [Confirm it's you](#confirm-its-you), turning two-factor sign-in off and making new recovery codes.
+New in 0.2: wrong two-factor codes have a brake per account too, since whoever guesses codes already has the password. From the 10th wrong code for one account within 15 minutes, from any addresses, the panel checks at most one authenticator code every 2.5 seconds, the wait doubling with every 10 more wrong codes up to one a minute; the others get "Too many wrong codes for this account" with the seconds to wait and do not use up the sign-in attempt. The account's owner gets one **Security change** alert. Addresses (or IPv6 /64s) where the account finished a sign-in in the last 30 days skip the brake, and recovery codes are never braked, so you always have a way in. It covers the sign-in step, [Confirm it's you](#confirm-its-you), turning two-factor sign-in off and making new recovery codes.
 
 ## Confirm it's you
 
@@ -44,7 +44,7 @@ API keys and MCP tokens never get this dialog: they cannot change sign-in method
 
 ## Security alerts
 
-The **Security change** alert (see [Alerts and notifications](/features/notifications)) is raised when someone approves a [command line sign-in](/guides/command-line#sign-in), creates an API key, adds a passkey, links a GitHub account for sign-in, sets or changes a password or turns off two-factor sign-in, and when many wrong passwords or (new in 0.2.0-rc.2) two-factor codes arrive for one account. New in 0.2: it is also raised when the owner allows host shells on a node and when someone opens one. Send it to a channel you read, so a sign-in method you did not add does not go unnoticed.
+The **Security change** alert (see [Alerts and notifications](/features/notifications)) is raised when someone approves a [command line sign-in](/guides/command-line#sign-in), creates an API key, adds a passkey, links a GitHub account for sign-in, sets or changes a password or turns off two-factor sign-in, and when many wrong passwords or (new in 0.2) two-factor codes arrive for one account. New in 0.2: it is also raised when the owner allows host shells on a node and when someone opens one. Send it to a channel you read, so a sign-in method you did not add does not go unnoticed.
 
 ## Authenticator app (2FA)
 
@@ -68,7 +68,7 @@ GitHub sign-in needs the panel's GitHub OAuth client to be set up. When it is no
 
 **Sessions** lists the browsers where you are signed in, with their address and when they were last active. **Sign out** ends one, **Sign out everywhere else** ends all but this one.
 
-A browser session lasts 30 days after it was last used, and at most 90 days after you signed in. Only hashes of it are stored. New in 0.2.0-rc.2: only the requests a browser makes count as use. Before, the live connection of an open tab counted too, so a tab left open kept its session going, and showed it as recently active, until the 90 days were up.
+A browser session lasts 30 days after it was last used, and at most 90 days after you signed in. Only hashes of it are stored. New in 0.2: only the requests a browser makes count as use. On 0.1, the live connection of an open tab counted too, so a tab left open kept its session going, and showed it as recently active, until the 90 days were up.
 
 New in 0.2: a session has two halves, and the panel needs both. One is an HttpOnly cookie. The other is a session key the panel hands to the web app when you sign in; the web app keeps it in the browser's storage for the panel's own address and port and sends it with every request. Browsers send a cookie to every port of an address, but that storage is per address and port, so a copy of the cookie that reaches another service on the same server signs nobody in. Changing your password or your two-factor settings replaces both halves.
 
