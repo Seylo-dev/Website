@@ -53,9 +53,19 @@ The Source tab lets you pick stored credentials. Adding one is done through the 
 
 New in 0.2. Nodes clone as root inside their own network, so a git URL could reach machines only that network should see. A **Git** source, and a compose stack's git URL, must point at a public address. A host on a private, loopback, link-local or reserved address, or a name the panel cannot resolve, works in a project once an owner or admin has saved a source with that host in that project; from then on the project's members may use it too. A node's own private address counts as internal here, also when it is set as the node's **Public address**: a git server there needs an owner or admin like any other, although [uptime checks](/features/uptime-checks#where-checks-run-from) may reach it. Cloud metadata addresses never work. The panel checks when the source is saved and again right before each build, since a name can resolve somewhere else by then.
 
-The node checks too, since it looks the name up again. Every connection git makes on a 0.2 node, for a build or for a compose stack's file, goes through an address check in the agent on the address it really connects to, redirects included. Internal addresses pass only for the source's own host and port, and only when that host is allowed in the project; a redirect to another internal address is refused, and a cloud metadata address always is. A refused connection fails the deploy with the address and the reason, for example "the node refused to connect to gitea.lan:443: gitea.lan resolves to 10.0.0.7, a private address", and the deploy log has a line `Refused a git connection to ...`.
+New in 0.2.0-rc.2: a host on one of the panel's nodes counts as internal too, public addresses included. That is a name set as a node's **Public address**, or a host whose every address is a node's: its **Public address**, the public IPv4 or IPv6 address it reports, or an address on its network interfaces. So a git server that runs on a node, reached by its public name, needs an owner or admin to save or allow it once per project, like one on a private network. A name that also resolves to an address of another server stays public.
 
-A node that reaches the internet through an HTTP proxy (`HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` in the agent's environment) keeps cloning through it over https. The node checks what a name resolves to on the node before it asks the proxy, and the proxy's own rules decide the rest. A name the node itself cannot resolve goes to the proxy unchecked, since nodes whose DNS knows no outside names rely on the proxy for that. Git goes only through `http://` and `https://` proxies, not SOCKS; ssh connects directly, as before.
+The node checks too, since it looks the name up again. Every connection git makes on a 0.2 node, for a build or for a compose stack's file, goes through an address check in the agent on the address it really connects to, redirects included. Internal addresses pass only for the source's own host and port, and only when that host is allowed in the project; a redirect to another internal address is refused, and a cloud metadata address always is. New in 0.2.0-rc.2: the node also refuses its own addresses, public ones included, unless the host is allowed: a connection to them stays on the node, past a firewall that hides a service from the internet. A refused connection fails the deploy with the address and the reason, for example "the node refused to connect to gitea.lan:443: gitea.lan resolves to 10.0.0.7, a private address" or "... resolves to 203.0.113.10, an address of this node". For the source's own host the message ends with how an admin allows it, and the deploy log has a line `Refused a git connection to ...`.
+
+A node that reaches the internet through an HTTP proxy (`HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` in the agent's environment) keeps cloning through it over https. The node checks what a name resolves to on the node before it asks the proxy, and the proxy's own rules decide the rest. Git goes only through `http://` and `https://` proxies, not SOCKS; ssh connects directly, as before.
+
+New in 0.2.0-rc.2: a name the node itself cannot resolve (the name is not found, its name server fails, or nothing answers within 10 seconds) is refused before it goes to the proxy, since the node cannot check where the proxy would connect. The deploy fails with "the node cannot resolve `<name>`, so it cannot check where the agent's HTTP proxy would connect". Before rc.2 such a name went to the proxy unchecked. There are two ways to let it through. An owner or admin allows the host in the project (see [Allowing a host by hand](#allowing-a-host-by-hand)), which covers the source's own host and port only. Or, on a node whose DNS knows no outside names and relies on its proxy to resolve them, root on the node sets this and restarts the agent (`systemctl restart seylo`):
+
+```yaml title="/var/lib/seylo/config.yml"
+git_proxy_resolves: true
+```
+
+With it, every name the node cannot resolve goes on to the proxy unchecked, for any host, redirects and submodules included, and the proxy's own rules decide where it connects. Only someone with root on the node can set it; the panel cannot. A re-join with `seylo join --force` keeps it.
 
 #### Allowing a host by hand
 
@@ -63,8 +73,16 @@ Saving a source allows a host only when the panel itself sees it as internal. Th
 
 - A name that resolves to a public address at the panel and to a private one on the nodes (split-horizon DNS), for a **Git** source or a git provider connection. It looks public to the panel, so the nodes refuse it.
 - A LAN-only name the panel cannot resolve, in a source saved before 0.2 (see [After the upgrade from 0.1](#after-the-upgrade-from-01)).
+- A name a node behind an HTTP proxy cannot resolve itself, unless that node sets `git_proxy_resolves` (see above).
 
-An owner or admin allows a host for a project with [`git.allowInternalHost`](/api-reference/git/git.allowInternalHost) (there is no button for it yet; it is also an MCP tool):
+New in 0.2.0-rc.2, owners and admins can do it from the web app:
+
+- Under a failed deployment the node refused for its git host, on the **Deployments** tab: **Allow this host for `<project>`**, then **Allow host** to confirm, then deploy again. Saves by owners and admins are not refused for an internal host, so a split-horizon name or a name a proxied node cannot resolve shows up here.
+- In the project's **Settings** tab, **Internal git hosts** lists every host allowed in the project, who allowed it (**Recorded on upgrade** for the ones the upgrade recorded) and how many of the project's sources use it. **Allow a host** takes a repository URL and allows its host and port. **Remove** stops allowing a host: the project's nodes then clone it from public addresses only, so builds of the sources on it fail until an admin allows it again.
+
+When a member's save or **Check access** of a **Git** source is refused for its host, the form says that only an owner or admin can allow it, in the project's settings or by saving the source once.
+
+From the API or an MCP client, [`git.allowInternalHost`](/api-reference/git/git.allowInternalHost) allows a host, [`git.listInternalHosts`](/api-reference/git/git.listInternalHosts) lists them and [`git.removeInternalHost`](/api-reference/git/git.removeInternalHost) takes one off:
 
 ```bash
 curl -X POST https://panel.example.com/api/v1/git.allowInternalHost \
@@ -73,20 +91,20 @@ curl -X POST https://panel.example.com/api/v1/git.allowInternalHost \
   -d '{"projectId": "<project id>", "url": "https://git.example.com/team/app.git"}'
 ```
 
-It answers with the host as recorded for the project, for example `{"host": "git.example.com"}`, with the port when the URL names one (`10.0.0.7:3000`). Any host works except a cloud metadata address. From then on the project's nodes may clone that host from internal addresses, and its members may use it in their sources. The call is in the activity log.
+It answers with the host as recorded for the project, for example `{"host": "git.example.com"}`, with the port when the URL names one (`10.0.0.7:3000`). Any host works except a cloud metadata address. From then on the project's nodes may clone that host from internal addresses, their own included, and its members may use it in their sources. Allowing and removing a host are in the activity log.
 
 #### After the upgrade from 0.1
 
-On its first start, 0.2 looks up the host of every git source that was already saved (services and compose stacks) and allows it in their projects only when the panel resolves it to an internal address (private, loopback, link-local or reserved), or when it is such an IP address. So an existing LAN git server with a name the panel resolves, or an IP address, keeps building. Nothing else is recorded:
+On its first start, 0.2 looks up the host of every git source that was already saved (services and compose stacks) and allows it in their projects only when the panel resolves it to an internal address (private, loopback, link-local or reserved) or to the addresses of its nodes, or when it is such an IP address. So an existing LAN git server with a name the panel resolves, a git server on a node, or an IP address, keeps building. A panel that already ran 0.2.0-rc.1 does this once more on its first start of rc.2, for the hosts on its nodes' addresses only, and logs each one. Nothing else is recorded:
 
-- Hosts that resolve to public addresses at the panel. They keep building from public addresses; a split-horizon one needs `git.allowInternalHost`.
-- Names the panel cannot resolve, LAN-only names included, whether its DNS said the name does not exist or did not answer within 20 seconds. Their builds fail after the update, also for sources an owner or admin saved, until an owner or admin allows the host with `git.allowInternalHost` in each project that uses it (saving the source again as an owner or admin works too). The panel's log (`seylo panel logs`) names each one: "a git host of an existing source does not resolve at the panel, so it was not recorded as an internal host".
+- Hosts that resolve to public addresses at the panel. They keep building from public addresses; a split-horizon one needs allowing by hand.
+- Names the panel cannot resolve, LAN-only names included, whether its DNS said the name does not exist or did not answer within 20 seconds. Their builds fail after the update, also for sources an owner or admin saved, until an owner or admin allows the host in each project that uses it (see [Allowing a host by hand](#allowing-a-host-by-hand); saving the source again as an owner or admin works too). The panel's log (`seylo panel logs`) names each one: "a git host of an existing source does not resolve at the panel, so it was not recorded as an internal host".
 
 Builds and **Check access** wait for these lookups after that first start. A service [moved to another project](/guides/clone-and-move#move-a-service-to-another-project) does not take its host along: its next build needs the host allowed in the new project.
 
 #### Check access
 
-**Check access** is a request the panel makes itself, to the address it just checked. It follows the rule for saving a source: a public address, or a host allowed in the project, and owners and admins may check any internal host. A name the panel cannot resolve works only for owners and admins, and a cloud metadata address never works. The uptime setting **Allow checks of internal addresses** and a node's **Public address** play no part.
+**Check access** is a request the panel makes itself, to the address it just checked. It follows the rule for saving a source: a public address, or a host allowed in the project, and owners and admins may check any internal host. A host on one of the panel's nodes counts as internal here too. A name the panel cannot resolve works only for owners and admins, and a cloud metadata address never works. The uptime setting **Allow checks of internal addresses** plays no part, and a node's **Public address** never opens a host up here.
 
 ## Builders
 

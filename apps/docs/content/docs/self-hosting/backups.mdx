@@ -33,37 +33,47 @@ Before every panel update, the update itself also copies `panel.db` and `metrics
 
 ## If a copy leaked
 
-New in 0.2. A copy of `/var/lib/seylo/panel/` (a backup, an old disk) holds every secret the panel knows, readable with the `master.key` in it. A script in the panel's image gives the panel a new `master.key`: it seals every secret in `panel.db` again with the new key in one transaction, and replaces `master.key` only after that. From then on the old key opens nothing the panel stores.
+New in 0.2. A copy of `/var/lib/seylo/panel/` (a backup, an old disk) holds every secret the panel knows, readable with the `master.key` in it. `seylo panel rotate-key` gives the panel a new `master.key`: it seals every secret in `panel.db` again with the new key in one transaction, and replaces `master.key` only after that. From then on the old key opens nothing the panel stores.
 
 It does not make the copy harmless. The copy still opens with its own key, so every secret that was in it is exposed: change those yourself (environment values, database passwords, git and registry tokens, backup and notification credentials), and delete old copies and backups, including old snapshots in `/var/lib/seylo/update/panel-snapshots/`. Then take a new backup.
 
-Pick one of two flags. The script refuses to run without exactly one:
+Pick one of two flags. The command refuses to run without exactly one:
 
 | Flag | When | What it also does |
 | --- | --- | --- |
-| `--new-panel-identity` | `panel.db` leaked, usually together with `master.key` (a copy of the data dir, a backup) | Drops the panel's identity key, which signs database web UI and Box tickets and proves the panel to its nodes, and the load balancer CA. The panel makes new ones when it starts. Every node then refuses the panel until it is joined again with `seylo join --force` (see [The panel's identity](/guides/adding-nodes#the-panels-identity)); the script lists the nodes and the steps. |
-| `--keep-panel-identity` | Only `master.key` leaked; `panel.db` never did | Seals the identity key and the load balancer CA again with the new key, so nodes keep working |
+| `--new-panel-identity` | `panel.db` leaked, usually together with `master.key` (a copy of the data dir, a backup) | Drops the panel's identity key, which signs database web UI and Box tickets and proves the panel to its nodes, and the load balancer CA; the panel makes new ones when it starts. It also replaces `agent-tls.key`, the key nodes pin while the panel has no domain, since it is in the same copy, so the pin changes. Every node then refuses the panel until it is joined again with `seylo join --force` (see [The panel's identity](/guides/adding-nodes#the-panels-identity)); the command prints the exact command for each node. |
+| `--keep-panel-identity` | Only `master.key` leaked; `panel.db` never did | Seals the identity key and the load balancer CA again with the new key and keeps `agent-tls.key`, so nodes keep working |
 
 Both delete every recovery code, since they are keyed with the old key, and print whose. Those people make new ones in **Settings → Security**.
 
-The script is not a `seylo` command yet: it runs from the panel's image, on the panel's node, with the panel stopped. Run the block as root (`sudo -i` first). Stop the agent first so it does not start the panel again, and start it once the script is done:
+Run it as root on the panel's node:
 
 ```bash
-systemctl stop seylo                      # the agent; services keep running
-PANEL=$(docker ps -q --filter label=seylo.service=panel00000000000)
-IMAGE=$(docker inspect --format '{{.Config.Image}}' "$PANEL")
-docker stop "$PANEL"
-
-docker run --rm -v /var/lib/seylo/panel:/var/lib/seylo/panel -e SEYLO_DATA_DIR=/var/lib/seylo/panel \
-  "$IMAGE" bun apps/panel/dist/rotate-master-key.js --new-panel-identity
-
-systemctl start seylo                     # the agent starts the panel again by itself, with the new key
-seylo panel status                        # only if it says stopped: seylo panel start
+sudo seylo panel rotate-key --new-panel-identity
 ```
 
-Use `--keep-panel-identity` in place of `--new-panel-identity` when only `master.key` leaked. The script prints how many values it sealed again and, with `--new-panel-identity`, every node to join again.
+Use `--keep-panel-identity` in place of `--new-panel-identity` when only `master.key` leaked. The command and the rotation it runs are new in 0.2.0-rc.2, so update the panel and its node first. It:
 
-Services on every node keep running meanwhile; only the panel is down for those minutes. A run that stops halfway (a crash, a reboot) leaves the new key in `master.key.new`; running the script again finishes or undoes it.
+1. stops the agent, so it does not start the panel again; services keep running,
+2. stops the panel,
+3. runs the rotation from the panel's own image, with the panel's data dir mounted and no network,
+4. starts the agent, which starts the panel with the new key,
+5. waits for the panel to answer (up to 3 minutes; `--timeout` changes it) and prints what the rotation did: how many values it sealed again, whose recovery codes it deleted and, with `--new-panel-identity`, the new pin and every node to join again.
+
+It refuses to run without root, on a node that does not run the panel, or without exactly one of the two flags. Services on every node keep running meanwhile; only the panel is down for those minutes.
+
+With `--new-panel-identity` the end of the output lists each node with its address and the command to run on it:
+
+```text
+  de1  203.0.113.10  (runs the panel)
+    sudo seylo join http://127.0.0.1:3000 --token '<token>' --can-build --force
+  us1  198.51.100.20
+    sudo seylo join 'https://203.0.113.10:3443' --token '<token>' --pin 'sha256:...' --force
+```
+
+Other nodes join at the address the **Add node** dialog uses, with the new pin when the panel has no domain. The panel's own node joins over loopback, with `--can-build` when it may build. Once the panel runs, sign in, open **Nodes → Add node** for a new token for each node (one node per token, valid for an hour), and run that node's command with the token in place of `<token>`. A node that joins again keeps its place in the panel and its services. `seylo status` on the node then shows it connected.
+
+If something fails after the agent was stopped, the command starts the agent again. Ctrl-C or a closed terminal does not cut a step off halfway: the step that is running finishes, and the ones after it are skipped. A rotation that stops halfway (a crash, a reboot, Docker going away) leaves the new key in `master.key.new`, and the command runs the rotation once more by itself. If that fails too, the panel finishes a rotation that was already committed when it starts, and refuses to start on one that never committed until you run the command again.
 
 ## Each node's data
 

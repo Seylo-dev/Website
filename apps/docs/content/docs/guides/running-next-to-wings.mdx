@@ -10,7 +10,7 @@ Game nodes often have spare memory and CPU for a website, a bot or a database. S
 Join the Wings node like any other node, with the command from **Nodes → Add node**:
 
 ```bash
-curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>'
+curl -fsSL https://github.com/Seylo-dev/App/releases/download/v<version>/install.sh | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>'
 ```
 
 Nothing about Wings or your game servers changes. The agent finds Wings by its config (`/etc/pelican/config.yml` or `/etc/pterodactyl/config.yml`) and asks the local Wings API for its version. The node shows **Wings detected** on **Nodes**.

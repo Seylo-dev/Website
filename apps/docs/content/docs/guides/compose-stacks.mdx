@@ -7,7 +7,7 @@ description: Run a docker-compose file as a stack of services, each with its own
 
 In a project, click **Add a service → Compose stack** and paste a compose file, or point at one in a repository (GitHub or any Git URL, a branch and the file path). **Preview** shows what the file becomes before anything is created.
 
-A Git URL follows the same rules as a **Git** source: `https://`, `ssh://` or `git@host:path`, with no user name or token inside it, and (new in 0.2) a git server on a private address only once an owner or admin allowed it in the project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)). New in 0.2: the file is read by the node the stack runs on, or will run on, and never by another node, so **Preview** needs that node online.
+A Git URL follows the same rules as a **Git** source: `https://`, `ssh://` or `git@host:path`, with no user name or token inside it, and (new in 0.2) a git server on a private address, or (new in 0.2.0-rc.2) on one of the panel's nodes, only once an owner or admin allowed it in the project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)). New in 0.2: the file is read by the node the stack runs on, or will run on, and never by another node, so **Preview** needs that node online.
 
 The node's agent reads the file with compose-go, the parser Docker Compose itself uses, and the panel turns every compose service into a **member**: a service of its own with logs, domains, deploys, metrics, a console and a shell. There is no `docker compose` process on the node to look after.
 
