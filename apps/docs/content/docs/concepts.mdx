@@ -17,7 +17,7 @@ A Linux server with Docker and the Seylo agent. The agent is one static binary, 
 - runs one-off jobs the panel asks for: builds, commands, file access, backups, cleanup,
 - streams logs, metrics and events back, and keeps important events (crashes, deploy results, cron runs, backups) on disk until the panel has them.
 
-A node can be allowed to build images (**Can build**) or only run images built elsewhere.
+A node can be allowed to build images (**Can build**) or only run images built elsewhere. Nodes that join, unlike the panel's own node, only run images until an owner or admin allows builds, because a build node gets the source and build secrets of everything it builds (see [Where builds run](/guides/github-and-git#where-builds-run)).
 
 ## Project
 

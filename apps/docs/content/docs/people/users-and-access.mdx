@@ -41,9 +41,13 @@ For finer control, open the person in **Settings → People** and **Add access**
 
 You can only share actions you hold yourself on that project or service.
 
+New in 0.2.0-rc.2: **Create services** alone does not hand out the actions a new service needs. Variables you type or pick for it (in a template, a Docker Hub image or a compose file) need **Edit variables** in the project, config files need **Change files**, and deploying it right away needs **Deploy**. Databases and Boxes always start when they are created, so creating one needs **Deploy**. Changing a compose stack's file needs **Edit variables** on the stack when a member's environment changes, and **Deploy** when a member is added or changed. The presets are unaffected: **View** and **Deploy** do not create services, and **Full access** has every action.
+
 New in 0.2: sharing that gives someone more than they had (a new project or service, a new action, or a wildcard that also covers actions added later) needs a sign-in from the last 15 minutes in the browser, like an invite. Removing access or narrowing it never asks.
 
-New in 0.2: the pickers of panel-wide settings follow what a person can do. Someone who may not create or change a service anywhere sees no git credentials, git provider connections, registry logins or GitHub App installations in them, and someone who sees no service sees no notification channels or backup destinations. On the **Source** tab of a service that deploys from GitHub, such a person sees its repository and branch read-only, with "Connecting or changing a GitHub repository needs the right to create or update services."
+New in 0.2: the pickers of panel-wide settings follow what a person can do. Someone who may not create or change a service anywhere sees no git credentials, git provider connections, registry logins or GitHub App installations in them, and someone who sees no service sees no notification channels or backup destinations. On the **Source** tab of a service that deploys from GitHub, such a person sees its repository and branch read-only, with "Connecting or changing a GitHub repository needs the right to create or update services." New in 0.2.0-rc.2: the same goes for GitLab, Gitea and Bitbucket sources, with the webhook's state but without **Create webhook again**; before, such a person was told to connect the provider first.
+
+New in 0.2.0-rc.2: the node picker in the create forms lists the nodes that are not disabled, with their name, whether they are online, their wildcard domain and their architecture, to everyone who may create services somewhere. It shows nothing else about the nodes. Before, members with a project grant saw "You do not have the nodes.view permission here." there and could not create anything.
 
 ## Changing a person
 

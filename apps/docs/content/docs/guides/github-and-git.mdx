@@ -78,9 +78,9 @@ Saving a source allows a host only when the panel itself sees it as internal. Th
 New in 0.2.0-rc.2, owners and admins can do it from the web app:
 
 - Under a failed deployment the node refused for its git host, on the **Deployments** tab: **Allow this host for `<project>`**, then **Allow host** to confirm, then deploy again. Saves by owners and admins are not refused for an internal host, so a split-horizon name or a name a proxied node cannot resolve shows up here.
-- In the project's **Settings** tab, **Internal git hosts** lists every host allowed in the project, who allowed it (**Recorded on upgrade** for the ones the upgrade recorded) and how many of the project's sources use it. **Allow a host** takes a repository URL and allows its host and port. **Remove** stops allowing a host: the project's nodes then clone it from public addresses only, so builds of the sources on it fail until an admin allows it again.
+- In the project's **Settings** tab, **Internal git hosts** lists every host allowed in the project, who allowed it (**Recorded on upgrade or by a removed account** when no account is named) and how many of the project's sources use it. New in 0.2.0-rc.2: GitHub sources count for `github.com` and GitLab, Gitea and Bitbucket sources for their connection's host, so **Remove** warns about their builds too. **Allow a host** takes a repository URL and allows its host and port. **Remove** stops allowing a host: the project's nodes then clone it from public addresses only, so builds of the sources on it fail until an admin allows it again.
 
-When a member's save or **Check access** of a **Git** source is refused for its host, the form says that only an owner or admin can allow it, in the project's settings or by saving the source once.
+When a member's save or **Check access** of a **Git** source is refused for its host, the form says that only an owner or admin can allow it, in the project's settings or by saving the source once. A host the panel cannot resolve gets its own note: check the address, and if only your network knows the name, an owner or admin can allow it. Owners and admins never see these notes, since their saves are not refused for an internal host.
 
 From the API or an MCP client, [`git.allowInternalHost`](/api-reference/git/git.allowInternalHost) allows a host, [`git.listInternalHosts`](/api-reference/git/git.listInternalHosts) lists them and [`git.removeInternalHost`](/api-reference/git/git.removeInternalHost) takes one off:
 
@@ -100,7 +100,7 @@ On its first start, 0.2 looks up the host of every git source that was already s
 - Hosts that resolve to public addresses at the panel. They keep building from public addresses; a split-horizon one needs allowing by hand.
 - Names the panel cannot resolve, LAN-only names included, whether its DNS said the name does not exist or did not answer within 20 seconds. Their builds fail after the update, also for sources an owner or admin saved, until an owner or admin allows the host in each project that uses it (see [Allowing a host by hand](#allowing-a-host-by-hand); saving the source again as an owner or admin works too). The panel's log (`seylo panel logs`) names each one: "a git host of an existing source does not resolve at the panel, so it was not recorded as an internal host".
 
-Builds and **Check access** wait for these lookups after that first start. A service [moved to another project](/guides/clone-and-move#move-a-service-to-another-project) does not take its host along: its next build needs the host allowed in the new project.
+Builds and **Check access** wait for these lookups after that first start. A service [moved to another project](/guides/clone-and-move#move-a-service-to-another-project) by an owner or admin takes its host along: the move allows it in the new project. New in 0.2.0-rc.2: before, the move left the host behind and the next build failed there; a member's move of such a service is now blocked until the host is allowed in the new project.
 
 #### Check access
 
@@ -124,7 +124,9 @@ The service's variables are available while it builds. Railpack and Dockerfile b
 
 Images are built once, on a node that can build, and pushed to a registry that runs on the panel's node. Every node pulls through its own connection to the panel, so the registry is never published on a port. The deploy log says where each image was built and where it was shipped.
 
-**Build node** picks the node. **Automatic** uses the service's own node when it can build, otherwise the least busy one that can. Allow builds per node with **Build images on this node** in the node's settings, and limit **Builds at once** there; extra builds wait in a queue.
+**Build node** picks the node. **Automatic** uses the service's own node when it can build, otherwise the least busy one that can. Allow builds per node with **Build images on this node** in the node's settings, and limit **Builds at once** there; extra builds wait in a queue. Builds need Docker's buildx plugin on the build node: without it they fail with "docker buildx is not installed on this node", and the node's **Docker buildx** health check says so.
+
+A build node gets the source, git credentials and build-time variables of every service it builds, from any project, and the images it pushes run on every node. Turn builds on only for nodes you trust like the panel. New in 0.2.0-rc.2: new nodes start with builds off, except the panel's own node from the installer, and only an owner or admin turns them on (see [Join a server](/guides/adding-nodes#join-a-server)).
 
 From the **Deployments** tab, a deployment's menu has **Redeploy this commit** and **Deploy without build cache**.
 
@@ -148,6 +150,8 @@ curl -X POST "https://panel.example.com/api/hooks/deploy/<token>?commit=<sha>"
 ```
 
 `commit` is optional. The URL is shown once; **New URL** replaces it and the old one stops working.
+
+New in 0.2.0-rc.2: a call while a deploy from an earlier call still waits in line joins it, and that deploy builds the newer commit. Any other waiting deploy (a manual one, a rollback, a move) is left as it is, and the call queues its own deploy behind it. Before, the call joined whatever waited, so its commit could go unbuilt.
 
 New in 0.2: a call whose JSON body says what changed (a push payload in GitHub's, GitLab's or Gitea's shape, or `{"changedFiles": [...]}`) goes through the service's watch paths and the `[skip ci]` markers first; see [Watch paths](/guides/watch-paths#the-deploy-trigger-url).
 

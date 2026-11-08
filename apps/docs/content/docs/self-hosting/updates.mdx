@@ -61,7 +61,7 @@ New in 0.2: when the panel's update to a release was rolled back, automatic runs
 
 1. The agent downloads its new binary, checks its size and SHA-256 against the signed manifest, and makes sure it runs.
 2. It keeps the old binary as `/var/lib/seylo/update/agent.prev` and arms a systemd timer as a guard.
-3. It swaps the binary in and restarts. Containers keep running through the restart; the agent adopts them when it comes back.
+3. It swaps the binary in and restarts. Containers keep running through the restart; the agent adopts them when it comes back. New in 0.2.0-rc.2: while a deploy on the node is in its health check, the agent waits with the swap until it is done, at most 5 minutes, so the update does not roll that deploy back.
 4. The new agent confirms once it has reconnected to the panel. If it does not within 3 minutes, the guard puts the old binary back and restarts it.
 
 Either way the panel gets exactly one result for the node.
@@ -80,4 +80,4 @@ The update to 0.2 runs like any other. A few security fixes in it change what pe
 
 ## Docker
 
-Docker Engine is not updated with the rest. Update it per node with **Update Docker** on **Nodes**, which uses the system's package manager (apt, dnf or yum) and shows the version change first. With Docker's live-restore on, which the installer sets up, containers keep running while the daemon restarts; when it is off, the dialog warns first (see [Docker live-restore](/installation#docker-live-restore)).
+Docker Engine is not updated with the rest. Update it per node with **Update Docker** on **Nodes**, which uses the system's package manager (apt, dnf or yum) and shows the version change first. With Docker's live-restore on, which the installer sets up, containers keep running while the daemon restarts; when it is off, the dialog warns first (see [Docker live-restore](/installation#docker-live-restore)). New in 0.2.0-rc.2: a Docker update without a result from the node after an hour fails, and so does one on a node that was removed, so it no longer holds up later updates.

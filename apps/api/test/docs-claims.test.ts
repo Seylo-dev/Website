@@ -56,13 +56,42 @@ describe("docs match the app", () => {
     });
   });
 
-  // apps/panel/src/modules/nodes/lb-tls.ts: 365-day certificates, renewed with under 30 days left;
-  // the hourly nodes.pruneReports job only checks.
-  test("guides/load-balancing: node certificates are checked hourly, renewed 30 days ahead", async () => {
+  // apps/panel/src/modules/nodes/lb-tls.ts: 30-day certificates (365 before 0.2.0-rc.2), renewed
+  // with under 20 days left, and a longer one replaced at once; the hourly nodes.pruneReports job
+  // only checks.
+  test("guides/load-balancing: node certificates live 30 days, checked hourly, renewed 20 days ahead", async () => {
     const text = await page("guides/load-balancing.mdx");
     expect(text).not.toContain("renews it every hour");
-    expect(text).toContain("valid for a year");
-    expect(text).toContain("checks it every hour and renews it when fewer than 30 days are left");
+    expect(text).not.toContain("(valid for a year)");
+    expect(text).toContain("checks it every hour and renews it when fewer than 20 days are left");
+    expect(text).toContain("valid for 30 days instead of a year");
+    expect(text).toContain("a longer one from before is replaced at once");
+  });
+
+  // apps/panel/src/modules/nodes/join-command.ts: the Add node command always pipes the install host,
+  // which checks install.sh against the signed release, and a released panel adds --version; a
+  // release asset is never piped into sh.
+  test("join commands pipe install.seylo.dev with --version", async () => {
+    let commands = 0;
+    for (const file of mdxFiles(docs)) {
+      const name = relative(docs, file);
+      const text = await Bun.file(file).text();
+      expect({ name, asset: /releases\/download\/\S*install\.sh/.test(text) }).toEqual({ name, asset: false });
+      for (const line of text.split("\n").filter((l) => l.includes("sh -s -- join "))) {
+        commands++;
+        expect({ name, line }).toEqual({ name, line: expect.stringMatching(/^curl -fsSL https:\/\/install\.seylo\.dev \| sudo sh -s -- join .* --version '<version>'$/) });
+      }
+    }
+    expect(commands).toBeGreaterThan(0);
+  });
+
+  // apps/panel/src/agent-hub/handshake.ts decideHello: only the installer's panel node keeps can_build
+  // from its facts at join; any other node starts with Can build off until nodes.setCanBuild.
+  test("a joining node does not build until an owner or admin allows it", async () => {
+    const text = await page("guides/adding-nodes.mdx");
+    expect(text).toContain("A new node does not build images until an owner or admin turns on **Build images on this node**");
+    const options = table(await page("installation.mdx"), "Option");
+    expect(options.get("`--can-build`")?.[0]).toContain("Only the panel's own node from the installer starts building with it");
   });
 
   // apps/web/src/i18n/en/settings.ts sections.apiKeys. reference/cli.mdx is generated from the

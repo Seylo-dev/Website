@@ -5,6 +5,8 @@ description: Database dumps and volume archives on a schedule to S3, R2 or MinIO
 
 Backups run on the node the service is on and upload straight to an S3-compatible bucket; they never pass through the panel. To back up the panel itself, see [Backing up the panel](/self-hosting/backups).
 
+New in 0.2.0-rc.2: nodes never get the bucket's keys. For each upload, download or delete of a running backup or restore, the node asks the panel, which signs a link for that run's own object only, so a node that is taken over cannot read or delete other backups. The panel starts and finishes multipart uploads and deletes old backups itself, so it must reach the bucket too. Nodes need the rc.2 agent for this: on an older one, backups and restores fail with "The agent on `<node>` is too old for backups" until the node is updated.
+
 ## Add a destination
 
 **Settings → Backups → Add destination**:
@@ -15,7 +17,7 @@ Backups run on the node the service is on and upload straight to an S3-compatibl
 | Endpoint, Region | Where the bucket lives |
 | Bucket | The bucket name |
 | Folder | Optional folder inside the bucket |
-| Access key ID, Secret access key | Keys that can write, read and delete in the bucket. Stored encrypted. |
+| Access key ID, Secret access key | Keys that can list, write, read and delete in the bucket. Stored encrypted, and used only by the panel. |
 | Use path-style URLs | MinIO and some other providers need this |
 
 **Test** writes, reads and deletes a small object, and says which step failed if one does. Add destinations once; every service can use them.
@@ -29,7 +31,7 @@ On a service's **Backups** tab, **Add schedule**:
 | **What** | **Database** (a dump) for databases, or **Volume** for one of the service's volumes |
 | **Destination** | One of the buckets from Settings |
 | **When** | A preset, or **Custom (cron expression)**. Times are UTC. |
-| **Keep newest** | How many backups this schedule keeps; older ones are deleted from the bucket |
+| **Keep newest** | How many backups this schedule keeps. The panel deletes older ones from the bucket after each successful backup and when you change the number. |
 | **Stop the service while copying** | For files that change while being copied, like SQLite databases. The service is down for the length of the backup. |
 
 **Back up now** runs the service's first schedule at once, and each schedule's menu has a **Back up now** of its own. Such a run counts toward that schedule's **Keep newest**, so it can push the schedule's oldest backup out. On a database without a schedule, **Back up now** on the **Backups** tab makes a one-off dump to the first destination instead, which is kept until you delete it. The **Back up now** on a database's **Connection** tab needs a schedule.
@@ -51,7 +53,7 @@ Dumps run in a helper container from the database's own image, so the dump tool 
 
 ## Restore
 
-In **Backups and restores**, pick a backup and click **Restore**. It replaces the service's current data: databases are restored with their engine's own tool, volumes are unpacked into a fresh folder and swapped in. Tick **Back up the current data first** to keep a copy of what is there now. You type the service name to confirm.
+In **Backups and restores**, pick a backup and click **Restore**. It replaces the service's current data: databases are restored with their engine's own tool, volumes are unpacked into a fresh folder and swapped in. Tick **Back up the current data first** to keep a copy of what is there now. You type the service name to confirm. New in 0.2.0-rc.2: a volume restore, like a volume copied by a move or a clone, keeps the sticky and setgid bits of folders; setuid and setgid on files are dropped, like on uploads. Before, folders came back without them.
 
 <Callout type="warn" title="A restore replaces the current data">
 Without **Back up the current data first**, the data in the service before the restore cannot be recovered.

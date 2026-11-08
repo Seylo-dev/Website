@@ -23,7 +23,7 @@ A member who may deploy runs code on the node, but not as root on it: Seylo star
 
 Services of different projects on one node still share its kernel and Docker. If you do not trust a member that far, keep their projects on a node of their own.
 
-Taking access away takes effect everywhere: since 0.2 that includes a database web UI or a Box the person has open, which closes within about a minute (see [Databases](/guides/databases#web-ui-and-shell)).
+Taking access away takes effect everywhere: since 0.2 that includes a database web UI or a Box the person has open, which closes within about a minute (see [Databases](/guides/databases#web-ui-and-shell)). Since 0.2.0-rc.2, a database web UI also has a login of its own that only the node's edge holds, so code a member deploys on the project network cannot open it and act as the database admin without the right to see the credentials.
 
 ### People without an account
 
@@ -42,7 +42,9 @@ Every action, and every refused attempt, is in **Activity** with the person and 
 
 Someone with root on a node gets what runs there: its services, their volumes and logs, their environment (including any credentials those services were given for services elsewhere) and the node's own agent key.
 
-They do not get other nodes or the panel's secrets. The panel sends a node only the services placed on it, believes its reports only about those services, lets it pull and push only its own images in the registry, and caps how much it can make the panel hold in memory and store each day. Remove the node on **Nodes**, then change the secrets of the services that ran there.
+They do not get other nodes or the panel's secrets. The panel sends a node only the services placed on it, believes its reports only about those services, lets it pull and push only its own images in the registry, and caps how much it can make the panel hold in memory and store each day. Since 0.2.0-rc.2, nodes never get a backup destination's keys either: the panel signs each request of a running backup or restore for that run's own object, so a node reaches the backups of its own services while they run, not the rest of the bucket. Remove the node on **Nodes**, then change the secrets of the services that ran there. Its load balancing certificate is not revoked: it stays valid until it expires, at most 30 days.
+
+A node with **Build images on this node** on is the exception for builds: it also gets the source, git credentials and build-time variables of every service it builds, from any project, and pushes the images other nodes then run. Treat build nodes like the panel. New in 0.2.0-rc.2: only an owner or admin turns it on, in the panel; a node that joins cannot make itself a build node, apart from the panel's own node from the installer. Each deployment shows which node built it.
 
 The node that runs the panel is the exception: it holds `panel.db` and `master.key`, so taking it over is taking over the panel. Since 0.2.0-rc.2 only root and the panel's own user can read them there (see [On the panel's node](#on-the-panels-node)).
 
@@ -55,7 +57,7 @@ A copy of `panel.db` on its own is much less: the secrets in it are encrypted wi
 ### The network
 
 - **Agents and the panel**: agents dial out to the panel over TLS, checked against the panel domain's public certificate, or against the panel's own key pinned in the join command (`--pin`) while the panel has no domain. Each agent signs every connection with its own Ed25519 key, so a join token is useless after its first use. Since 0.2, each agent also remembers the panel's identity key from its first connect and refuses any other panel, even one with a valid certificate for the panel's domain (see [The panel's identity](/guides/adding-nodes#the-panels-identity)). `--insecure` gives up the TLS checks and is meant for test setups only. See [Adding nodes](/guides/adding-nodes).
-- **Between nodes**: load balancing traffic on port 5757 is mutual TLS with certificates from the panel's own CA. A node without its certificate answers 404 there to everyone (see [Load balancing](/guides/load-balancing)).
+- **Between nodes**: load balancing traffic on port 5757 is mutual TLS with certificates from the panel's own CA, valid for 30 days since 0.2.0-rc.2 (a year before). A node without its certificate answers 404 there to everyone (see [Load balancing](/guides/load-balancing)).
 - **Your browser and the panel**: plain HTTP until the panel has a domain, see below. A session needs both its HttpOnly cookie and a session key that the web app keeps for the panel's own address and port, so a copy of the cookie that a browser sends to another port of the same address signs nobody in (see [Sessions](/people/sign-in-and-security#sessions)).
 - **Behind Cloudflare**: the panel takes the visitor's address from Cloudflare's header only from trusted proxies, see [The panel behind Cloudflare](/guides/domains-and-https#the-panel-behind-cloudflare).
 
@@ -109,13 +111,14 @@ The same works for the installer: save it with `curl -fsSLo install.sh https://i
 
 If any of it fails, for example because a file in the release was replaced without the release key, it keeps serving the last installer that passed and reports the failure on its health check. Its answers carry `X-Installer-Version` and `X-Installer-Sha256`.
 
-New in 0.2.0-rc.2: join commands from **Add node** download the `install.sh` of the panel's own release from GitHub instead, so the site's checks do not apply to them, but the script's own checks below do. To check that script first, save it and check it against `checksums.txt` of the same release, as in [Check a download by hand](#check-a-download-by-hand).
+Join commands from **Add node** pipe the same checked installer from install.seylo.dev, never a file straight from the release assets. A released panel adds `--version` with its own release, and the installer then checks that release's signed manifest and installs its agent, so the node gets the panel's version (see [Join a server](/guides/adding-nodes#join-a-server)).
 
 **install.sh** then, before it changes anything:
 
 - checks the system and that the ports it needs are free,
 - downloads the release manifest and checks its signature with minisign or OpenSSL 3, and stops if the signature is wrong or neither tool is installed,
 - stops if the manifest names another version than the one asked for with `--version`,
+- stops if the node's agent, or the panel on its node, runs a newer release than the one it would install, unless you add `--downgrade` (new in 0.2.0-rc.2),
 - downloads the `seylo` binary, checks its SHA-256 against the signed manifest and that it runs, and only then installs it,
 - starts the panel from the image pinned by the digest in the signed manifest, never by a tag alone (unless you name another image with `--image`).
 
@@ -152,7 +155,7 @@ So a copy of `panel.db` alone holds no secrets, and `master.key` alone is useles
 | `/var/lib/seylo/agent.key` | The node's Ed25519 private key, mode 0600 |
 | `/var/lib/seylo/config.yml` | The panel's address and certificate pin and, since 0.2, the panel's id and identity key, mode 0600 |
 | `/var/lib/seylo/state/` | The last desired state from the panel, mode 0600. It includes the environment of the node's services, so the node can restart them while the panel is down. |
-| `/var/lib/seylo/services/<id>/` | Volumes and file mounts, as your services wrote them. Seylo does not encrypt them. |
+| `/var/lib/seylo/services/<id>/` | Volumes and file mounts, as your services wrote them. Seylo does not encrypt them. New in 0.2.0-rc.2: `services/` and each service's folder are mode 0700, so other accounts on the server cannot read file mounts or volume data; the **Service folders** node health check warns when one is open. |
 
 ## Telemetry and reports
 

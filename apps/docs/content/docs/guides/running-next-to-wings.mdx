@@ -10,14 +10,16 @@ Game nodes often have spare memory and CPU for a website, a bot or a database. S
 Join the Wings node like any other node, with the command from **Nodes → Add node**:
 
 ```bash
-curl -fsSL https://github.com/Seylo-dev/App/releases/download/v<version>/install.sh | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>'
+curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>' --version '<version>'
 ```
+
+`--version` is the panel's own release, so the node gets the agent of the panel's version (see [Join a server](/guides/adding-nodes#join-a-server)).
 
 Nothing about Wings or your game servers changes. The agent finds Wings by its config (`/etc/pelican/config.yml` or `/etc/pterodactyl/config.yml`) and asks the local Wings API for its version. The node shows **Wings detected** on **Nodes**.
 
 ## What changes on a Wings node
 
-- **One proxy on 80 and 443.** If the node runs a Wings build with its own Traefik on ports 80 and 443, Seylo writes its routes as `seylo-*.yml` files into that Traefik's dynamic folder instead of starting a second proxy, and reconnects its network to that Traefik whenever Wings recreates it. The node shows **Shared proxy**. Load balancing between nodes then runs on a small second Traefik of Seylo's own, on port 5757 only.
+- **One proxy on 80 and 443.** If the node runs a Wings build with its own Traefik on ports 80 and 443, Seylo writes its routes as `seylo-*.yml` files into that Traefik's dynamic folder instead of starting a second proxy, and reconnects its network to that Traefik whenever Wings recreates it. The node shows **Shared proxy**. Load balancing between nodes then runs on a small second Traefik of Seylo's own, on port 5757 only. New in 0.2.0-rc.2: a node that ran Seylo's own Traefik before it got such a Wings build removes `seylo-traefik` on the agent's next start and starts Wings' Traefik if it is not running; before, `seylo-traefik` kept 80 and 443 and Wings' Traefik could not start.
 - **No hijacked hostnames.** Every container Seylo creates is labelled `traefik.enable=false`, so an image can't claim a hostname through Docker labels.
 - **Hands off game containers.** Seylo only lists, cleans up or restarts containers, networks and volumes that carry its own `seylo.*` labels. Docker cleanup never touches Wings' images or servers.
 - **Firewall respected.** Ports are relayed by the agent, not published through Docker, so ufw rules on the node keep working.

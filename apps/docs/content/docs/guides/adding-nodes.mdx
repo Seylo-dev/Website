@@ -8,12 +8,14 @@ description: Join more servers to the panel, set where builds run, and manage a 
 On **Nodes**, click **Add node**, then **Create join command** (if you signed in more than 15 minutes ago, the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first). The command has a single-use token that is valid for one hour. Run it as root on the new server:
 
 ```bash
-curl -fsSL https://github.com/Seylo-dev/App/releases/download/v<version>/install.sh | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>'
+curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>' --version '<version>'
 ```
 
-The command runs the `install.sh` of the panel's own release on GitHub, so the node gets the agent of the panel's version. New in 0.2.0-rc.2: before, it ran the installer from `install.seylo.dev`, which serves the latest stable release, so a node joining a pre-release panel got an older agent. A panel built without a release (a development build) still uses `install.seylo.dev`.
+The command pipes the installer from `install.seylo.dev`, which serves it only after checking it against the signed release (see [What the installer checks](/security#what-the-installer-checks)). `--version` is the panel's own release: the installer takes the agent from that release's signed manifest, so the node gets the agent of the panel's version. A panel built without a release (a development build) leaves `--version` out, and the node gets the latest stable release. New in 0.2.0-rc.2: before, the command had no `--version`, so a node joining a pre-release panel got the latest stable agent instead.
 
 The installer checks the server, installs Docker if you agree, installs the agent as the `seylo.service` systemd unit and joins the panel. The agent creates its own Ed25519 key pair; the panel stores the public key, and every later connection is a signed challenge, so the token is useless after the first use. The node shows up on **Nodes** a few seconds later.
+
+A new node does not build images until an owner or admin turns on **Build images on this node** in its settings (see [Node settings](#node-settings)); only the panel's own node from the installer starts with it on. New in 0.2.0-rc.2: before, `--can-build` on the join command turned it on, so whoever held a join token could make the node a build node.
 
 A node only needs outbound access to the panel, plus inbound ports 80 and 443 for the sites it serves. The panel never connects to a node, so a node behind NAT works. Load balancing between nodes adds port 5757, and the IP:port addresses the panel hands out need their own ports; see [Firewalls](/installation#firewalls).
 
@@ -64,7 +66,7 @@ sudo seylo join http://127.0.0.1:3000 --token '<token>' --can-build --force
 
 After a key rotation, `seylo panel rotate-key` prints these commands for every node, with the new pin (see [If a copy leaked](/self-hosting/backups#if-a-copy-leaked)), and the panel still knows each node by its key, so it keeps the same node and its services.
 
-New in 0.2.0-rc.2: `--force` keeps the rest of `/var/lib/seylo/config.yml`. It replaces only the panel's address and pin, the token and the old panel's identity; settings you added there by hand (`no_host_shell: true`, `git_proxy_resolves: true`, `acme_ca` and the like) stay, and so do comments and keys this agent does not know. `--name` changes the node's name, and `--can-build` or `--can-build=false` its build setting (the installer takes `--can-build` or `--no-can-build`); without them both stay as they were. Before rc.2, `--force` wrote the file again from scratch, so those settings had to be added back.
+New in 0.2.0-rc.2: `--force` keeps the rest of `/var/lib/seylo/config.yml`. It replaces only the panel's address and pin, the token and the old panel's identity; settings you added there by hand (`no_host_shell: true`, `git_proxy_resolves: true`, `acme_ca` and the like) stay, and so do comments and keys this agent does not know. `--name` changes the node's name, and `--can-build` or `--can-build=false` the `can_build` setting in `config.yml` (the installer takes `--can-build` or `--no-can-build`); without them both stay as they were. Whether the panel sends a node builds is **Build images on this node** in the panel, which a re-join does not change. Before rc.2, `--force` wrote the file again from scratch, so those settings had to be added back.
 
 ## Latency
 
@@ -81,7 +83,7 @@ The **Settings** action on a node:
 | **Name**, **Location**, **Tags** | How the node shows up in the panel |
 | **Public address** | Where people and other nodes reach this server, when it is not the detected address: for example the public IP of a cloud server (AWS, Google Cloud, Azure, Oracle) whose network interface only has a private one. Used for IP:port links, exposed databases, load balancing and join commands. Uptime checks may also target it when it is a private address (see [Uptime checks](/features/uptime-checks#where-checks-run-from)). A git server on it, as on any of the node's addresses, needs an owner or admin to allow it per project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)). The panel server's is filled in from the address you opened the setup link at, when it knows no public address of its own. The node health check warns while no public address is known. |
 | **Wildcard domain** | New services on this node get `<name>.<this domain>`. Point the wildcard `A` record at the node first. |
-| **Build images on this node** | Allow builds here. Images built here run on every node; small nodes usually leave this off. |
+| **Build images on this node** | Allow builds here. The node then gets the source, git credentials and build-time variables of everything it builds, from any project, and the images it builds run on every node, so turn it on only for nodes you trust like the panel. Small nodes usually leave this off. Off for new nodes, except the panel's own node from the installer. |
 | **Builds at once** | How many builds run in parallel; the rest wait in a queue |
 | **Logs per service (MB)**, **Keep logs (days)** | How much service log history the node keeps |
 | **Game servers first** | Only on nodes with Wings, see [Running next to Wings](/guides/running-next-to-wings) |
@@ -94,7 +96,7 @@ Click a node's name on **Nodes** to open it. Its **Overview** has the machine ac
 
 - **Health** runs the node's health checks: Docker, disk, clock, ports 80 and 443, DNS, the proxy, Wings and more, each with a fix. See [Node health checks](/guides/node-health).
 - **Update now** updates the node's agent to the newest release on the panel's [release channel](/self-hosting/updates#release-channel), and refuses when the node already runs that release or a newer one; see [Updates](/self-hosting/updates).
-- **Update Docker** upgrades Docker Engine with the system's package manager (apt, dnf or yum) and shows the versions first. With Docker's live-restore on (the installer turns it on, see [Docker live-restore](/installation#docker-live-restore)), containers keep running while the daemon restarts. When it is off, the dialog warns that every service on the node stops until the agent starts it again.
+- **Update Docker** upgrades Docker Engine with the system's package manager (apt, dnf or yum) and shows the versions first. With Docker's live-restore on (the installer turns it on, see [Docker live-restore](/installation#docker-live-restore)), containers keep running while the daemon restarts. When it is off, the dialog warns that every service on the node stops until the agent starts it again. New in 0.2.0-rc.2: an update the node sends no result for within an hour (the agent restarted mid-upgrade, or the node went away) fails, and so does one for a node that was removed, so it no longer blocks later updates.
 - **Reboot** reboots the machine. Services on the node are down until the machine and Docker are back; Seylo moves nothing away for you. The agent reconnects by itself.
 - **Agent logs** shows what the agent wrote: connects, deploys and errors.
 

@@ -39,6 +39,8 @@ The stack's **Compose file** tab holds the file. **Preview changes** lists what 
 
 A member's environment comes from its `environment:` section. Change it in the file: edits on a member's **Environment** tab are replaced the next time the file is applied.
 
+New in 0.2.0-rc.2: since a pasted file holds every member's `environment:` values, the **Compose file** tab shows it only to people who may view variables (**View variables**) on the stack and all of its members; others see why it is hidden. Through the API, `compose.get` then returns the file empty with `fileHidden: true`. Applying a file that changes a member's environment needs **Edit variables** on the stack, and one that adds or changes members needs **Deploy**.
+
 `${VAR}` in the file is filled from the stack's own variables. The panel has no screen for those yet; set them with the API (`env.set` on the stack), or write the values into the file. A variable that is not set becomes empty, with a warning.
 
 ## What is different from plain Compose

@@ -9,7 +9,7 @@ description: Install the panel and the first node on one server with one command
 | --- | --- |
 | System | Linux with systemd, x86-64 (amd64) or ARM64. Ubuntu 22.04 and 24.04 and Debian 12 are tested; RHEL, Rocky, AlmaLinux and CentOS 9 and Fedora 40 or newer should work. |
 | Kernel | Linux 5.6 or newer, with cgroup v2 |
-| Docker | Docker Engine 23 or newer (25 or newer recommended), installed from Docker's packages with a `docker.service` unit. The snap package does not work. The installer can install Docker for you. |
+| Docker | Docker Engine 23 or newer (25 or newer recommended), installed from Docker's packages with a `docker.service` unit, and the buildx plugin (`docker-buildx-plugin`, part of Docker's packages) on nodes that build. The snap package does not work. The installer can install Docker for you. |
 | Ports | 80 and 443 for your sites, 3000 for the panel until it has a domain, and 3443 on the panel server for other nodes' agents. See [Firewalls](#firewalls) for the rest. |
 | Tools | OpenSSL 3 or `minisign`, to check the release signature. Current distributions ship OpenSSL 3. |
 | Memory | 1 GB works for a small panel node; 2 GB or more is recommended once you build images on it |
@@ -113,16 +113,17 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 | Option | What it does |
 | --- | --- |
 | `panel` | Install the panel and a node on this server (the default) |
-| `join --panel <url> --token <t>` | Add this server to an existing panel; the panel's **Add node** dialog gives you the full command, which runs the installer of the panel's own release. See [Adding nodes](/guides/adding-nodes). |
+| `join --panel <url> --token <t>` | Add this server to an existing panel; the panel's **Add node** dialog gives you the full command, with `--version` set to the panel's own release. See [Adding nodes](/guides/adding-nodes). |
 | `uninstall [--purge]` | Remove the agent; see [Uninstall](/self-hosting/uninstall) |
-| `--version <v>` | Install this release instead of the installer's own. `install.seylo.dev` serves the installer of the latest stable release; the `install.sh` of a release installs that release. |
+| `--version <v>` | Install this release instead of the installer's own, checked against that release's signed manifest. `install.seylo.dev` serves the installer of the latest stable release; the join commands from **Add node** add `--version` with the panel's release. |
+| `--downgrade` | Install the release although this node runs a newer one (new in 0.2.0-rc.2, see below) |
 | `--port <n>` | Port for the panel until it has a domain (default 3000) |
 | `--agent-tls-port <n>` | Port where other nodes' agents reach the panel over TLS with a pinned key until it has a domain (default 3443; `0` turns it off) |
 | `--image <ref>` | Panel image (default: the release's image, pinned by the digest in its signed manifest) |
 | `--allow-unsigned` | Install a release without checking its signature, for development builds that have no release key |
 | `--name <name>` | Node name shown in the panel (default: the hostname; a re-join keeps the current one) |
-| `--can-build` | Allow builds on a joining node (the panel node always can) |
-| `--no-can-build` | Stop builds on a node that joins again. Without `--can-build` or `--no-can-build`, a re-join keeps the current setting. |
+| `--can-build` | Set `can_build` in the joining node's `config.yml`. Only the panel's own node from the installer starts building with it; any other node builds once an owner or admin turns on **Build images on this node** in the panel (new in 0.2.0-rc.2, see [Join a server](/guides/adding-nodes#join-a-server)). |
+| `--no-can-build` | Clear `can_build` on a node that joins again. Without `--can-build` or `--no-can-build`, a re-join keeps the current setting. |
 | `--pin <sha256:...>` | Panel certificate pin, for joining (the Add node command carries it) |
 | `--insecure` | Join a panel at a plain `http://` URL on another server; the agent's traffic is then unencrypted |
 | `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node, and since 0.2.0-rc.2 its other settings in `config.yml`); install the panel although another program holds 80 or 443 |
@@ -136,6 +137,8 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 | `-h`, `--help` | Print the installer's help |
 
 Running the installer again is safe: it updates the binary and the systemd unit and keeps the node's data and identity.
+
+New in 0.2.0-rc.2: it never installs an older release than the node runs. `install.seylo.dev` serves the latest stable release, so on a node whose agent (or, on the panel's node, the panel) runs a pre-release or a release the panel updated it to, the installer stops before it changes anything and names that release. Update nodes from the panel instead, re-run with `--version <that release>` to reinstall it, or add `--downgrade` to install the older one anyway. Before rc.2, a re-run quietly put the older agent next to the newer panel. A `--binary` is installed as given.
 
 ### Without a terminal
 
@@ -207,8 +210,8 @@ Everything Seylo keeps on a node is in one folder:
 | `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell` and `git_proxy_resolves` |
 | `agent.key` | The node's private key; it signs every connection to the panel |
 | `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
-| `services/<id>/volumes/<name>` | Service volumes |
-| `services/<id>/files` | File mounts |
+| `services/<id>/volumes/<name>` | Service volumes. New in 0.2.0-rc.2: `services/` and each `services/<id>/` are mode 0700, so only root reaches the volumes and file mounts under them; the agent closes older folders when it starts. |
+| `services/<id>/files` | File mounts, mode 0700. New in 0.2.0-rc.2: one folder per version of the service's settings, so a deploy that fails, and the old version it rolls back to, keep their own files |
 | `logs/<service id>/` | Service logs, kept across deploys |
 | `builds/` | Build workspaces and uploaded sources |
 | `registry/` | Image registry storage (panel node only) |
