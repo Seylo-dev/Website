@@ -35,4 +35,15 @@ describe("the landing's /l", () => {
     const dockerfile = readFileSync(resolve(import.meta.dir, "../../landing/Dockerfile"), "utf8");
     expect(dockerfile).not.toContain("SITE_API_URL");
   });
+
+  test("the setup docs don't describe it as a proxy", () => {
+    const docs = ["../../../README.md", "../README.md", "../.env.example", "../../landing/README.md"];
+    const proxyClaims = docs.flatMap((doc) =>
+      readFileSync(resolve(import.meta.dir, doc), "utf8")
+        .split("\n")
+        .filter((line) => /\bprox(y|ies|ied)\b[^.]*\/l\b/i.test(line))
+        .map((line) => `${doc}: ${line.trim()}`),
+    );
+    expect(proxyClaims).toEqual([]);
+  });
 });
