@@ -113,18 +113,19 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --install-docke
 | Option | What it does |
 | --- | --- |
 | `panel` | Install the panel and a node on this server (the default) |
-| `join --panel <url> --token <t>` | Add this server to an existing panel; the panel's **Add node** dialog gives you the full command. See [Adding nodes](/guides/adding-nodes). |
+| `join --panel <url> --token <t>` | Add this server to an existing panel; the panel's **Add node** dialog gives you the full command, which runs the installer of the panel's own release. See [Adding nodes](/guides/adding-nodes). |
 | `uninstall [--purge]` | Remove the agent; see [Uninstall](/self-hosting/uninstall) |
-| `--version <v>` | Install this release instead of the latest |
+| `--version <v>` | Install this release instead of the installer's own. `install.seylo.dev` serves the installer of the latest stable release; the `install.sh` of a release installs that release. |
 | `--port <n>` | Port for the panel until it has a domain (default 3000) |
 | `--agent-tls-port <n>` | Port where other nodes' agents reach the panel over TLS with a pinned key until it has a domain (default 3443; `0` turns it off) |
 | `--image <ref>` | Panel image (default: the release's image, pinned by the digest in its signed manifest) |
 | `--allow-unsigned` | Install a release without checking its signature, for development builds that have no release key |
-| `--name <name>` | Node name shown in the panel (default: the hostname) |
+| `--name <name>` | Node name shown in the panel (default: the hostname; a re-join keeps the current one) |
 | `--can-build` | Allow builds on a joining node (the panel node always can) |
+| `--no-can-build` | Stop builds on a node that joins again. Without `--can-build` or `--no-can-build`, a re-join keeps the current setting. |
 | `--pin <sha256:...>` | Panel certificate pin, for joining (the Add node command carries it) |
 | `--insecure` | Join a panel at a plain `http://` URL on another server; the agent's traffic is then unencrypted |
-| `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node); install the panel although another program holds 80 or 443 |
+| `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node, and since 0.2.0-rc.2 its other settings in `config.yml`); install the panel although another program holds 80 or 443 |
 | `--install-docker` | Install Docker without asking if it is missing |
 | `--no-docker-install` | Never install Docker; stop if it is missing |
 | `--yes`, `-y` | Answer yes to questions (implies `--install-docker`) |
@@ -199,9 +200,9 @@ Everything Seylo keeps on a node is in one folder:
 
 | Path | What it is |
 | --- | --- |
-| `config.yml` | The node's config: panel URL, node id, panel certificate pin |
+| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell` and `git_proxy_resolves` |
 | `agent.key` | The node's private key; it signs every connection to the panel |
-| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history) and `master.key` |
+| `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history) and `master.key`. Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
 | `services/<id>/volumes/<name>` | Service volumes |
 | `services/<id>/files` | File mounts |
 | `logs/<service id>/` | Service logs, kept across deploys |
@@ -212,6 +213,8 @@ Everything Seylo keeps on a node is in one folder:
 | `tools/` | Pinned helper binaries (Railpack, Nixpacks) |
 
 Keep a copy of `master.key` somewhere other than the server: it decrypts the secrets in `panel.db` (see [Backing up the panel](/self-hosting/backups)).
+
+New in 0.2.0-rc.2: the panel container runs as uid and gid 61000, which no login user has. Before, it ran as uid 1000, which on most cloud images is the default login user (`ubuntu`, `debian`, `ec2-user`), and that user could read `master.key` and `panel.db` without sudo. An upgraded panel's node moves the folder to the new user by itself, the first time its agent starts the panel after the update. A new panel install warns when an account on the server already has uid or gid 61000, since that account could read the folder.
 
 ## If something goes wrong
 

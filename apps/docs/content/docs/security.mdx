@@ -19,7 +19,7 @@ Treat these accounts like root SSH keys: keep them to a few people and give each
 
 A member, shown as a guest on the projects they can reach, sees and does only what was shared with them: whole projects or single services, with the actions picked when sharing. Members never get panel-wide actions (nodes, settings, people, updates), and nobody can share an action they do not hold themselves.
 
-A member who may deploy runs code on the node, but not as root on it: Seylo starts services without privileged mode, host networking, devices, bind mounts or the Docker socket, and ignores those settings in compose files. A member can't put a service on a hostname or path that another service already routes unless they may edit that service too. A git URL does not lead into a node's network either: since 0.2 the node checks the address of every connection git makes and clones from an internal address only for a host an owner or admin allowed in the project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
+A member who may deploy runs code on the node, but not as root on it: Seylo starts services without privileged mode, host networking, devices, bind mounts or the Docker socket, and ignores those settings in compose files. A member can't put a service on a hostname or path that another service already routes unless they may edit that service too. A git URL does not lead into a node's network either: since 0.2 the node checks the address of every connection git makes and clones from an internal address only for a host an owner or admin allowed in the project, and since 0.2.0-rc.2 the same goes for the node's own addresses, public ones included, so a git URL cannot reach a service the node's firewall hides from the internet (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
 Services of different projects on one node still share its kernel and Docker. If you do not trust a member that far, keep their projects on a node of their own.
 
@@ -44,7 +44,7 @@ Someone with root on a node gets what runs there: its services, their volumes an
 
 They do not get other nodes or the panel's secrets. The panel sends a node only the services placed on it, believes its reports only about those services, lets it pull and push only its own images in the registry, and caps how much it can make the panel hold in memory and store each day. Remove the node on **Nodes**, then change the secrets of the services that ran there.
 
-The node that runs the panel is the exception: it holds `panel.db` and `master.key`, so taking it over is taking over the panel.
+The node that runs the panel is the exception: it holds `panel.db` and `master.key`, so taking it over is taking over the panel. Since 0.2.0-rc.2 only root and the panel's own user can read them there (see [On the panel's node](#on-the-panels-node)).
 
 ### A compromised panel
 
@@ -101,13 +101,15 @@ The same works for the installer: save it with `curl -fsSLo install.sh https://i
 
 `curl -fsSL https://install.seylo.dev | sudo sh` runs the installer as root before it can check anything itself, so the script is checked twice: by the site before it is served, and by the script before it installs.
 
-**install.seylo.dev** serves the `install.sh` of the latest release only once that release checks out:
+**install.seylo.dev** serves the `install.sh` of the latest stable release (never a pre-release) only once that release checks out:
 
 1. It resolves the latest release to its tag once and downloads `manifest.json`, `manifest.json.minisig` and `install.sh` from that tag, so the three always come from one release.
 2. The manifest's signature must verify with the release key above.
 3. The manifest's version must be the release's, and the SHA-256 of `install.sh` must be the one the manifest names.
 
 If any of it fails, for example because a file in the release was replaced without the release key, it keeps serving the last installer that passed and reports the failure on its health check. Its answers carry `X-Installer-Version` and `X-Installer-Sha256`.
+
+New in 0.2.0-rc.2: join commands from **Add node** download the `install.sh` of the panel's own release from GitHub instead, so the site's checks do not apply to them, but the script's own checks below do. To check that script first, save it and check it against `checksums.txt` of the same release, as in [Check a download by hand](#check-a-download-by-hand).
 
 **install.sh** then, before it changes anything:
 
@@ -123,11 +125,13 @@ If any of it fails, for example because a file in the release was replaced witho
 
 ### On the panel's node
 
+The folder `/var/lib/seylo/panel/` is mode 0700 and belongs to the panel's user, uid and gid 61000, which no login user has, so only root and the panel container can read it. New in 0.2.0-rc.2: before, the panel ran as uid 1000, which on most cloud images is the default login user (`ubuntu`, `debian`, `ec2-user`), and that user could read `master.key` without sudo. The agent gives the folder to the panel's user the first time it starts the panel after its update. A new panel install warns when an account on the server already has uid or gid 61000.
+
 | File | What it holds |
 | --- | --- |
 | `/var/lib/seylo/panel/master.key` | 32 random bytes made at install, mode 0600, outside the database |
 | `/var/lib/seylo/panel/panel.db` | Everything the panel knows, with its secrets sealed by `master.key` |
-| `/var/lib/seylo/panel/agent-tls.key` | The key agents pin while the panel has no domain, mode 0600 |
+| `/var/lib/seylo/panel/agent-tls.key` | The key agents pin while the panel has no domain, mode 0600. Not sealed, so a copy of the folder holds it too. |
 
 Secrets are sealed with AES-256-GCM, with a separate key derived from `master.key` (HKDF) for each kind of secret, so a value sealed as one kind can't be opened as another. Sealed in `panel.db`:
 
@@ -139,7 +143,7 @@ Secrets are sealed with AES-256-GCM, with a separate key derived from `master.ke
 
 Not stored at all, only as hashes: passwords (argon2id), session tokens and session keys, API keys, MCP tokens and the passwords of basic auth rules.
 
-So a copy of `panel.db` alone holds no secrets, and `master.key` alone is useless. Together they are every secret the panel knows: back them up, but keep the copies apart (see [Backing up the panel](/self-hosting/backups)). If a copy leaked, give the panel a new `master.key`: see [If a copy leaked](/self-hosting/backups#if-a-copy-leaked).
+So a copy of `panel.db` alone holds no secrets, and `master.key` alone is useless. Together they are every secret the panel knows: back them up, but keep the copies apart (see [Backing up the panel](/self-hosting/backups)). If a copy leaked, run `sudo seylo panel rotate-key --new-panel-identity` on the panel's node: it gives the panel a new `master.key`, seals every secret again, and replaces the identity keys and `agent-tls.key`, then prints the `seylo join` command with the new pin for each node. With `--keep-panel-identity`, when only `master.key` leaked, nodes keep working. See [If a copy leaked](/self-hosting/backups#if-a-copy-leaked).
 
 ### On every node
 

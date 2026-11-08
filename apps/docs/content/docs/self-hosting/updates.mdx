@@ -1,6 +1,6 @@
 ---
 title: Updates
-description: One switch keeps the panel and every node current. How an update runs, how releases are verified, and how it rolls back.
+description: One switch keeps the panel and every node current. How an update runs, which releases it follows, how releases are verified, and how it rolls back.
 ---
 
 ## Auto-update
@@ -10,9 +10,32 @@ description: One switch keeps the panel and every node current. How an update ru
 1. The panel updates first.
 2. Then each node, one at a time. A node that fails its update rolls itself back and the rollout stops, so one problem doesn't spread.
 
-A node that was offline during a rollout updates itself when it reconnects. **History** lists every update run with its steps, who or what started it and how it ended.
+A node that is offline when its turn comes is skipped, and the rollout goes on with the next one. **History** lists every update run with its steps, who or what started it and how it ended.
 
-With the switch off, **Updates** shows **Update available** with the new version and its changelog, and **Update to `<version>`** runs the same steps when you choose. The **Update available** alert can tell you. On **Nodes**, **Update now** updates a single node's agent to the panel's version.
+With the switch off, **Updates** shows the new version and its changelog, and **Update to `<version>`** runs the same steps when you choose. The **Update available** alert can tell you. On **Nodes**, **Update now** updates a single node's agent to the newest release on the release channel. It refuses when the node already runs that release or a newer one.
+
+### Nodes that were offline
+
+New in 0.2.0-rc.2. When a node that was skipped as offline reconnects, the panel updates it in a run of its own, to the version and the signed manifest of the run it missed. **History** shows that run as started by **Node came back**, and the skipped step says what became of the node when you hover it:
+
+- **It gets `<version>` when it reconnects**: still waiting for the node.
+- **It came back and was updated in a run of its own**: the catch-up run.
+- **A later update run included it**: nothing to catch up.
+- **It came back already running `<version>` or newer**: nothing to do.
+- **It came back but had rolled `<version>` back, so it was not retried**: the node holds that release (see [How a node updates](#how-a-node-updates)); **Update now** installs it.
+
+The catch-up run waits while another run is active, and the node applies the same waits as to its own automatic updates. Before 0.2.0-rc.2, a skipped node only caught up through its own update when it connected, which needs **Update automatically** on.
+
+## Release channel
+
+New in 0.2.0-rc.2. **Settings → Updates → Release channel** picks which releases the panel offers:
+
+- **Stable**, the default: final releases only.
+- **Pre-release**: release candidates too, before they are final. The panel takes the highest version of all releases, so 0.2.0-rc.1, then 0.2.0-rc.2, then 0.2.0. Switching to it asks you to confirm (**Follow pre-releases**). With **Update automatically** on, auto-update then installs release candidates as well.
+
+Only the owner can change the channel; for everyone else the row says "Only the owner can change it." The change is in the activity log, and the panel checks for updates on the new channel right away. A pre-release is checked like any other release: its manifest must be signed with the release key and name the version it is for. The **Panel** section shows **Running** and **Newest stable** (**Newest** on the pre-release channel), with a **Pre-release** chip when the newest release is a release candidate.
+
+Nothing offers an older version. Back on **Stable**, a panel that runs a release candidate stays on it until a newer stable release is out, and **Updates** says so. A run also keeps the manifest it started with, so a check or a channel switch during a run never changes what its later steps install.
 
 ## Signed releases
 
@@ -47,12 +70,13 @@ New in 0.2: a release the guard rolled back is held for that node, so a bad rele
 
 - The panel's automatic runs (the check every 6 hours with **Update automatically** on) leave the node out for that release, with no time limit, until a newer release comes out. The panel's alert, **Update to `<version>` failed on `<node>`**, ends with "Automatic updates leave this node out until a newer release; Update now installs this one."
 - The node itself waits before it installs that release again on its own (when it connects with auto-update on, or when the panel refuses it as too old): an hour after the first rollback, then a day after each later one. Its own **Update failed** alert says until when.
+- New in 0.2.0-rc.2: the node applies the same waits to updates the panel sends without a person asking (the automatic run, and a [catch-up after it was offline](#nodes-that-were-offline)), and also waits an hour after an automatic update of the release failed before the swap. While it waits it installs nothing, and the run's step for it ends as skipped with the node's message. Agents before rc.2 do not wait for the panel's updates.
 
 **Update now** for the node (on **Nodes** or in **Settings → Updates**) installs the release right away and lifts the hold. A confirmed update to that release or a later one clears it as well, and resolves the node's alert.
 
 ## Upgrading from 0.1
 
-The update to 0.2 runs like any other. A few security fixes in it change what people see afterwards, such as one more sign-in for everyone; [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) lists them.
+The update to 0.2 runs like any other. A few security fixes in it change what people see afterwards, such as one more sign-in for everyone; [Upgrading from 0.1](/self-hosting/upgrading-from-0-1) lists them. It also has [what changed in 0.2.0-rc.2](/self-hosting/upgrading-from-0-1#what-changed-in-020-rc2) for panels that ran 0.2.0-rc.1.
 
 ## Docker
 
