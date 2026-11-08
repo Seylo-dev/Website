@@ -14,7 +14,7 @@ Each node's Traefik spreads requests over every healthy replica of the service, 
 | Setting | What it does |
 | --- | --- |
 | **Entry node** | The node that takes the public traffic: point the service's domains at it, and its Traefik spreads requests over every node. Without one, each node balances the traffic that reaches it. |
-| **Sticky sessions** | A visitor keeps reaching the same replica, with a cookie |
+| **Sticky sessions** | A visitor keeps reaching the same replica, with a cookie. New in 0.2: it also works on domains without HTTPS (the cookie is marked Secure only when every domain of the service uses HTTPS) |
 
 Nodes forward traffic to each other over HTTPS on port **5757**, at the other node's **Public address** setting, else its public IPv4 address (else its public IPv6, else its private IPv4 when the nodes share a private network). The connection is mutual TLS: the panel issues each node a certificate from its own CA, and a node only accepts forwarded traffic from another node of the same panel. During an update run, a node whose agent is still on an older version can't present a certificate yet, so its `GET`, `HEAD` and `OPTIONS` requests fall back to the balancing node's own replicas until it updates.
 
@@ -28,7 +28,15 @@ Allow 5757 between your nodes only:
 ufw allow from <other node IP> to any port 5757 proto tcp
 ```
 
-When a replica on another node fails mid-request with a 502, 503 or 504, `GET`, `HEAD` and `OPTIONS` requests are sent once more to the balancing node's own replicas (with up to 1 MiB of body). Other methods are never replayed, so a `POST` to a node that just went down fails once. Nodes do not yet check each other's health ahead of time.
+## When a replica dies
+
+New in 0.2: a request that fails on one replica is sent to the next one, up to 4 tries:
+
+- A replica that can't be reached at all (its container just died, so nothing was sent) is skipped for every method, `POST` included.
+- A 502, 503 or 504 answer is resent only for `GET`, `HEAD` and `OPTIONS` (with up to 1 MiB of body). Other methods are never replayed, because the app may already have acted on them: a `POST` that a node had already passed to its replica when that replica died fails once.
+- With sticky sessions, a visitor whose replica died is served by the balancing node's other replicas, then by the other nodes'.
+
+A replica that crashes leaves the rotation within about a second and comes back after its restart. Connecting to a replica gives up after 2 seconds on the same node and 3 seconds to another node, so a dead one never holds a request for long. Nodes do not yet check each other's health ahead of time.
 
 ## What does not spread
 
