@@ -52,7 +52,7 @@ Run `seylo status` on the node. If the agent runs but is not connected, the erro
 </Accordion>
 
 <Accordion title="The certificate for a domain is not issued">
-The domain must point at the node that runs the service, and port 80 must reach the node from the internet, because Let's Encrypt checks over HTTP. Behind Cloudflare's proxy, set SSL/TLS to Full (strict). The domain's row on the **Domains** tab shows the DNS status and the last error from Let's Encrypt.
+The domain must point at the node that runs the service, and port 80 must reach the node from the internet, because Let's Encrypt checks over HTTP. Behind Cloudflare's proxy, set SSL/TLS to Full (strict) and turn off Always Use HTTPS, which sends that check to HTTPS. The domain's row on the **Domains** tab shows the DNS status and the last error from Let's Encrypt.
 </Accordion>
 
 <Accordion title="A deploy fails its health check">
