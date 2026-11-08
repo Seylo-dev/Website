@@ -2,9 +2,11 @@ import type { Server } from "bun";
 import { Elysia, t } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 import { clientKey } from "../client-ip";
+import type { DailyBudget } from "../daily-limits";
+import { secondsUntilUtcMidnight } from "../utc-day";
 import { findUnredactedSecrets } from "./redaction";
 import { REPORT_PAGE_CSP, renderMissingReportPage, renderReportPage } from "./page";
-import type { ReportStore } from "./store";
+import { type ReportStore, storedReportBody } from "./store";
 
 /** A report is Markdown text: system facts, recent log lines, config with secrets removed. */
 export const MAX_REPORT_BYTES = 512 * 1024;
@@ -14,6 +16,8 @@ const UPLOADS_PER_HOUR_PER_IP = 20;
 
 interface ReportRoutesOptions {
   store: ReportStore;
+  /** Bytes of reports the site takes per day from everyone together. */
+  budget: DailyBudget;
   trustProxy: boolean;
   /** Public base the returned link is built on: `https://seylo.dev/l`. */
   reportBaseUrl: string;
@@ -32,7 +36,7 @@ const pageHeaders = {
 
 const idParams = t.Object({ id: t.String({ pattern: "^[A-Za-z0-9_-]{22}$" }) });
 
-export function reportRoutes({ store, trustProxy, reportBaseUrl, getServer }: ReportRoutesOptions) {
+export function reportRoutes({ store, budget, trustProxy, reportBaseUrl, getServer }: ReportRoutesOptions) {
   return new Elysia({ name: "reports" })
     .use(
       rateLimit({
@@ -68,7 +72,18 @@ export function reportRoutes({ store, trustProxy, reportBaseUrl, getServer }: Re
           };
         }
 
-        const report = await store.create(body);
+        // Last, so a refused upload takes nothing from it. Counted as stored, NUL bytes widened.
+        const stored = storedReportBody(body);
+        if (!(await budget.take("reportBytes", Buffer.byteLength(stored)))) {
+          set.status = 503;
+          set.headers["retry-after"] = String(secondsUntilUtcMidnight());
+          return {
+            error: "daily_limit",
+            message: "The site has taken all the reports it accepts today. Try again after 00:00 UTC.",
+          };
+        }
+
+        const report = await store.create(stored);
         set.status = 201;
         return {
           id: report.id,

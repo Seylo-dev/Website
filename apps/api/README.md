@@ -5,7 +5,7 @@ unauthenticated:
 
 | Route | What |
 | --- | --- |
-| `POST /telemetry` | Anonymous ping from a panel: `{ installId, version, nodes, services }`. Stored as one row per install per day, install id hashed. 60 pings per hour per IP (IPv6: per /64). |
+| `POST /telemetry` | Anonymous ping from a panel: `{ installId, version, nodes, services }`. Stored as one row per install per day, install id hashed. 60 pings per hour per IP (IPv6: per /64), and at most 100 new installs per IP per day (429). |
 | `GET /telemetry/summary?days=30` | Daily totals and the version spread. Needs `Authorization: Bearer $STATS_TOKEN`; 404 when the token isn't set. |
 | `POST /l` | Upload a troubleshoot report (Markdown body, max 512 KB, 20 uploads per hour per IP, IPv6 per /64). Refused with 422 if it still contains something that looks like a secret. Returns `{ id, url, expiresAt, deleteToken }`. |
 | `GET /l/:id` | The report as a locked-down HTML page (no scripts, no remote images, `noindex`). `GET /l/:id/raw` returns the Markdown. |
@@ -14,6 +14,27 @@ unauthenticated:
 | `GET /healthz` | JSON: `status` (`ok` or `degraded`) and `installer` (what is served and how the last release check went). 200 unless there is no verified installer to serve, then 503. |
 
 Reports expire 30 days after upload: reads hide them right away and an hourly sweep deletes them.
+
+## Limits
+
+The per-IP limits above keep one client from flooding the site, but not many: every IPv4 address and
+every IPv6 /64 gets its own allowance, and an IPv6 /48 holds 65,536 of those. So the site also takes
+a fixed amount per UTC day from everyone together:
+
+| Setting | Default | What |
+| --- | --- | --- |
+| `REPORT_MIB_PER_DAY` | `2048` | MiB of reports, counted as stored. Reports live 30 days, so the table holds at most about 31 days of this. |
+| `TELEMETRY_INSTALLS_PER_DAY` | `50000` | Installs that start a telemetry row. An install already counted that day keeps updating its row. |
+
+Past a budget, `POST /l` or a new install's `POST /telemetry` answers 503 `{ "error": "daily_limit" }` with
+`Retry-After` until 00:00 UTC, and the log gets one `[budget] ... is spent` line per day. Reading reports
+and `/install.sh` never depend on it. `0` turns uploads or telemetry off. The amounts taken are kept in the
+`daily_budget` table (one row per kind per day), so a restart doesn't hand out a second budget; the
+per-IP counts live in memory only, so no address is ever stored.
+
+When the log shows a budget spent by real use, raise it. When it is a flood, add a Cloudflare rate
+limiting rule on `POST /l` and `POST /telemetry` for the `seylo.dev` and `api.seylo.dev` hosts: it
+drops the requests before they reach this process.
 
 ## Run
 
@@ -90,6 +111,8 @@ SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
 - `src/reports/redaction.ts`: the secret patterns a report is checked against. The agent redacts
   before upload; this is the second line of defence. Add a rule here with a test in
   `test/redaction.test.ts` when a new kind of credential shows up in reports.
+- `src/daily-limits.ts`: the daily budgets (in the database) and the per-IP daily count of new installs
+  (in memory).
 - `src/client-ip.ts`: the rate-limit key. With `TRUST_PROXY=true` it is the last `X-Forwarded-For` hop (what
   Traefik appended), or `cf-connecting-ip` when that hop is in Cloudflare's ranges, kept in the same file.
   Update the list when Cloudflare announces a change to https://www.cloudflare.com/ips/.

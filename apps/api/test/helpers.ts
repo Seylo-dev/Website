@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../src/app";
+import { DEFAULT_DAILY_BUDGETS, type DailyBudgets } from "../src/daily-limits";
 import { type Database, type DatabaseOptions, openDatabase } from "../src/db";
 import type { InstallerSource } from "../src/installer/source";
 
@@ -73,18 +74,28 @@ export async function closeTestDatabases() {
 }
 
 export async function testApp(
-  options: { statsToken?: string; installer?: InstallerSource; backend?: TestBackend; trustProxy?: boolean } = {},
+  options: {
+    statsToken?: string;
+    installer?: InstallerSource;
+    backend?: TestBackend;
+    trustProxy?: boolean;
+    budgets?: Partial<DailyBudgets>;
+    newInstallsPerDayPerIp?: number;
+  } = {},
 ) {
   const db = await openTestDatabase(await (options.backend ?? sqlite).newDatabase());
-  return createApp({
+  const app = createApp({
     config: {
       trustProxy: options.trustProxy ?? true,
       statsToken: options.statsToken ?? null,
       reportBaseUrl: REPORT_BASE_URL,
+      budgets: { ...DEFAULT_DAILY_BUDGETS, ...options.budgets },
     },
     sql: db.sql,
     installer: options.installer ?? noInstaller,
+    newInstallsPerDayPerIp: options.newInstallsPerDayPerIp,
   });
+  return { ...app, db };
 }
 
 /** Each test gets its own client address, so rate limits from one test never leak into another. */

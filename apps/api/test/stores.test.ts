@@ -47,6 +47,18 @@ for (const backend of backends) {
       expect(await telemetry.summary(30, day("2026-12-31"))).toEqual({ daily: [], versions: [] });
     });
 
+    test("refresh updates only a row the install already has today", async () => {
+      const { telemetry } = await open(backend);
+      expect(await telemetry.refresh(ping, day("2026-11-07"))).toBe(false);
+      await telemetry.record(ping, day("2026-11-07"));
+      expect(await telemetry.refresh({ ...ping, version: "0.2.0", nodes: 4 }, day("2026-11-07"))).toBe(true);
+      expect(await telemetry.refresh(ping, day("2026-11-08"))).toBe(false);
+      expect(await telemetry.refresh({ ...ping, installId: "inst_fedcba9876543210" }, day("2026-11-07"))).toBe(false);
+      expect((await telemetry.summary(2, day("2026-11-08"))).daily).toEqual([
+        { day: "2026-11-07", installs: 1, nodes: 4, services: 12 },
+      ]);
+    });
+
     test("stores only the hash of the install id", async () => {
       const { db, telemetry } = await open(backend);
       await telemetry.record(ping);

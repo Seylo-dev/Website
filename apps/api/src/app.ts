@@ -1,6 +1,7 @@
 import type { SQL } from "bun";
 import { Elysia } from "elysia";
 import type { Config } from "./config";
+import { createDailyBudget } from "./daily-limits";
 import { installerRoutes } from "./installer/routes";
 import type { InstallerSource } from "./installer/source";
 import { reportRoutes } from "./reports/routes";
@@ -9,17 +10,21 @@ import { telemetryRoutes } from "./telemetry/routes";
 import { createTelemetryStore } from "./telemetry/store";
 
 export interface AppDeps {
-  config: Pick<Config, "trustProxy" | "statsToken" | "reportBaseUrl">;
+  config: Pick<Config, "trustProxy" | "statsToken" | "reportBaseUrl" | "budgets">;
   sql: SQL;
   installer: InstallerSource;
+  /** New installs one address may start a telemetry row for per day. Tests lower it. */
+  newInstallsPerDayPerIp?: number;
 }
 
 // Elysia's codes for a bad request; they keep their own status and body.
 const REQUEST_ERRORS = new Set(["VALIDATION", "NOT_FOUND", "PARSE", "INVALID_COOKIE_SIGNATURE", "INVALID_FILE_TYPE"]);
 
 /** The whole API without a listening server, so tests can drive it with `app.handle()`. */
-export function createApp({ config, sql, installer }: AppDeps) {
+export function createApp({ config, sql, installer, newInstallsPerDayPerIp }: AppDeps) {
   const reports = createReportStore(sql);
+  // Shared by both routes: one table, one row per kind per day.
+  const budget = createDailyBudget(sql, config.budgets);
   // The rate limits read the connection's address from the server, and elysia-rate-limit asks the
   // instance it was added to: the route plugin's own, whose `server` stays null when this one
   // listens. So they get this instance's server. Called per request, after `app` is assigned.
@@ -46,6 +51,8 @@ export function createApp({ config, sql, installer }: AppDeps) {
     .use(
       telemetryRoutes({
         store: createTelemetryStore(sql),
+        budget,
+        newInstallsPerDayPerIp,
         trustProxy: config.trustProxy,
         statsToken: config.statsToken,
         getServer,
@@ -54,6 +61,7 @@ export function createApp({ config, sql, installer }: AppDeps) {
     .use(
       reportRoutes({
         store: reports,
+        budget,
         trustProxy: config.trustProxy,
         reportBaseUrl: config.reportBaseUrl,
         getServer,
