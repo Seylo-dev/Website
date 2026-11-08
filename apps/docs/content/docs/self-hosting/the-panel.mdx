@@ -23,6 +23,8 @@ After installation the panel answers on `http://<server-ip>:3000`, which is plai
 
 Point an `A` record at the panel's node and set the hostname as **Panel domain** in **Settings → General**. The panel gets a certificate like any other service; the page shows **Waiting for DNS**, **Getting a certificate**, then **Active**.
 
+The panel checks the domain every 5 minutes until it is active, and about once an hour after that. New in 0.2.1: the state shows when it was last checked, and **Check now** next to it checks at once, for example right after you changed the record (once every 10 seconds). Saving the domain again checks it at once too.
+
 Once the domain is active:
 
 - page loads on `http://<server-ip>:3000` redirect to the domain (API calls and the local agent keep working on the old address),
@@ -42,6 +44,22 @@ A domain is worth setting early:
 - nodes you add later join through it, with no certificate pin to carry around.
 
 **Default node** on the same page is where new services go when nobody picks a node.
+
+### Behind Cloudflare's proxy
+
+The panel domain can be proxied by Cloudflare (orange cloud). DNS then answers with Cloudflare's addresses, not the node's, so the panel can't check where the record points. New in 0.2.1: when every address of the domain is one of Cloudflare's, the panel shows **Proxied by Cloudflare**, skips the record check, and counts the domain as active once `https://<panel domain>/api/health` answers through Cloudflare with a trusted certificate. A domain that is already active stays active when you turn the proxy on later, as long as that check passes. Before 0.2.1 a proxied panel domain stayed at **Waiting for DNS**.
+
+In Cloudflare:
+
+1. Point the `A` record at the panel's node, with the proxy on.
+2. Set **SSL/TLS** to **Full (strict)**. Flexible sends plain HTTP to the node, which redirects to HTTPS, which loops.
+3. Turn off **Always Use HTTPS** (**SSL/TLS → Edge Certificates**). The node gets its certificate from Let's Encrypt, which checks `http://<panel domain>/.well-known/acme-challenge/` over plain HTTP, for the first certificate and for every renewal. Always Use HTTPS sends that check to HTTPS, where the node does not answer it, so the certificate is never issued or renewed. The panel redirects plain HTTP to HTTPS itself, so visitors still end up on HTTPS.
+
+Until HTTPS answers, the state is **Getting a certificate** and the message under it says what to set.
+
+Nodes reach a proxied panel domain through Cloudflare too. The agent's connection is a WebSocket, which Cloudflare passes on, and agents check the certificate Cloudflare presents with the node's trusted roots: nothing pins the panel's own certificate on the domain. The panel reads each node's own address from Cloudflare's `CF-Connecting-IP` header (see [The panel behind Cloudflare](/guides/domains-and-https#the-panel-behind-cloudflare)).
+
+Cloudflare refuses request bodies over 100 MB on its Free and Pro plans (200 MB on Business, 500 MB on Enterprise). Through a proxied panel domain, larger uploads fail with `413`: a file over that size in a volume's **Files** browser, or an archive for an [upload source](/guides/images-and-uploads#upload) (up to 512 MB). Upload those through the SSH tunnel, or turn the proxy off (DNS only) while you upload.
 
 ## Look and branding
 
