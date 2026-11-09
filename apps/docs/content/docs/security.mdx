@@ -184,7 +184,7 @@ So a copy of `panel.db` alone holds no secrets, and `master.key` alone is useles
 
 ## Telemetry and reports
 
-Telemetry is off until an owner or admin turns it on, and then sends one small anonymous report a day; see [Telemetry](/self-hosting/telemetry). A `seylo troubleshoot` report is redacted on the node before upload, checked again for anything that looks like a secret when it arrives, and deleted after 30 days; see [Troubleshooting](/troubleshooting).
+Telemetry sends one small anonymous report a day: on by default for a panel set up from 0.2.4 on, with the switch on the setup page before anything is sent, `--no-telemetry` on the installer, and `SEYLO_TELEMETRY=off` or `DO_NOT_TRACK=1` to turn it off; panels set up before keep it off until turned on. See [Telemetry](/self-hosting/telemetry). A `seylo troubleshoot` report is redacted on the node before upload, checked again for anything that looks like a secret when it arrives, and deleted after 30 days; see [Troubleshooting](/troubleshooting).
 
 ## Report a vulnerability
 

@@ -1,0 +1,16 @@
+---
+title: What's new in 0.2.4
+description: Anonymous usage reports are on by default for new panels, with the switch on the setup page, --no-telemetry for the installer and DO_NOT_TRACK.
+---
+
+0.2.4 updates a 0.2.3 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.4** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## Changed
+
+- **Telemetry is on by default for a new panel.** The setup page shows **Send anonymous usage reports**, switched on, next to the owner account, and says what is sent: once a day, the version, how many nodes and services, and a random id. The first report goes a day after setup, so turning it off there means none is ever sent. **Settings → Telemetry** changes it later. See [Telemetry](/self-hosting/telemetry).
+- **`--no-telemetry`** on the installer starts that switch off. `SEYLO_TELEMETRY=off` or `DO_NOT_TRACK=1` in the installer's environment do the same. See [Installation](/installation).
+- **`SEYLO_TELEMETRY=off` or `DO_NOT_TRACK=1` on the panel's container** turn reports off whatever the setting says; the switch then shows off and locked, and `settings.updateTelemetry` refuses to turn it on (`409`, reason `telemetryOffByEnv`).
+
+## After the update
+
+- Nothing changes on a panel that is already set up: telemetry stays as it was (off, unless you turned it on).

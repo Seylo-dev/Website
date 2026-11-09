@@ -1,9 +1,17 @@
 ---
 title: Telemetry
-description: The anonymous usage report a panel can send, everything in it, and how to turn it on or off.
+description: The anonymous usage report a panel sends, everything in it, and how to turn it off.
 ---
 
-A panel can send one small, anonymous report a day so we know roughly how many panels run which version. It is **off** until an owner or admin turns it on in **Settings → Telemetry → Send anonymous usage reports**. Nodes never send anything.
+A panel sends one small, anonymous report a day so we know roughly how many panels run which version. Nodes never send anything.
+
+## On or off
+
+Changed in 0.2.4: it is **on by default for a new panel**. The setup page shows **Send anonymous usage reports**, switched on, next to the owner account, so you see it and can turn it off before anything is sent: the first report goes a day after setup. The choice is kept with the owner, and **Settings → Telemetry** changes it later.
+
+- **Panels set up before 0.2.4** keep what they had: off, unless an owner or admin turned it on. An update never turns it on.
+- **`--no-telemetry`** on the installer starts the setup page with the switch off (you can still turn it on there). `SEYLO_TELEMETRY=off` or `DO_NOT_TRACK=1` in the installer's environment do the same, for example `curl -fsSL https://install.seylo.dev | sudo DO_NOT_TRACK=1 sh`.
+- **`SEYLO_TELEMETRY=off`** (or `0`, `false`, `no`) or **`DO_NOT_TRACK=1`** on the panel's own container turns reports off whatever the setting says. The setup page and **Settings → Telemetry** then show the switch off and locked, naming the variable, and `settings.updateTelemetry` refuses to turn it on (`409`, reason `telemetryOffByEnv`). This is for panels you run yourself; on a panel the installer set up, use the setting.
 
 ## What is sent
 
@@ -29,4 +37,4 @@ That is all: no hostnames, domains, IP addresses, emails, project or service nam
 
 With telemetry on, the panel sends the report every 24 hours, at a time spread over the day so panels don't all report at once. It goes to `https://api.seylo.dev/telemetry`. The receiving end keeps one row per install per day and drops any other field, so even the exact send times are not stored. It also caps how many new installs it counts per day, per address and in total, so made-up install ids can't fill its database; a panel turned away by that cap is counted with its next report.
 
-Turning telemetry off stops the reports at once.
+Turning telemetry off stops the reports at once, and with it off at setup none is ever sent.

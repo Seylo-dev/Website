@@ -135,6 +135,7 @@ curl -fsSL https://install.seylo.dev | sudo sh -s -- --port 8080 --name de1
 | `--insecure` | Join a panel at a plain `http://` URL on another server; the agent's traffic is then unencrypted |
 | `--force` | Join again although this node already belongs to a panel (the node keeps its key, so the panel keeps the same node, and since 0.2 its other settings in `config.yml`); install the panel although another program holds 80 or 443 |
 | `--no-docker-install` | Never install Docker; stop if it is missing. Without it, a missing Docker is installed (see [Docker](#docker)). |
+| `--no-telemetry` | New in 0.2.4. Start the setup page with anonymous usage reports off; `SEYLO_TELEMETRY=off` or `DO_NOT_TRACK=1` in the installer's environment do the same (see [Telemetry](/self-hosting/telemetry)). |
 | `--install-docker` | Also reinstall Docker with the script from get.docker.com when it is installed but does not start. Before 0.2.1: install Docker without asking when it is missing. |
 | `--yes`, `-y` | The same as `--install-docker`; the installer asks nothing since 0.2.1 |
 | `--data-dir <dir>` | Data folder (default `/var/lib/seylo`) |
