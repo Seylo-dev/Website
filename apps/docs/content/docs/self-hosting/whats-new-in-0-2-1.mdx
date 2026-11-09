@@ -33,6 +33,8 @@ description: The panel on your tailnet, closing the panel's IP address, build no
 - IP:port addresses, such as a new app's address before it has a domain, could hang or reset requests for about a second around each deploy (see [Zero-downtime deploys](/features/zero-downtime-deploys)).
 - An installed Docker that does not start now stops the installer with what to check, instead of a reinstall over it.
 - **Docker buildx** on a build node is checked with the same Docker config builds use, so a plugin that builds can't find no longer passes.
+- For up to 30 seconds after you set a panel domain, the panel could miss that a request came through the node's Traefik over HTTPS. Nodes that moved to the domain in that time counted as plain HTTP until they reconnected, so turning off **Serve on IP address** was refused and removing the domain didn't ask first.
+- A new node made its Traefik twice, a few seconds apart, so a health check run right after the join could fail on ports 80 and 443.
 
 ## After the update
 
