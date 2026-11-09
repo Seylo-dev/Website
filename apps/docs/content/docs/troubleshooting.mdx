@@ -56,7 +56,7 @@ The domain must point at the node that runs the service, and port 80 must reach 
 </Accordion>
 
 <Accordion title="A deploy fails its health check">
-The deploy log shows the check that failed and the app's last log lines. The usual causes: the app listens on a different port than the one set under **Advanced → Container → Ports**, it listens on `127.0.0.1` instead of `0.0.0.0`, or it needs longer to start than **Health timeout** allows. New in 0.2.2: an app built from a repository and created on 0.2.2 or later gets its port as `PORT`, so an app that reads `$PORT` listens there; an older app does not, add `PORT` to its `.env` (see [PORT for built apps](/guides/environment-variables#port-for-built-apps)). Your old version keeps serving while you fix it.
+The deploy log shows the check that failed and the app's last log lines. The usual causes: the app listens on a different port than the one set under **Advanced → Container → Ports**, it listens on `127.0.0.1` instead of `0.0.0.0`, or it needs longer to start than **Health timeout** allows. An app built from a repository gets its port as `PORT`; with no port, its domains' port, else 80, so an app that reads `$PORT` listens there (changed in 0.2.3: every built app, also older ones; see [PORT for built apps](/guides/environment-variables#port-for-built-apps)). Your old version keeps serving while you fix it.
 </Accordion>
 
 <Accordion title="An app can't reach a database on another node">

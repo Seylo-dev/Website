@@ -26,9 +26,9 @@ From the command line, `seylo env set` and `seylo env unset` save and deploy in 
 
 ## PORT for built apps
 
-New in 0.2.2. An app built from a repository (a GitHub, GitLab, Gitea, Bitbucket or Git source) that has a port gets `PORT=<its first port>` in the environment its deploy starts with. Railpack and Nixpacks start commands and most frameworks listen on `$PORT`, so the app listens where its domains and health check look. A `PORT` of your own wins, in the service's `.env` or in the project's shared variables. Images, Dockerfiles typed in the panel, uploads, compose members and cron services get none.
+New in 0.2.2. An app built from a repository (a GitHub, GitLab, Gitea, Bitbucket or Git source) gets `PORT=<its first port>` in the environment its deploy starts with. Changed in 0.2.3: one with no port gets the port its domains point at (its primary domain's), else `PORT=80`, so an app whose domain was added on 3000 keeps listening there. New domains, Cloudflare tunnels, previews, clones and the panel's port fields start from the same port, and the Overview shows it as **80/tcp, as PORT**. Railpack and Nixpacks start commands and most frameworks listen on `$PORT`, so the app listens where its domains and health check look. A `PORT` of your own wins, in the service's `.env` or in the project's shared variables. Images, Dockerfiles typed in the panel, uploads, compose members and cron services get none.
 
-Only apps created on 0.2.2 or later get it. Apps created before keep the environment they had, so the update never changes what a running app listens on. To give an older app the same, add `PORT=<port>` to its `.env` and deploy. Like every environment change, it applies on the next deploy.
+Changed in 0.2.3: every built app gets it, also apps created before 0.2.2. On 0.2.2 only apps created on 0.2.2 or later did, so an older Next.js app with no port kept listening on 3000 while its domain pointed at 80. Like every environment change, it applies on the next deploy. An app that must listen elsewhere sets its own `PORT` in its `.env`.
 
 ## References
 

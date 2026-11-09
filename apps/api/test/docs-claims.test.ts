@@ -243,14 +243,17 @@ describe("docs match the app", () => {
     expect(text).toContain("`?mode=shell`");
   });
 
-  // 0.2.2: apps/panel/src/modules/env/desired.ts withPortEnv adds PORT only for repository builds whose
-  // spec.portEnv is true, which insertService sets for new services; rows an older panel wrote read false.
-  test("guides/environment-variables: PORT only for apps created on 0.2.2 or later", async () => {
+  // 0.2.3: apps/panel/src/modules/env/desired.ts withPortEnv gives every repository build PORT (spec.portEnv is
+  // no longer read): its first TCP port, else domainPort (primary domain, else oldest routed one), else 80
+  // (services/spec.ts builtAppPort). 0.2.2 gave it only to apps created on 0.2.2 or later.
+  test("guides/environment-variables: PORT for every built app, its domains' port or 80 without a port", async () => {
     const text = await page("guides/environment-variables.mdx");
     const section = /## PORT for built apps\n([\s\S]*?)\n## /.exec(text)?.[1] ?? "";
     expect(section).toContain("gets `PORT=<its first port>`");
     expect(section).toContain("A `PORT` of your own wins");
-    expect(section).toContain("Only apps created on 0.2.2 or later get it");
+    expect(section).toContain("one with no port gets the port its domains point at (its primary domain's), else `PORT=80`");
+    expect(section).toContain("every built app gets it, also apps created before 0.2.2");
+    expect(section).not.toContain("Only apps created on 0.2.2 or later get it");
     expect(section).toMatch(
       /Images, Dockerfiles typed in the panel, uploads, compose members and cron services get none/,
     );

@@ -63,7 +63,7 @@ The panel needs an address GitHub can reach: set a panel domain in **Settings â†
 
 ### Connect a repository
 
-Pick the repository in the [New app dialog](#the-github-tab), or on the app's **Source** tab: pick **GitHub**, then the **Account** (an installation, or **@login (connected account)**), the repository and the branch, and click **Connect repository**. **Root directory** in the **Build** section builds a folder inside the repository instead of its root, for monorepos.
+Pick the repository in the [New app dialog](#the-github-tab), or on the app's **Source** tab: pick **GitHub**, then the **Account** (an installation, or **@login (connected account)**), the repository and the branch, and click **Connect repository**. New in 0.2.3: the Source tab's repository field also takes a GitHub link or `owner/repo`, like the New app dialog. The repository is looked up by name through the picked account, so one the list does not show (an organization's, or past the first page) works too, and it is offered on top as **Use this repository**; a page address such as `.../tree/v2` picks that branch. Enter picks it. When the account cannot read it, GitHub's answer shows under the field; text that only filters the list (`acme/shop` for `acme/shop-api`) is a search and shows none. With an App installation picked, a repository of another owner is not looked up through it: the field names the **Account** that reads that owner's repositories. Also new in 0.2.3: the App refuses a public repository its installation does not include (`NOT_FOUND`, reason `notOwned`), since the App's webhook would never send its pushes; before, any public repository connected through any installation. **Root directory** in the **Build** section builds a folder inside the repository instead of its root, for monorepos.
 
 ### The connected GitHub account
 
@@ -210,7 +210,7 @@ Changed in 0.2.2: a deployment without a commit message is titled from what it b
 
 Turn on **Deploy on push** on the Source tab and every push to the branch deploys. With the GitHub App this comes from the App's webhook, and through the connected account from a webhook on the repository (see [Push to deploy](#the-connected-github-account)). When nothing delivers the pushes (no panel domain, or no working webhook on the repository), the panel asks GitHub for the head of each followed branch once a minute instead. Changed in 0.2.2: with a webhook it still asks every 5 minutes, in case a delivery was lost; before, every minute. **Recent deliveries** on the Source tab lists what GitHub sent, and for the App **Retry failed** asks GitHub to send failed ones again.
 
-Deploys of one service run one at a time: a push while a deploy is running waits in line and starts when it is done.
+Deploys of one service run one at a time: a push while a deploy is running waits in line and starts when it is done. New in 0.2.3: a deploy you start waits for none. While one is in progress, **Deploy** in the service header says **Deploying**, and **Roll back** and the **Redeploy** items on the **Deployments** tab are off until it ends; **Cancel deploy** stops the one in progress. The API, the CLI and MCP get `409 CONFLICT` with reason `deployRunning` and the id of the deploy in progress. Before, each click queued another deploy behind the running one.
 
 New in 0.2:
 

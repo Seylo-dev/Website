@@ -19,7 +19,7 @@ Certificates come from Let's Encrypt over HTTP, one per hostname, so the panel n
 
 ## Custom domains
 
-Click **Add domain**, enter the hostname and pick the **Container port**. The row shows the record to create where the domain's DNS is managed: an `A` record (and `AAAA` when the node has IPv6) pointing at the node. When the zone is on Cloudflare, **Open Cloudflare DNS** opens Cloudflare with the record filled in; the panel never asks for a Cloudflare API token.
+Click **Add domain**, enter the hostname and pick the **Container port**. On a service with no port it is a field, and left empty it is the service's port: for an app built from a repository the port its other domains use, else 80, the same `PORT` it gets (changed in 0.2.3: before, it suggested 3000). In **Edit routing**, an empty field keeps the domain's port. The row shows the record to create where the domain's DNS is managed: an `A` record (and `AAAA` when the node has IPv6) pointing at the node. When the zone is on Cloudflare, **Open Cloudflare DNS** opens Cloudflare with the record filled in; the panel never asks for a Cloudflare API token.
 
 The panel checks the record through public resolvers and shows one of:
 
@@ -51,7 +51,7 @@ That way sign-in limits, **Sessions**, the activity log and the command line app
 | **HTTPS** | Let's Encrypt (default), a custom certificate, or plain HTTP only |
 | **Redirect HTTP to HTTPS** | Send plain HTTP visitors to HTTPS |
 | **Redirect only** | Send every request to another URL instead of the service, for example `www` to the bare domain. Choose **Permanent** and **Keep the path and query**. |
-| **Make it the primary domain** | The primary domain is what `${{service.URL}}` and IP:port redirects point to |
+| **Make it the primary domain** | The primary domain is what `${{service.URL}}` and IP:port redirects point to. The first domain of a service is always primary, so for it the box is ticked and cannot be cleared. |
 
 A service can have any number of domains, and each can route a path: `example.com/api` to the API and `example.com` to the web app.
 
