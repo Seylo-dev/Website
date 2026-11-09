@@ -7,7 +7,7 @@ description: A GitHub tab in New app, the connected GitHub account as a real sou
 
 ## New
 
-- **A GitHub tab in New app.** **Add a service → App** has **Docker image**, **GitHub**, **Git repository** and **Set up later**. On **GitHub**, type `owner/repo` or a GitHub address, or **Browse** the repositories of the App's installations and the connected account, and pick a branch. A line under the field says whether the app deploys on push through the App or the account, or is cloned as a public repository. While nothing on GitHub is connected, the tab shows the three steps to connect it. See [In the New app dialog](/guides/github-and-git#in-the-new-app-dialog).
+- **A GitHub tab in New app.** **Add a service → App** has **Docker image**, **GitHub**, **Git repository** and **Set up later**. On **GitHub**, type `owner/repo` or a GitHub address, or **Browse** the repositories of the App's installations and the connected account, and pick a branch. A line under the field says whether the app deploys on push through the App or the account, or is cloned as a public repository. While nothing on GitHub is connected, the tab shows owners and admins the three steps to connect it. See [In the New app dialog](/guides/github-and-git#in-the-new-app-dialog).
 - **The connected GitHub account is a real source.** The account in **Settings → GitHub → Private repositories without the App** now lists its repositories, reads their branches, clones them and follows their pushes, like an App installation. Pushes arrive through a webhook the panel creates on the repository, when the panel has a domain and the token may create webhooks; otherwise the panel polls the branch every minute, and the Source tab says why. There is one account per panel, and every service connected through it uses its token. See [The connected GitHub account](/guides/github-and-git#the-connected-github-account).
 - **Use a token.** Next to the device login, paste a personal access token instead: fine-grained with **Contents: Read** and **Metadata: Read** (and **Webhooks: Read and write** for push-to-deploy), or classic with `repo`. The panel checks it with GitHub before it saves it, and it works on panels without GitHub sign-in. The page also says how organizations that restrict OAuth apps approve access, and that the App needs no approval.
 - **Git credentials in the panel.** **Add credential** next to the **Credential** picker on a **Git** source adds a token or an SSH key, generated or pasted, with the host keys read from the host or pasted as known_hosts lines (`[host]:port` off port 22). **Settings → Git providers → Git credentials** lists them with how many services use each, and edits or deletes them. Before, only the API could add one. See [Git credentials](/guides/github-and-git#git-credentials).
@@ -19,9 +19,10 @@ description: A GitHub tab in New app, the connected GitHub account as a real sou
 ## Changed
 
 - **One Console tab.** **Console** and **Shell** are two modes of one tab, switched in place in the terminal's header. The mode is in the address (`?mode=shell`), and old `.../shell` links open it in shell mode. See [Console and shell](/features/logs-and-terminals#console-and-shell).
-- **The Git repository tab is a plain URL field** for any host. It looks nothing up and always creates a public git source; GitHub repositories go through the GitHub tab.
+- **The Git repository tab is a plain URL field** for any host. It looks nothing up in GitHub or a git provider and always creates a **Git** source without a credential; GitHub repositories go through the GitHub tab.
 - **Port starts at 80**, or the port a Docker Hub image exposes, and apps built from a repository get it as `PORT` unless they set `PORT` themselves. Apps created before 0.2.2 keep their environment as it was. See [PORT for built apps](/guides/environment-variables#port-for-built-apps).
-- **Deploy titles** come from the deploy itself: its commit, else **Deploy from `<branch>`** (a failed clone keeps the branch it tried), else the uploaded archive's name.
+- **Deploy titles** come from the deploy itself: its commit, else **Deploy from `<branch>`** (a failed clone keeps the branch it tried), else **Deploy from `<archive name>`** for an upload.
+- **Branch polling with a webhook.** While a webhook delivers a service's pushes, the panel reads its GitHub branch every 5 minutes, in case a delivery is lost, instead of every minute. Without a panel domain or a working webhook it still reads it every minute.
 - **Approvals** shows in the sidebar and the command palette only once the MCP server or the assistant is on, or while a request waits for you.
 - **The sidebar's logo and panel name** go to the dashboard.
 - **Root directory** is set once, in the **Build** section of the Source tab, for GitHub and git provider sources alike.
@@ -30,7 +31,7 @@ description: A GitHub tab in New app, the connected GitHub account as a real sou
 
 ## Fixed
 
-- An API or MCP client could save a git credential whose known_hosts lines were hashed or had none for its host, so every clone failed with "No known host key". The panel now refuses such lines, as the web form does.
+- An API or MCP client could save a git credential whose known_hosts lines had none for its host, so every clone over SSH failed its host key check. The panel now refuses such text, and text with hashed lines (`|1|...`), which it cannot match.
 - Deploy titles could show the address of the panel's internal registry (`127.0.0.1:5755/...`).
 - Leaving a service's console, or switching between console and shell, while the panel was still handing out the session could leave a connection open.
 - `github.branches` answered `INTERNAL` for a repository GitHub could not find. It now answers `NOT_FOUND`, and `UNAVAILABLE` when GitHub fails or rate limits the token.
