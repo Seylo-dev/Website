@@ -21,6 +21,8 @@ A member, shown as a guest on the projects they can reach, sees and does only wh
 
 A member who may deploy runs code on the node, but not as root on it: Seylo starts services without privileged mode, host networking, devices, bind mounts or the Docker socket, and ignores those settings in compose files. A member can't put a service on a hostname or path that another service already routes unless they may edit that service too. A git URL does not lead into a node's network either: since 0.2 the node checks the address of every connection git makes and clones from an internal address, or from one of the node's own addresses, public ones included, only for a host an owner or admin allowed in the project, so a git URL cannot reach a service the node's firewall hides from the internet (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)).
 
+The [connected GitHub account](/guides/github-and-git#the-connected-github-account) (**Settings → GitHub**) is one token for the whole panel, and it reaches every repository its GitHub login can read. Members can use it only for a repository that a service of their project already deploys through it, and it only takes the account's own repositories, so a typed public repository of someone else never follows their pushes. Prefer the GitHub App, which only sees the repositories you pick, and a fine-grained token limited to the repositories you deploy over a classic one.
+
 Services of different projects on one node still share its kernel and Docker. If you do not trust a member that far, keep their projects on a node of their own.
 
 Taking access away takes effect everywhere: since 0.2 that includes a database web UI or a Box the person has open, which closes within about a minute (see [Databases](/guides/databases#web-ui-and-shell)). A database web UI also has a login of its own that only the node's edge holds, so code a member deploys on the project network cannot open it and act as the database admin without the right to see the credentials.
@@ -36,7 +38,7 @@ From the internet, people reach your services' domains and the ports you open, p
 - Anything that deletes something or can't be undone waits in **Approvals** when an AI tool asks for it, and runs only after a person approves it from a browser session. An API key can deny a request but never approve one.
 - The built-in assistant acts with the permissions of the person talking to it, and every change it wants to make waits for approval, not only deletions.
 
-Every action, and every refused attempt, is in **Activity** with the person and the credential behind it.
+Every action, and every refused attempt, is in **Activity** with the person and the credential behind it. Reading is not: like logs, the console card on a service's **Overview** (new in 0.2.2) only watches, and the first line someone types there opens the console, which is recorded.
 
 ### A compromised node
 

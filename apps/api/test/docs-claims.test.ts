@@ -214,4 +214,45 @@ describe("docs match the app", () => {
     );
     expect(flat).toContain("A new link when this one expires: seylo panel setup-link");
   });
+
+  // 0.2.2: apps/web/src/components/git/add-credential-dialog.tsx (Add credential on the Git form) and
+  // credentials-card.tsx (Settings > Git providers) add and manage git credentials, which only the API could
+  // before; apps/panel/src/modules/git/remote.ts checkKnownHostsFor takes only lines that start with the
+  // host as clones look it up ("[host]:port" off port 22) and refuses hashed ones.
+  test("guides/github-and-git: git credentials are added in the panel, known_hosts names [host]:port", async () => {
+    const text = await page("guides/github-and-git.mdx");
+    expect(text).not.toContain("Adding one is done through the API for now (`git.createCredential`");
+    const section = /### Git credentials\n([\s\S]*?)\n### /.exec(text)?.[1] ?? "";
+    expect(section).toContain("**Add credential** next to the **Credential** picker");
+    expect(section).toContain("**Settings → Git providers → Git credentials**");
+    expect(section).toContain("the plain name on port 22, `[host]:port` on any other port");
+    expect(section).toContain("Hashed lines (`|1|...`) cannot be matched");
+  });
+
+  // 0.2.2: apps/web/src/components/service-tabs.ts has one console tab; the shell is its ?mode=shell and the
+  // /shell route redirects there. reference/cli.mdx is generated from the binary's help, so it is left out.
+  test("services have one Console tab with Console | Shell, no Shell tab", async () => {
+    for (const file of mdxFiles(docs)) {
+      const name = relative(docs, file);
+      if (name === "reference/cli.mdx") continue;
+      const text = await Bun.file(file).text();
+      expect({ name, shellTab: /\*\*Shell\*\* tab|Shell tab/.test(text) }).toEqual({ name, shellTab: false });
+    }
+    const text = await page("features/logs-and-terminals.mdx");
+    expect(text).toContain("one **Console** tab, with a **Console | Shell** switch");
+    expect(text).toContain("`?mode=shell`");
+  });
+
+  // 0.2.2: apps/panel/src/modules/env/desired.ts withPortEnv adds PORT only for repository builds whose
+  // spec.portEnv is true, which insertService sets for new services; rows an older panel wrote read false.
+  test("guides/environment-variables: PORT only for apps created on 0.2.2 or later", async () => {
+    const text = await page("guides/environment-variables.mdx");
+    const section = /## PORT for built apps\n([\s\S]*?)\n## /.exec(text)?.[1] ?? "";
+    expect(section).toContain("gets `PORT=<its first port>`");
+    expect(section).toContain("A `PORT` of your own wins");
+    expect(section).toContain("Only apps created on 0.2.2 or later get it");
+    expect(section).toMatch(
+      /Images, Dockerfiles typed in the panel, uploads, compose members and cron services get none/,
+    );
+  });
 });

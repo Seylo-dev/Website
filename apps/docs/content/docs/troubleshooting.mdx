@@ -56,7 +56,7 @@ The domain must point at the node that runs the service, and port 80 must reach 
 </Accordion>
 
 <Accordion title="A deploy fails its health check">
-The deploy log shows the check that failed and the app's last log lines. The usual causes: the app listens on a different port than the one set under **Advanced → Container → Ports**, it listens on `127.0.0.1` instead of `0.0.0.0`, or it needs longer to start than **Health timeout** allows. Your old version keeps serving while you fix it.
+The deploy log shows the check that failed and the app's last log lines. The usual causes: the app listens on a different port than the one set under **Advanced → Container → Ports**, it listens on `127.0.0.1` instead of `0.0.0.0`, or it needs longer to start than **Health timeout** allows. New in 0.2.2: an app created from a repository gets its port as `PORT`, so an app that reads `$PORT` listens there; an older app does not, add `PORT` to its `.env` (see [PORT for built apps](/guides/environment-variables#port-for-built-apps)). Your old version keeps serving while you fix it.
 </Accordion>
 
 <Accordion title="An app can't reach a database on another node">
@@ -89,6 +89,20 @@ Traefik reaches the agent's edge listener on port 5756 over the `seylo-edge` Doc
 
 <Accordion title="Pushes to GitHub don't deploy">
 Check that **Deploy on push** is on (**Source** tab) and look at **Recent deliveries**. GitHub must reach the panel to deliver webhooks, which needs a panel domain. Without one, the panel still finds new commits by asking GitHub once a minute. New in 0.2: a delivery can also be skipped on purpose: by `[skip ci]` or `[skip cd]` in the head commit message, or by the service's [watch paths](/guides/watch-paths). **Recent deliveries** says which.
+
+New in 0.2.2: for a repository read through the connected GitHub account, the **Source** tab says whether a webhook on the repository takes the pushes, or why the branch is polled every minute instead: no panel domain, or a token that may not create webhooks. A fine-grained token needs **Webhooks: Read and write**, and the account must administer the repository. See [The connected GitHub account](/guides/github-and-git#the-connected-github-account).
+</Accordion>
+
+<Accordion title="An organization's private repositories are missing">
+New in 0.2.2. The connected GitHub account lists only what GitHub shows it. An organization that restricts OAuth app access hides its private repositories from a device login until an organization owner approves the panel's app (`github.com/organizations/<org>/settings/oauth_application_policy`), and an organization can require approval for fine-grained tokens too. Ask an owner to approve it, or install the GitHub App on the organization, which needs neither.
+</Accordion>
+
+<Accordion title="A clone fails and the deploy says the repository may be private">
+New in 0.2.2. A plain **Git** URL on github.com, gitlab.com or bitbucket.org that git could not fetch, with no credential, gets the line "If the repository is private, connect it through GitHub on the Source tab, or pick a git credential there." Git gives the same error for a wrong address and for a private repository. Check the address, then connect the repository through **GitHub**, **GitLab** or **Bitbucket** on the **Source** tab, or add a [git credential](/guides/github-and-git#git-credentials) and pick it.
+</Accordion>
+
+<Accordion title='A clone over SSH fails with "No known host key"'>
+The credential has no host key line for the repository's host. Open it in **Settings → Git providers → Git credentials** (it shows **Host keys missing**), click **Edit**, and **Read host keys** or paste lines that start with the host as ssh names it: `[host]:port` when the SSH port is not 22, for example `[gitea.lan]:2222` from `ssh-keyscan -p 2222 gitea.lan`. New in 0.2.2: the panel refuses known_hosts text with hashed lines or with no line for the credential's host, from the API and MCP clients too.
 </Accordion>
 
 <Accordion title="Pushes to GitLab, Gitea or Bitbucket don't deploy">

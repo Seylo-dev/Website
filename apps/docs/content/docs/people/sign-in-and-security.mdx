@@ -36,11 +36,14 @@ When your last sign-in is older, the panel shows **Confirm it's you** and then m
 
 - your **Password**,
 - a code from your **Authenticator** app, or an unused recovery code (it is used up),
-- a **Passkey** (needs the panel domain, like passkey sign-in).
+- a **Passkey** (needs the panel domain, like passkey sign-in),
+- new in 0.2.2: **GitHub**, when your account has [GitHub linked](#github) and the panel has GitHub sign-in set up.
 
-The confirmation counts for 15 minutes in that browser only. Five wrong answers in a row from one address pause it for 30 seconds, doubling up to 15 minutes, like wrong sign-ins. An account with none of the three (GitHub sign-in only) gets **Sign in again** instead, and comes back to the same page afterwards. Closing the dialog cancels the change.
+Pick **GitHub** and click **Confirm with GitHub**: the dialog shows a code with a copy button and a link to github.com/login/device. Enter the code there and approve it as the GitHub login linked to your account; the dialog waits by itself and then makes the change. Only that login counts: approving as another GitHub login is refused, and counts as a wrong answer. Before 0.2.2, an account that signs in only with GitHub had nothing to confirm with and had to sign in again for every such change.
 
-API keys and MCP tokens never get this dialog: they cannot change sign-in methods or make keys at all. An API key that holds the actions can still invite people, widen their access, change roles and create join commands without it, because the key itself was made under a recent sign-in. Through the API, a stale browser session gets `403 FORBIDDEN` with `details.reason` set to `reauth`; confirm with `auth.reauth` (see the [API reference](/api-reference)) and repeat the call.
+The confirmation counts for 15 minutes in that browser only. Five wrong answers in a row from one address pause it for 30 seconds, doubling up to 15 minutes, like wrong sign-ins. An account with none of the four gets **Sign in again** instead, and comes back to the same page afterwards. Closing the dialog cancels the change. The dialog only opens for a change you make: nothing in the web app asks in the background, and the 15 minutes count from your sign-in or your last confirmation.
+
+API keys and MCP tokens never get this dialog: they cannot change sign-in methods or make keys at all. An API key that holds the actions can still invite people, widen their access, change roles and create join commands without it, because the key itself was made under a recent sign-in. Through the API, a stale browser session gets `403 FORBIDDEN` with `details.reason` set to `reauth`; confirm with `auth.reauth`, or with the linked GitHub login through [`auth.reauthGithubStart`](/api-reference/auth/auth.reauthGithubStart) and [`auth.reauthGithubPoll`](/api-reference/auth/auth.reauthGithubPoll), and repeat the call.
 
 ## Security alerts
 

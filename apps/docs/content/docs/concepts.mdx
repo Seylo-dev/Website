@@ -25,6 +25,8 @@ A group of services with its own private Docker network. Services in a project r
 
 New in 0.2.1: to keep a project you rarely open, such as the protected **Panel** project, out of the way, pick **Hide project** in its **...** menu in the sidebar or on its card on the home page. It changes only your own view, and nothing is hidden by default. **Hidden (N)** at the end of the sidebar and **Show hidden** on the home page list hidden projects without unhiding them, and the command palette, links and the project's own page still open them. **Unhide project** in the same menu brings a project back.
 
+New in 0.2.2: the **+** next to a project's **...** menu in the sidebar opens the new service menu with that project chosen. It shows on hover or keyboard focus, always on touch screens, and not on the **Panel** project. The logo and the panel's name at the top of the sidebar go to the dashboard.
+
 <Callout title="Private networks are per node">
 A project's network exists on each node separately; no network spans nodes. If a service points at an internal address of a service on another node, the environment editor underlines it in red. Expose the target (databases get TLS) and use its exposed address, or move the two services onto one node.
 </Callout>

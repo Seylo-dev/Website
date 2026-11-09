@@ -11,7 +11,7 @@ Open **Settings → GitHub** and click **Create on GitHub**. Seylo uses GitHub's
 
 Give the panel a domain first (**Settings → General**): GitHub has to reach the panel to deliver push and pull request events. Without one, the panel still notices new commits by asking GitHub once a minute, but pull request previews need the webhook.
 
-Other Git hosts work too; see [Deploy from GitHub or Git](/guides/github-and-git).
+For repositories the App cannot reach, **Private repositories without the App** on the same page connects a GitHub account or a pasted token instead (see [The connected GitHub account](/guides/github-and-git#the-connected-github-account)). Other Git hosts work too; see [Deploy from GitHub or Git](/guides/github-and-git).
 
 ## Create the app
 
@@ -27,16 +27,18 @@ On the dashboard, create a project, for example `acme-shop`. A project is a grou
 
 ### Add an app
 
-In the project, click **Add a service**, pick **App**, give it a name (it becomes the host name on the project network) and the node to run on. Choose **Set up later** as the source, then open the app's **Source** tab, pick **GitHub**, the repository and the branch, and click **Connect repository**.
+In the project, click **Add a service** and pick **App** (the **+** next to the project in the sidebar opens the same menu). Give it a name (it becomes the host name on the project network) and the node to run on. Under **Source**, pick the **GitHub** tab, type `owner/repo` or click **Browse** and pick the repository, and check the **Branch**. The line under the field should say "From your GitHub App (...) - deploys on push". See [In the New app dialog](/guides/github-and-git#in-the-new-app-dialog) for what else the field takes.
 
-The **Build** section picks the builder. [Railpack](https://railpack.com) is the default and detects the language without configuration. **Dockerfile** builds the Dockerfile in the repository; Nixpacks is there too.
+**Port** starts at 80. Set it to the port your app listens on, or leave it: an app built from a repository also gets the port as `PORT`, which Railpack and Nixpacks start commands and most frameworks listen on. Domains, IP:port access and the default health check use it. You can change it later on the **Advanced** tab, under **Container**.
+
+The **Build** section of the app's **Source** tab picks the builder. [Railpack](https://railpack.com) is the default and detects the language without configuration. **Dockerfile** builds the Dockerfile in the repository; Nixpacks is there too.
 
 </Step>
 <Step>
 
-### Set the port and environment
+### Set the environment
 
-On the **Advanced** tab, under **Container**, add the port your app listens on. Domains, IP:port access and the default health check use it.
+If the app needs variables to start, untick **Deploy right away** before you click **Create**, and add them first.
 
 Add environment variables on the **Environment** tab. To point at another service in the project, reference its variables instead of copying them:
 
@@ -51,7 +53,7 @@ Hover a reference to see its value. The **References** panel lists everything yo
 
 ### Deploy
 
-Click **Deploy**. The deploy log shows the clone, the build and which node built the image, the ship to the node that runs it, the health check and the switch.
+With **Deploy right away** ticked, **Create** starts the first deploy; otherwise click **Deploy**. The deploy log shows the clone, the build and which node built the image, the ship to the node that runs it, the health check and the switch.
 
 Until the app has a domain it answers on the node's IP and a port, shown under **IP and port access** on the **Domains** tab.
 

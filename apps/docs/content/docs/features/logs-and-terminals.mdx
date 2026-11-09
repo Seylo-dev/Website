@@ -22,13 +22,20 @@ seylo logs acme-shop/web -n 1000   # the last 1000 lines
 
 Build and deploy logs are on the **Deployments** tab, in each deployment's log.
 
-## Console
+## Console and shell
 
-The **Console** tab attaches to the container's main process: you see its recent output and then everything it writes, and what you type goes to its standard input. That is what REPLs and game-style servers expect. You can search, pause, clear and download the output.
+Changed in 0.2.2: an app has one **Console** tab, with a **Console | Shell** switch in the terminal's header. Before, console and shell were two tabs.
 
-## Shell
+- **Console** attaches to the container's main process: you see its recent output and then everything it writes, and what you type goes to its standard input, a line at a time. That is what REPLs and game-style servers expect. You can search, pause, clear and download the output.
+- **Shell** opens a new shell inside the running container, as `docker exec -it` would, and shows which user and working folder it runs as.
 
-The **Shell** tab opens a new shell inside the running container, as `docker exec -it` would, and shows which user and working folder it runs as.
+The switch changes the mode in place: the open session closes and the other one opens in the same card. The mode is part of the address (`?mode=shell`), so a link or a reload keeps it, and the old `.../shell` address opens the Console tab in shell mode. The switch offers only the modes you may open: owners and admins both, members what was shared with them. With neither, the tab says so.
+
+### On the Overview
+
+New in 0.2.2: an app's **Overview** shows the same terminal as a card under **Deploys**, with the switch and **Open full**, which opens the Console tab in the same mode. It waits for a running container ("The console opens once the app runs."), takes the keyboard focus only when you click it, and closes its connection when you leave the page. Once it shows, it stays: a restart or a crash keeps the output, with the exit note and **Reconnect**.
+
+The card only watches until you type. Watching shows the console's output and, like reading logs, is not written to the activity log, so opening a service's page is not console use. The first line you send opens the console itself, which is in the activity log, and the line goes to it once it is ready. A shell opens only when you pick **Shell**, or click **Open shell** if you may open only the shell.
 
 Databases have a **Database shell** instead, already signed in to `psql`, `mysql`, `mongosh` or `redis-cli`, and (new in 0.2) `valkey-cli`, `keydb-cli` or `clickhouse-client` (see [Databases](/guides/databases)).
 

@@ -7,12 +7,49 @@ An app's **Source** tab says where its code comes from. Changes there apply on t
 
 | Source | What it is |
 | --- | --- |
-| **GitHub** | A repository through the panel's own GitHub App |
+| **GitHub** | A repository through the panel's own GitHub App or (new in 0.2.2) its [connected GitHub account](#the-connected-github-account) |
 | **GitLab**, **Gitea**, **Bitbucket** | New in 0.2: a repository through a connection with an access token, see [GitLab, Gitea and Bitbucket](/guides/git-providers) |
-| **Git** | Any git URL, with a credential for private repositories |
+| **Git** | Any git URL, with a [git credential](#git-credentials) for private repositories |
 | **Docker image** | A ready image from a registry, see [Images and uploads](/guides/images-and-uploads), or (new in 0.2) one found on [Docker Hub](/guides/docker-hub) |
 | **Dockerfile** | A Dockerfile typed in the panel, see [Images and uploads](/guides/images-and-uploads) |
 | **Upload** | A `.tar.gz` of your code, see [Images and uploads](/guides/images-and-uploads) |
+
+## In the New app dialog
+
+New in 0.2.2. **Add a service → App** (or the **+** next to a project in the sidebar, then **App**) opens **New app** with four source tabs: **Docker image**, **GitHub**, **Git repository** and **Set up later**.
+
+### The GitHub tab
+
+One **Repository** field takes `owner/repo` or a github.com address: `https://`, `ssh://`, `git@github.com:` or `github.com/owner/repo` without a scheme, with or without `.git`. **Browse** lists the repositories of every GitHub App installation that is not suspended and of the connected GitHub account (**Connected account · @login**), by connection, marked **Private** or **Public**, with a search. A page address such as `https://github.com/acme/shop/tree/main/apps/web` gives the repository and the branch, here `main`. **Branch** suggests the repository's branches and follows its default branch until you edit it; a branch you picked for one repository is dropped when you change the repository.
+
+A line under the field says what the app becomes:
+
+| The line | What gets created |
+| --- | --- |
+| From your GitHub App (acme) - deploys on push | A **GitHub** source through that installation, with **Deploy on push** on |
+| From the connected GitHub account (@login) - deploys on push | A **GitHub** source through the [connected account](#the-connected-github-account), with **Deploy on push** on |
+| Public GitHub repository github.com/acme/shop | A **Git** source cloned as public, without deploy on push |
+| Not in your GitHub App (acme) - cloned as public. Private? Give the App access first. | The same: the App cannot read it |
+| Not a repository of the connected GitHub account (@login) - cloned as public. | The same: it is not one of the account's own repositories |
+| Could not check your GitHub App (acme). ... | Nothing yet: GitHub did not answer or rate limited the token. **Try again** checks it again. |
+
+A typed repository is looked up by its exact name, through each installation first, then the account. The account only takes its own repositories: private ones, ones it may push to or administer, and ones in its list. Someone else's public repository becomes a plain git URL, so the app never follows that person's pushes.
+
+While nothing on GitHub is connected, the tab shows three steps instead of the field: open **Settings → GitHub**, create the GitHub App and install it on your account or organization (or connect a GitHub account, or paste a token), then come back and pick a repository. Owners and admins get **Open Settings > GitHub**; members are told to ask an owner or admin, and that a public repository works from the **Git repository** tab.
+
+Connecting a repository needs the right to change services in the project. A member without it can still type a public repository, which becomes a plain git URL.
+
+### The Git repository tab
+
+A plain **Repository URL** field for any host: `https://`, `ssh://`, `git@host:path`, or a host and path without a scheme such as `gitlab.com/team/app`. It never looks anything up in the App, the connected account or a git provider: the app always gets a **Git** source without a credential and without deploy on push. A github.com URL says "Private? Use the GitHub tab". GitLab, Gitea and Bitbucket repositories are connected on the app's **Source** tab after you create it (see [GitLab, Gitea and Bitbucket](/guides/git-providers#connect-a-repository)), and a credential for a private repository is picked there too.
+
+On both tabs, an SSH URL creates the app without the first deploy, since the repository needs a deploy key first: add a [git credential](#git-credentials) on the **Source** tab, then deploy.
+
+### Port
+
+New in 0.2.2: **Port** starts at 80. On the **Docker image** tab it takes the port the image exposes when Docker Hub knows it; a port you typed stays when you change the image or the tab. An app built from a repository gets the port as `PORT` too (see [PORT for built apps](/guides/environment-variables#port-for-built-apps)). **Set up later** creates an empty app with no port; add one under **Advanced → Container** once it has a source.
+
+With **Deploy right away** ticked, **Create** starts the first deploy.
 
 ## GitHub
 
@@ -26,28 +63,65 @@ The panel needs an address GitHub can reach: set a panel domain in **Settings �
 
 ### Connect a repository
 
-On the app's **Source** tab pick **GitHub**, then the account, the repository and the branch, and click **Connect repository**. **Root directory** builds a folder inside the repository instead of its root, for monorepos.
+Pick the repository in the [New app dialog](#the-github-tab), or on the app's **Source** tab: pick **GitHub**, then the **Account** (an installation, or **@login (connected account)**), the repository and the branch, and click **Connect repository**. **Root directory** in the **Build** section builds a folder inside the repository instead of its root, for monorepos.
 
-### Private repositories without the App
+### The connected GitHub account
 
-**Settings → GitHub → Private repositories without the App** connects a GitHub account whose token clones private repositories, through the same device flow as `gh auth login`. It is opt-in, and the App is the better choice: it only sees the repositories you pick. This option needs the panel's GitHub sign-in to be set up; otherwise the page says so.
+**Settings → GitHub → Private repositories without the App** connects one GitHub account for the whole panel, for repositories the App cannot reach. Changed in 0.2.2: it is a source of its own, like an installation. Its token lists the account's repositories in **Browse** and the Source tab's **Account** picker, reads their branches, clones them and follows their pushes. In 0.2.1 it only cloned, as a credential on a **Git** source. It is opt-in, and the App is still the better choice: it only sees the repositories you pick.
+
+Owners and admins connect it in one of two ways:
+
+- **Connect a GitHub account**: the device flow, like `gh auth login`. It needs the panel's GitHub sign-in to be set up; otherwise the page says so, and a token still works.
+- **Use a token** (new in 0.2.2): paste a personal access token from [github.com/settings/tokens](https://github.com/settings/tokens). Either fine-grained, with **Contents: Read** and **Metadata: Read** on the repositories you deploy, plus **Webhooks: Read and write** for push-to-deploy, or classic, with the `repo` scope. **Check and save** asks GitHub first: it must accept the token, a classic one must have `repo`, and a fine-grained one must reach a repository and read its contents. Otherwise it says what is missing and stores nothing.
+
+The card then shows the login, how it was connected (**Device login** or **Personal access token**, and **Fine-grained**) and the scopes. The token is stored encrypted and never shown again. Connecting again, either way, replaces the account in place, and the services that use it keep it.
+
+**Whose token.** There is one connected account per panel, and every service that reads its repository through it uses that account's token, whoever set the service up. A build sends the token to the build node for that clone only, with the account's login as the git user; nothing is kept on the node. Members use it like an installation: only for a repository that a service of their project already deploys through it (see [below](#any-other-git-host)).
+
+**Push to deploy.** Connecting a repository through the account creates a webhook on that repository with the account's token, for pushes and pull requests, at `https://<panel domain>/api/hooks/github-repo/<id>`, with a secret of its own that every delivery is checked against. That needs a panel domain and a token that may create webhooks: a device login or classic token with `repo`, or a fine-grained token with **Webhooks: Read and write** on a repository the account administers. Without them, the panel reads the branch every minute instead, and the Source tab says why, for example "The panel has no domain yet, so GitHub cannot reach it". With a working webhook it still reads the branch every 5 minutes, in case a delivery is lost. Once an hour the panel creates missing webhooks again, so a panel domain set later turns them on within the hour. Pull request previews need the webhook.
+
+**Organizations.** An organization that restricts OAuth app access hides its private repositories from a device login until an organization owner approves the panel's app at `github.com/organizations/<org>/settings/oauth_application_policy`. Organizations can also require approval for fine-grained tokens. Until then, those repositories are missing from the lists. The GitHub App installed on the organization needs neither.
+
+**Disconnect** removes the token and the webhooks it made. Services that read their repository through it fail to deploy until an account is connected again or they get another source; revoke the token on github.com too. Connecting another GitHub login over the account removes the old login's webhooks first, while the panel still has its token, and creates them again with the new one within the hour. When GitHub rate limits the token, lists and connects say so and ask you to try again, instead of reporting a missing repository.
+
+Compose stacks cannot read their repository through the account yet: they use the App.
 
 ## Any other Git host
 
-New in 0.2: GitLab, Gitea, Forgejo and Bitbucket Cloud have their own sources, with a webhook the panel creates, merge request previews and commit statuses: see [GitLab, Gitea and Bitbucket](/guides/git-providers). For any other host, or on 0.1, pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. Plain `http://` is not supported. **Check access** lists the branches it can see. For a private repository, pick a **Credential**:
+New in 0.2: GitLab, Gitea, Forgejo and Bitbucket Cloud have their own sources, with a webhook the panel creates, merge request previews and commit statuses: see [GitLab, Gitea and Bitbucket](/guides/git-providers). For any other host, or on 0.1, pick **Git** and enter the repository URL: `https://`, `ssh://` or `git@host:path`. Plain `http://` is not supported. **Check access** lists the branches it can see. For a private repository, pick a **Credential** (see [Git credentials](#git-credentials)):
 
 - an HTTPS access token for the host, or
 - an SSH key: the panel can generate an Ed25519 deploy key and give you the public half to add as a read-only deploy key on the repository.
+
+New in 0.2.2: when a deploy of a plain **Git** URL on github.com, gitlab.com or bitbucket.org fails to clone and the source has no credential, the deployment says: "If the repository is private, connect it through GitHub on the Source tab, or pick a git credential there." (GitLab or Bitbucket for those hosts.)
 
 New in 0.2: the URL itself never carries a secret. A user name or token in an `https://` URL (`https://user:token@host/...`), or a password in an `ssh://` URL, is refused when you save, and the form says so before you do: "Take the user name and token out of the URL: add them as a git credential and pick it below." `ssh://git@host/...` and `git@host:path` are fine. A source saved on 0.1 with a token in its URL keeps deploying, but the panel no longer shows that part, and saving the source again needs a credential instead.
 
 A credential is tied to its host. The panel refuses a repository URL on another host for it, when you save the source and again at every deploy, and the build node's git only offers it to that host.
 
-A member can only attach a credential (or a registry login, a GitHub App installation or a git provider connection) to a project when they may manage it, or when a service of that project already uses it. New in 0.2: only for what that service uses it for, the same repository URL, image repository (any tag) or repository. So when an admin sets up one service with a token that reaches every repository of an account, members of the project can use it for that one repository; the repository pickers list only those for them. For another repository, ask an admin to set up the first service with it.
+A member can only attach a credential (or a registry login, a GitHub App installation, the connected GitHub account or a git provider connection) to a project when they may manage it, or when a service of that project already uses it. New in 0.2: only for what that service uses it for, the same repository URL, image repository (any tag) or repository. So when an admin sets up one service with a token that reaches every repository of an account, members of the project can use it for that one repository; the repository pickers list only those for them. For another repository, ask an admin to set up the first service with it.
 
-<Callout title="Adding credentials">
-The Source tab lets you pick stored credentials. Adding one is done through the API for now (`git.createCredential`, `git.generateSshKey`, see the [API reference](/api-reference)); a screen for it in Settings is coming later.
-</Callout>
+### Git credentials
+
+New in 0.2.2: owners and admins add and manage git credentials in the panel. Before, only the API could create one.
+
+- **Add credential** next to the **Credential** picker on the **Git** source form opens **Add a git credential**, filled in from the repository URL: the host, a name like `acme/shop-api`, and the kind the URL needs (a token for `https://`, an SSH key for `ssh://` and `git@host:path`). The new credential is picked right away.
+- **Settings → Git providers → Git credentials** (the **Manage git credentials** link under the picker goes there) lists every credential with its kind, host, user name, when it was added and how many services use it, with **Add credential**, **Edit** and **Delete**. The connected GitHub account is managed on **Settings → GitHub**.
+
+Members see neither; they pick from the credentials they may use (see above).
+
+A **Token** has a name, the **Host** (with its port, if the URL names one), a **User name** (`git` by default; GitHub takes any user name with a token) and the token. The dialog says which token to create: on GitHub a fine-grained token with **Contents: Read-only** on the repository, on GitLab a project access token with `read_repository`, on Bitbucket a repository access token with **Repositories: Read** and the user name `x-token-auth`.
+
+An **SSH key** is either **Generate a key**, which makes an Ed25519 key pair, keeps the private key and shows the public key with where to add it as a read-only deploy key, or **Paste a private key** (OpenSSH or PEM, without a passphrase). The panel trusts GitHub's host keys by itself. Any other host needs its host keys, so builds can trust it:
+
+- **Read host keys** reads them from the host and shows their fingerprints. Compare them with the ones the host publishes before you save.
+- Or **Paste known_hosts lines instead**. Each line must start with the host as ssh names it: the plain name on port 22, `[host]:port` on any other port. For `ssh://git@gitea.lan:2222/team/app.git` that is `[gitea.lan]:2222`, which `ssh-keyscan -p 2222 gitea.lan` prints. Hashed lines (`|1|...`) cannot be matched. **Save** waits until a line names the host.
+
+The panel checks the same for the API and MCP clients (`git.createCredential`, `git.updateCredential`): known_hosts text with hashed lines, or with no line for the credential's host, is refused, so no credential is saved whose every clone would fail with "No known host key".
+
+**Edit** renames a credential, replaces a token (left empty, the current one stays) and its user name, or sets an SSH key's host keys, and shows an SSH key's public key to add it to another repository. An SSH key with no line for its host shows **Host keys missing**. **Delete** is refused while a service clones with the credential: the dialog says how many do, so point their source at another credential first. On a **Git** source form, a credential deleted elsewhere shows as **Deleted credential**, and **Check access** and **Save** wait until you pick another.
+
+The secret is stored encrypted, never shown again, and only ever sent to its own host.
 
 ### Git servers on private addresses
 
@@ -130,9 +204,11 @@ A build node gets the source, git credentials and build-time variables of every 
 
 From the **Deployments** tab, a deployment's menu has **Redeploy this commit** and **Deploy without build cache**.
 
+Changed in 0.2.2: a deployment without a commit message is titled from what it built, **Deploy from `<branch>`** or, for an upload, **Deploy from `<archive name>`**. A clone that failed keeps the branch it tried, also after you fix the branch. Titles never show the address of the panel's internal registry (`127.0.0.1:5755/...`) any more.
+
 ## Deploy on push
 
-Turn on **Deploy on push** on the Source tab and every push to the branch deploys. With the GitHub App this comes from the webhook. When GitHub cannot reach the panel (no domain, or a missed delivery), the panel also asks GitHub for the head of each followed branch once a minute. **Recent deliveries** on the Source tab lists what GitHub sent, and **Retry failed** asks GitHub to send failed ones again.
+Turn on **Deploy on push** on the Source tab and every push to the branch deploys. With the GitHub App this comes from the App's webhook, and through the connected account from a webhook on the repository (see [Push to deploy](#the-connected-github-account)). When GitHub cannot reach the panel (no domain, or a missed delivery), the panel also asks GitHub for the head of each followed branch once a minute. For the App, **Recent deliveries** on the Source tab lists what GitHub sent, and **Retry failed** asks GitHub to send failed ones again.
 
 Deploys of one service run one at a time: a push while a deploy is running waits in line and starts when it is done.
 

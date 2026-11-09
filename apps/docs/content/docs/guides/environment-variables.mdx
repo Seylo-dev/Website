@@ -24,6 +24,12 @@ An app's deployment keeps the environment it started with. Saving new values doe
 
 From the command line, `seylo env set` and `seylo env unset` save and deploy in one step (`--no-deploy` only saves). See [Command line](/guides/command-line).
 
+## PORT for built apps
+
+New in 0.2.2. An app built from a repository (a GitHub, GitLab, Gitea, Bitbucket or Git source) that has a port gets `PORT=<its first port>` in the environment its deploy starts with. Railpack and Nixpacks start commands and most frameworks listen on `$PORT`, so the app listens where its domains and health check look. A `PORT` of your own wins, in the service's `.env` or in the project's shared variables. Images, Dockerfiles typed in the panel, uploads, compose members and cron services get none.
+
+Only apps created on 0.2.2 or later get it. Apps created before keep the environment they had, so the update never changes what a running app listens on. To give an older app the same, add `PORT=<port>` to its `.env` and deploy. Like every environment change, it applies on the next deploy.
+
 ## References
 
 Point at another service's values instead of copying them:

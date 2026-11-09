@@ -70,7 +70,9 @@ An app password with the same permissions and your Bitbucket user name also work
 
 **Check and save** asks the provider whether the token works before it is stored, and shows who it acts as (**Connected as ...**). In the browser, saving a token needs a sign-in from the last 15 minutes, otherwise the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first.
 
-**Connections** lists each one with its host, the account it acts as (**Acts as**), how many services use it, and a **Statuses** switch. **Check** asks the provider again, for example after the token expired. Replacing a token or renaming a connection is done through the API for now (`gitProviders.update`, see the [API reference](/api-reference)); the kind, address and workspace never change. **Delete** removes the connection and its token, and is refused while a service still uses it.
+**Connections** lists each one with its host, the account it acts as (**Acts as**), how many services use it, and a **Statuses** switch. The row's menu has **Check**, which asks the provider again, for example after the token expired, and **Delete**, which removes the connection and its token and is refused while a service still uses it. Replacing a token or renaming a connection is done through the API for now (`gitProviders.update`, see the [API reference](/api-reference)); the kind, address and workspace never change.
+
+New in 0.2.2: below the connections, **Git credentials** lists the tokens and SSH keys that plain **Git** sources clone with, for owners and admins. See [Git credentials](/guides/github-and-git#git-credentials).
 
 Connections are panel-wide: owners and admins manage them (the **Manage GitLab, Gitea and Bitbucket connections** action). Everyone signed in sees their names and hosts, never the token. Browsing a connection's repositories needs permission to create services in the project, and connecting one needs permission to change the service. A member can only attach a connection to a project when they may manage connections, or for a repository that a service of that project already deploys through it: members see only those repositories in the list, so one connected repository does not open every repository the token reaches.
 
@@ -81,8 +83,9 @@ On an app's **Source** tab, pick **GitLab**, **Gitea** or **Bitbucket**, then:
 1. **Connection**: one of the connections of that provider. Without one, the tab links to **Add a connection**.
 2. **Repository**: search the repositories the token can read, most recently active first. Private and empty ones are marked.
 3. **Branch**: the branch to deploy. It starts on the repository's default branch.
-4. **Root directory**: a folder inside the repository to build, for monorepos. Empty is the root.
-5. **Deploy on push**: deploy every push to the branch. On by default.
+4. **Deploy on push**: deploy every push to the branch. On by default.
+
+**Root directory**, in the **Build** section of the same tab, builds a folder inside the repository instead of its root, for monorepos.
 
 **Connect repository** checks that the connection can read the repository, sets the source and creates the webhook. The next deploy builds it with the builder from the **Build** section, like any git source (see [Builders](/guides/github-and-git#builders)).
 
