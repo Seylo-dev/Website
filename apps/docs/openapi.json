@@ -68,7 +68,7 @@
       "get": {
         "operationId": "ai.conversation",
         "summary": "Get an AI conversation",
-        "description": "Returns one of the caller's conversations with all its messages.",
+        "description": "Returns one of the caller's conversations with all its messages; a reply still streaming comes with its text so far. Another person's conversation is NOT_FOUND.",
         "tags": [
           "ai"
         ],
@@ -112,6 +112,8 @@
                         "title",
                         "context",
                         "costUsd",
+                        "streaming",
+                        "pendingApprovals",
                         "createdAt",
                         "updatedAt"
                       ],
@@ -142,6 +144,13 @@
                         "costUsd": {
                           "minimum": 0,
                           "type": "number"
+                        },
+                        "streaming": {
+                          "type": "boolean"
+                        },
+                        "pendingApprovals": {
+                          "minimum": 0,
+                          "type": "integer"
                         },
                         "createdAt": {
                           "format": "date-time",
@@ -272,6 +281,56 @@
                                           "type": "null"
                                         }
                                       ]
+                                    },
+                                    "target": {
+                                      "type": "object",
+                                      "required": [
+                                        "type",
+                                        "id",
+                                        "name",
+                                        "projectId",
+                                        "projectName"
+                                      ],
+                                      "properties": {
+                                        "type": {
+                                          "anyOf": [
+                                            {
+                                              "const": "project",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "const": "service",
+                                              "type": "string"
+                                            }
+                                          ]
+                                        },
+                                        "id": {
+                                          "pattern": "^[a-z0-9]{16}$",
+                                          "description": "Panel-issued id.",
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "projectId": {
+                                          "anyOf": [
+                                            {
+                                              "pattern": "^[a-z0-9]{16}$",
+                                              "description": "Panel-issued id.",
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "projectName": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    },
+                                    "auto": {
+                                      "type": "boolean"
                                     }
                                   }
                                 }
@@ -356,7 +415,7 @@
       "get": {
         "operationId": "ai.conversations",
         "summary": "List AI conversations",
-        "description": "Lists the caller's assistant conversations, most recently active first.",
+        "description": "Lists the caller's assistant conversations, most recently active first; nobody sees anyone else's, not even owners. query keeps the ones whose title holds it.",
         "tags": [
           "ai"
         ],
@@ -389,6 +448,15 @@
               "maxLength": 64,
               "type": "string"
             }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -412,6 +480,8 @@
                           "title",
                           "context",
                           "costUsd",
+                          "streaming",
+                          "pendingApprovals",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -442,6 +512,13 @@
                           "costUsd": {
                             "minimum": 0,
                             "type": "number"
+                          },
+                          "streaming": {
+                            "type": "boolean"
+                          },
+                          "pendingApprovals": {
+                            "minimum": 0,
+                            "type": "integer"
                           },
                           "createdAt": {
                             "format": "date-time",
@@ -532,6 +609,499 @@
           }
         },
         "x-op-kind": "destructive",
+        "x-permission": "signed-in, whole account",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/ai.me": {
+      "get": {
+        "operationId": "ai.me",
+        "summary": "Get your assistant",
+        "description": "Says whether the caller can use the assistant (and why not), whether the Assistant page is on, the caller's auto mode and whether this month's budget is used up.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "available",
+                    "reason",
+                    "chatPage",
+                    "autoMode",
+                    "budgetReached"
+                  ],
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "const": "noKey",
+                              "type": "string"
+                            },
+                            {
+                              "const": "disabled",
+                              "type": "string"
+                            },
+                            {
+                              "const": "notAllowed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "chatPage": {
+                      "type": "boolean"
+                    },
+                    "autoMode": {
+                      "type": "boolean"
+                    },
+                    "budgetReached": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "signed-in, whole account",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/ai.renameConversation": {
+      "post": {
+        "operationId": "ai.renameConversation",
+        "summary": "Rename an AI conversation",
+        "description": "Changes the title of one of the caller's conversations (set from the first message when it starts).",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "conversationId",
+                  "title"
+                ],
+                "properties": {
+                  "conversationId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "title": {
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "context",
+                    "costUsd",
+                    "streaming",
+                    "pendingApprovals",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "context": {
+                      "type": "object",
+                      "properties": {
+                        "projectId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "serviceId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "costUsd": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "streaming": {
+                      "type": "boolean"
+                    },
+                    "pendingApprovals": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "signed-in, whole account",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/ai.retry": {
+      "post": {
+        "operationId": "ai.retry",
+        "summary": "Try the assistant's last reply again",
+        "description": "Starts a new reply after the conversation's last one failed or was stopped; the failed reply stays as it was. Returns at once; the reply streams like ai.send's. CONFLICT while a reply is streaming or when the last reply did not fail.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "conversationId"
+                ],
+                "properties": {
+                  "conversationId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "assistantMessage"
+                  ],
+                  "properties": {
+                    "assistantMessage": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "role",
+                        "parts",
+                        "model",
+                        "status",
+                        "error",
+                        "createdAt"
+                      ],
+                      "properties": {
+                        "id": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "role": {
+                          "anyOf": [
+                            {
+                              "const": "user",
+                              "type": "string"
+                            },
+                            {
+                              "const": "assistant",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "parts": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "type",
+                                  "text"
+                                ],
+                                "properties": {
+                                  "type": {
+                                    "const": "text",
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "type",
+                                  "toolCallId",
+                                  "opId",
+                                  "input",
+                                  "status",
+                                  "approvalId",
+                                  "resultPreview"
+                                ],
+                                "properties": {
+                                  "type": {
+                                    "const": "tool_call",
+                                    "type": "string"
+                                  },
+                                  "toolCallId": {
+                                    "type": "string"
+                                  },
+                                  "opId": {
+                                    "type": "string"
+                                  },
+                                  "input": {},
+                                  "status": {
+                                    "anyOf": [
+                                      {
+                                        "const": "running",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "done",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "error",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "needs_approval",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "const": "denied",
+                                        "type": "string"
+                                      }
+                                    ]
+                                  },
+                                  "approvalId": {
+                                    "anyOf": [
+                                      {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "resultPreview": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "target": {
+                                    "type": "object",
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name",
+                                      "projectId",
+                                      "projectName"
+                                    ],
+                                    "properties": {
+                                      "type": {
+                                        "anyOf": [
+                                          {
+                                            "const": "project",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "const": "service",
+                                            "type": "string"
+                                          }
+                                        ]
+                                      },
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "projectId": {
+                                        "anyOf": [
+                                          {
+                                            "pattern": "^[a-z0-9]{16}$",
+                                            "description": "Panel-issued id.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "projectName": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "auto": {
+                                    "type": "boolean"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "model": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "const": "haiku",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "sonnet",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "opus",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "const": "streaming",
+                              "type": "string"
+                            },
+                            {
+                              "const": "done",
+                              "type": "string"
+                            },
+                            {
+                              "const": "error",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cancelled",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "error": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
         "x-permission": "signed-in, whole account",
         "x-mcp": false
       }
@@ -744,6 +1314,56 @@
                                         "type": "null"
                                       }
                                     ]
+                                  },
+                                  "target": {
+                                    "type": "object",
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name",
+                                      "projectId",
+                                      "projectName"
+                                    ],
+                                    "properties": {
+                                      "type": {
+                                        "anyOf": [
+                                          {
+                                            "const": "project",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "const": "service",
+                                            "type": "string"
+                                          }
+                                        ]
+                                      },
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "projectId": {
+                                        "anyOf": [
+                                          {
+                                            "pattern": "^[a-z0-9]{16}$",
+                                            "description": "Panel-issued id.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "projectName": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "auto": {
+                                    "type": "boolean"
                                   }
                                 }
                               }
@@ -926,6 +1546,56 @@
                                         "type": "null"
                                       }
                                     ]
+                                  },
+                                  "target": {
+                                    "type": "object",
+                                    "required": [
+                                      "type",
+                                      "id",
+                                      "name",
+                                      "projectId",
+                                      "projectName"
+                                    ],
+                                    "properties": {
+                                      "type": {
+                                        "anyOf": [
+                                          {
+                                            "const": "project",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "const": "service",
+                                            "type": "string"
+                                          }
+                                        ]
+                                      },
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "projectId": {
+                                        "anyOf": [
+                                          {
+                                            "pattern": "^[a-z0-9]{16}$",
+                                            "description": "Panel-issued id.",
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "projectName": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "auto": {
+                                    "type": "boolean"
                                   }
                                 }
                               }
@@ -1005,6 +1675,69 @@
         "x-mcp": false
       }
     },
+    "/api/v1/ai.setAutoMode": {
+      "post": {
+        "operationId": "ai.setAutoMode",
+        "summary": "Turn the assistant's auto mode on or off",
+        "description": "Sets the caller's auto mode for every chat and device. On, the assistant runs changes in the caller's chats without an approval, as the caller and with the caller's own permissions (audited with autoMode); off, every change waits in Approvals. Only from the browser: API keys get FORBIDDEN.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "autoMode"
+                  ],
+                  "properties": {
+                    "autoMode": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "signed-in, whole account",
+        "x-mcp": false
+      }
+    },
     "/api/v1/ai.settings": {
       "get": {
         "operationId": "ai.settings",
@@ -1036,7 +1769,8 @@
                     "keyHint",
                     "routing",
                     "monthlyBudgetUsd",
-                    "allowMembers"
+                    "allowMembers",
+                    "chatPage"
                   ],
                   "properties": {
                     "enabled": {
@@ -1101,6 +1835,9 @@
                       ]
                     },
                     "allowMembers": {
+                      "type": "boolean"
+                    },
+                    "chatPage": {
                       "type": "boolean"
                     }
                   }
@@ -1211,6 +1948,9 @@
                   },
                   "allowMembers": {
                     "type": "boolean"
+                  },
+                  "chatPage": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -1230,7 +1970,8 @@
                     "keyHint",
                     "routing",
                     "monthlyBudgetUsd",
-                    "allowMembers"
+                    "allowMembers",
+                    "chatPage"
                   ],
                   "properties": {
                     "enabled": {
@@ -1295,6 +2036,9 @@
                       ]
                     },
                     "allowMembers": {
+                      "type": "boolean"
+                    },
+                    "chatPage": {
                       "type": "boolean"
                     }
                   }
@@ -3053,6 +3797,7 @@
                     "opKind",
                     "inputPreview",
                     "via",
+                    "source",
                     "requestedBy",
                     "reason",
                     "target",
@@ -3100,6 +3845,65 @@
                         }
                       ]
                     },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "conversationId",
+                            "title",
+                            "mine"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "assistant",
+                              "type": "string"
+                            },
+                            "conversationId": {
+                              "pattern": "^[a-z0-9]{16}$",
+                              "description": "Panel-issued id.",
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "mine": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "keyId",
+                            "clientName"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "mcp",
+                              "type": "string"
+                            },
+                            "keyId": {
+                              "anyOf": [
+                                {
+                                  "pattern": "^[a-z0-9]{16}$",
+                                  "description": "Panel-issued id.",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "clientName": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    },
                     "requestedBy": {
                       "type": "object",
                       "required": [
@@ -3121,6 +3925,11 @@
                           ]
                         },
                         "userName": {
+                          "type": "string"
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                           "type": "string"
                         },
                         "clientName": {
@@ -3318,6 +4127,7 @@
                     "opKind",
                     "inputPreview",
                     "via",
+                    "source",
                     "requestedBy",
                     "reason",
                     "target",
@@ -3365,6 +4175,65 @@
                         }
                       ]
                     },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "conversationId",
+                            "title",
+                            "mine"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "assistant",
+                              "type": "string"
+                            },
+                            "conversationId": {
+                              "pattern": "^[a-z0-9]{16}$",
+                              "description": "Panel-issued id.",
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "mine": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "keyId",
+                            "clientName"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "mcp",
+                              "type": "string"
+                            },
+                            "keyId": {
+                              "anyOf": [
+                                {
+                                  "pattern": "^[a-z0-9]{16}$",
+                                  "description": "Panel-issued id.",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "clientName": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    },
                     "requestedBy": {
                       "type": "object",
                       "required": [
@@ -3386,6 +4255,11 @@
                           ]
                         },
                         "userName": {
+                          "type": "string"
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                           "type": "string"
                         },
                         "clientName": {
@@ -3571,6 +4445,7 @@
                     "opKind",
                     "inputPreview",
                     "via",
+                    "source",
                     "requestedBy",
                     "reason",
                     "target",
@@ -3618,6 +4493,65 @@
                         }
                       ]
                     },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "conversationId",
+                            "title",
+                            "mine"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "assistant",
+                              "type": "string"
+                            },
+                            "conversationId": {
+                              "pattern": "^[a-z0-9]{16}$",
+                              "description": "Panel-issued id.",
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "mine": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "keyId",
+                            "clientName"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "const": "mcp",
+                              "type": "string"
+                            },
+                            "keyId": {
+                              "anyOf": [
+                                {
+                                  "pattern": "^[a-z0-9]{16}$",
+                                  "description": "Panel-issued id.",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "clientName": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    },
                     "requestedBy": {
                       "type": "object",
                       "required": [
@@ -3639,6 +4573,11 @@
                           ]
                         },
                         "userName": {
+                          "type": "string"
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                           "type": "string"
                         },
                         "clientName": {
@@ -3885,6 +4824,7 @@
                           "opKind",
                           "inputPreview",
                           "via",
+                          "source",
                           "requestedBy",
                           "reason",
                           "target",
@@ -3932,6 +4872,65 @@
                               }
                             ]
                           },
+                          "source": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "kind",
+                                  "conversationId",
+                                  "title",
+                                  "mine"
+                                ],
+                                "properties": {
+                                  "kind": {
+                                    "const": "assistant",
+                                    "type": "string"
+                                  },
+                                  "conversationId": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "mine": {
+                                    "type": "boolean"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "kind",
+                                  "keyId",
+                                  "clientName"
+                                ],
+                                "properties": {
+                                  "kind": {
+                                    "const": "mcp",
+                                    "type": "string"
+                                  },
+                                  "keyId": {
+                                    "anyOf": [
+                                      {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "clientName": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            ]
+                          },
                           "requestedBy": {
                             "type": "object",
                             "required": [
@@ -3953,6 +4952,11 @@
                                 ]
                               },
                               "userName": {
+                                "type": "string"
+                              },
+                              "avatarUrl": {
+                                "maxLength": 200,
+                                "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                                 "type": "string"
                               },
                               "clientName": {
@@ -4440,6 +5444,11 @@
                         "label": {
                           "type": "string"
                         },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        },
                         "credentialId": {
                           "anyOf": [
                             {
@@ -4841,6 +5850,11 @@
                               "label": {
                                 "type": "string"
                               },
+                              "avatarUrl": {
+                                "maxLength": 200,
+                                "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                                "type": "string"
+                              },
                               "credentialId": {
                                 "anyOf": [
                                   {
@@ -4989,6 +6003,118 @@
         "x-op-kind": "query",
         "x-permission": "signed-in",
         "x-mcp": true
+      }
+    },
+    "/api/v1/auth.changeEmail": {
+      "post": {
+        "operationId": "auth.changeEmail",
+        "summary": "Change your email",
+        "description": "Changes the signed-in person's email, which they sign in with. Needs a sign-in or auth.reauth from the last 15 minutes (FORBIDDEN details.reason \"reauth\" otherwise). CONFLICT with details.field \"email\" when another account uses it. When the panel has an SMTP channel the old address is told (oldAddressNotified). Browser sessions only.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "maxLength": 254,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "viewer",
+                    "oldAddressNotified"
+                  ],
+                  "properties": {
+                    "viewer": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "role"
+                      ],
+                      "properties": {
+                        "id": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "email": {
+                          "format": "email",
+                          "maxLength": 254,
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "description": "owner and admin may do everything; members only what their grants allow.",
+                          "anyOf": [
+                            {
+                              "const": "owner",
+                              "type": "string"
+                            },
+                            {
+                              "const": "admin",
+                              "type": "string"
+                            },
+                            {
+                              "const": "member",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "oldAddressNotified": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "signed-in",
+        "x-mcp": false
       }
     },
     "/api/v1/auth.changePassword": {
@@ -5374,6 +6500,11 @@
                                   "type": "string"
                                 }
                               ]
+                            },
+                            "avatarUrl": {
+                              "maxLength": 200,
+                              "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                              "type": "string"
                             }
                           }
                         },
@@ -5741,6 +6872,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     },
@@ -5998,6 +7134,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     },
@@ -6267,7 +7408,7 @@
       "get": {
         "operationId": "auth.preferences",
         "summary": "Get your UI preferences",
-        "description": "Returns the signed-in person's UI preferences (hidden projects, color mode and similar).",
+        "description": "Returns the signed-in person's UI preferences (hidden projects, whether the sidebar shows them, the sidebar items they turned off, color mode and similar).",
         "tags": [
           "auth"
         ],
@@ -6307,6 +7448,43 @@
                                 "pattern": "^[a-z0-9]{16}$",
                                 "description": "Panel-issued id.",
                                 "type": "string"
+                              }
+                            },
+                            "showHiddenInSidebar": {
+                              "description": "Whether this person's sidebar shows the folded \"Hidden (N)\" group of hidden projects. Missing means true (the default); only false is stored. Hidden projects still show on the home page under \"Show hidden\", in search and at their links either way.",
+                              "type": "boolean"
+                            },
+                            "hiddenSidebarItems": {
+                              "uniqueItems": true,
+                              "description": "Main navigation items this person took out of their sidebar. Missing means none: every item shows. Settings never hides, and Approvals still shows while a request waits for the person. The pages still open at their links and from search.",
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "const": "dashboard",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "nodes",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "templates",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "activity",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "assistant",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "approvals",
+                                    "type": "string"
+                                  }
+                                ]
                               }
                             }
                           }
@@ -7175,7 +8353,7 @@
       "post": {
         "operationId": "auth.updatePreferences",
         "summary": "Change your UI preferences",
-        "description": "Merges the given keys into the signed-in person's preferences; a key set to null is removed. hiddenProjectIds keeps only projects the person can see. At most 16 KB in total.",
+        "description": "Merges the given keys into the signed-in person's preferences; a key set to null is removed. hiddenProjectIds keeps only projects the person can see. showHiddenInSidebar is kept only when false (true is the default). hiddenSidebarItems keeps only names the panel knows, and an empty list removes the key. At most 16 KB in total.",
         "tags": [
           "auth"
         ],
@@ -7215,6 +8393,37 @@
                                 "items": {
                                   "pattern": "^[a-z0-9]{16}$",
                                   "description": "Panel-issued id.",
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "showHiddenInSidebar": {
+                            "errorMessage": "must be true, false or null",
+                            "anyOf": [
+                              {
+                                "description": "Whether this person's sidebar shows the folded \"Hidden (N)\" group of hidden projects. Missing means true (the default); only false is stored. Hidden projects still show on the home page under \"Show hidden\", in search and at their links either way.",
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "hiddenSidebarItems": {
+                            "errorMessage": "must be a list of distinct sidebar item names (at most 32), or null",
+                            "anyOf": [
+                              {
+                                "maxItems": 32,
+                                "uniqueItems": true,
+                                "description": "Names of main navigation items to take out of the sidebar. Names the panel does not know (settings among them) are dropped.",
+                                "type": "array",
+                                "items": {
+                                  "minLength": 1,
+                                  "maxLength": 40,
                                   "type": "string"
                                 }
                               },
@@ -7265,6 +8474,43 @@
                                 "description": "Panel-issued id.",
                                 "type": "string"
                               }
+                            },
+                            "showHiddenInSidebar": {
+                              "description": "Whether this person's sidebar shows the folded \"Hidden (N)\" group of hidden projects. Missing means true (the default); only false is stored. Hidden projects still show on the home page under \"Show hidden\", in search and at their links either way.",
+                              "type": "boolean"
+                            },
+                            "hiddenSidebarItems": {
+                              "uniqueItems": true,
+                              "description": "Main navigation items this person took out of their sidebar. Missing means none: every item shows. Settings never hides, and Approvals still shows while a request waits for the person. The pages still open at their links and from search.",
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "const": "dashboard",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "nodes",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "templates",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "activity",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "assistant",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "approvals",
+                                    "type": "string"
+                                  }
+                                ]
+                              }
                             }
                           }
                         },
@@ -7294,7 +8540,7 @@
       "post": {
         "operationId": "auth.updateProfile",
         "summary": "Change your name",
-        "description": "Changes the display name of the signed-in person. Email changes go through an owner or admin (users.update).",
+        "description": "Changes the display name of the signed-in person. The email changes with auth.changeEmail.",
         "tags": [
           "auth"
         ],
@@ -7375,6 +8621,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     }
@@ -7490,6 +8741,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     },
@@ -7579,6 +8835,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     },
@@ -7606,6 +8867,609 @@
         "x-op-kind": "query",
         "x-permission": "signed-in",
         "x-mcp": true
+      }
+    },
+    "/api/v1/avatars.mine": {
+      "get": {
+        "operationId": "avatars.mine",
+        "summary": "Get your avatar",
+        "description": "Returns the signed-in person's avatar: an uploaded image or a generated face (style and seed), with the URLs to show. An account without one gets a random face now.",
+        "tags": [
+          "avatars"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "avatar"
+                  ],
+                  "properties": {
+                    "avatar": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "style",
+                        "seed",
+                        "url",
+                        "presetUrl"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "anyOf": [
+                            {
+                              "const": "preset",
+                              "type": "string"
+                            },
+                            {
+                              "const": "upload",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "style": {
+                          "description": "A generated avatar style (see avatarStyles for the list and each style's license).",
+                          "anyOf": [
+                            {
+                              "const": "notionists",
+                              "type": "string"
+                            },
+                            {
+                              "const": "adventurer",
+                              "type": "string"
+                            },
+                            {
+                              "const": "big-smile",
+                              "type": "string"
+                            },
+                            {
+                              "const": "fun-emoji",
+                              "type": "string"
+                            },
+                            {
+                              "const": "lorelei",
+                              "type": "string"
+                            },
+                            {
+                              "const": "micah",
+                              "type": "string"
+                            },
+                            {
+                              "const": "open-peeps",
+                              "type": "string"
+                            },
+                            {
+                              "const": "personas",
+                              "type": "string"
+                            },
+                            {
+                              "const": "pixel-art",
+                              "type": "string"
+                            },
+                            {
+                              "const": "thumbs",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "seed": {
+                          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                          "description": "Letters, digits, - and _ (1 to 64).",
+                          "type": "string"
+                        },
+                        "url": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        },
+                        "presetUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "signed-in",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/avatars.removeUpload": {
+      "post": {
+        "operationId": "avatars.removeUpload",
+        "summary": "Remove your uploaded avatar",
+        "description": "Deletes the signed-in person's uploaded image, so their generated face shows again. Browser sessions only.",
+        "tags": [
+          "avatars"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "avatar"
+                  ],
+                  "properties": {
+                    "avatar": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "style",
+                        "seed",
+                        "url",
+                        "presetUrl"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "anyOf": [
+                            {
+                              "const": "preset",
+                              "type": "string"
+                            },
+                            {
+                              "const": "upload",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "style": {
+                          "description": "A generated avatar style (see avatarStyles for the list and each style's license).",
+                          "anyOf": [
+                            {
+                              "const": "notionists",
+                              "type": "string"
+                            },
+                            {
+                              "const": "adventurer",
+                              "type": "string"
+                            },
+                            {
+                              "const": "big-smile",
+                              "type": "string"
+                            },
+                            {
+                              "const": "fun-emoji",
+                              "type": "string"
+                            },
+                            {
+                              "const": "lorelei",
+                              "type": "string"
+                            },
+                            {
+                              "const": "micah",
+                              "type": "string"
+                            },
+                            {
+                              "const": "open-peeps",
+                              "type": "string"
+                            },
+                            {
+                              "const": "personas",
+                              "type": "string"
+                            },
+                            {
+                              "const": "pixel-art",
+                              "type": "string"
+                            },
+                            {
+                              "const": "thumbs",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "seed": {
+                          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                          "description": "Letters, digits, - and _ (1 to 64).",
+                          "type": "string"
+                        },
+                        "url": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        },
+                        "presetUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "signed-in",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/avatars.setPreset": {
+      "post": {
+        "operationId": "avatars.setPreset",
+        "summary": "Pick a generated avatar",
+        "description": "Makes a generated face (style and seed) the signed-in person's avatar. An uploaded image is removed, so the face shows. Browser sessions only.",
+        "tags": [
+          "avatars"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "style",
+                  "seed"
+                ],
+                "properties": {
+                  "style": {
+                    "description": "A generated avatar style (see avatarStyles for the list and each style's license).",
+                    "anyOf": [
+                      {
+                        "const": "notionists",
+                        "type": "string"
+                      },
+                      {
+                        "const": "adventurer",
+                        "type": "string"
+                      },
+                      {
+                        "const": "big-smile",
+                        "type": "string"
+                      },
+                      {
+                        "const": "fun-emoji",
+                        "type": "string"
+                      },
+                      {
+                        "const": "lorelei",
+                        "type": "string"
+                      },
+                      {
+                        "const": "micah",
+                        "type": "string"
+                      },
+                      {
+                        "const": "open-peeps",
+                        "type": "string"
+                      },
+                      {
+                        "const": "personas",
+                        "type": "string"
+                      },
+                      {
+                        "const": "pixel-art",
+                        "type": "string"
+                      },
+                      {
+                        "const": "thumbs",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "seed": {
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "description": "Letters, digits, - and _ (1 to 64).",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "avatar"
+                  ],
+                  "properties": {
+                    "avatar": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "style",
+                        "seed",
+                        "url",
+                        "presetUrl"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "anyOf": [
+                            {
+                              "const": "preset",
+                              "type": "string"
+                            },
+                            {
+                              "const": "upload",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "style": {
+                          "description": "A generated avatar style (see avatarStyles for the list and each style's license).",
+                          "anyOf": [
+                            {
+                              "const": "notionists",
+                              "type": "string"
+                            },
+                            {
+                              "const": "adventurer",
+                              "type": "string"
+                            },
+                            {
+                              "const": "big-smile",
+                              "type": "string"
+                            },
+                            {
+                              "const": "fun-emoji",
+                              "type": "string"
+                            },
+                            {
+                              "const": "lorelei",
+                              "type": "string"
+                            },
+                            {
+                              "const": "micah",
+                              "type": "string"
+                            },
+                            {
+                              "const": "open-peeps",
+                              "type": "string"
+                            },
+                            {
+                              "const": "personas",
+                              "type": "string"
+                            },
+                            {
+                              "const": "pixel-art",
+                              "type": "string"
+                            },
+                            {
+                              "const": "thumbs",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "seed": {
+                          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                          "description": "Letters, digits, - and _ (1 to 64).",
+                          "type": "string"
+                        },
+                        "url": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        },
+                        "presetUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "signed-in",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/avatars.upload": {
+      "post": {
+        "operationId": "avatars.upload",
+        "summary": "Upload an avatar image",
+        "description": "Makes an uploaded image the signed-in person's avatar. The file travels as a base64 data URL: PNG, JPEG or WebP, at most 1 MiB (the web app crops it to a square of 256 pixels first). SVG is refused. The generated face stays underneath. Browser sessions only.",
+        "tags": [
+          "avatars"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dataUrl"
+                ],
+                "properties": {
+                  "dataUrl": {
+                    "maxLength": 1398166,
+                    "pattern": "^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$",
+                    "errorMessage": "must be a PNG, JPEG or WebP image as a base64 data URL",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "avatar"
+                  ],
+                  "properties": {
+                    "avatar": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "style",
+                        "seed",
+                        "url",
+                        "presetUrl"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "anyOf": [
+                            {
+                              "const": "preset",
+                              "type": "string"
+                            },
+                            {
+                              "const": "upload",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "style": {
+                          "description": "A generated avatar style (see avatarStyles for the list and each style's license).",
+                          "anyOf": [
+                            {
+                              "const": "notionists",
+                              "type": "string"
+                            },
+                            {
+                              "const": "adventurer",
+                              "type": "string"
+                            },
+                            {
+                              "const": "big-smile",
+                              "type": "string"
+                            },
+                            {
+                              "const": "fun-emoji",
+                              "type": "string"
+                            },
+                            {
+                              "const": "lorelei",
+                              "type": "string"
+                            },
+                            {
+                              "const": "micah",
+                              "type": "string"
+                            },
+                            {
+                              "const": "open-peeps",
+                              "type": "string"
+                            },
+                            {
+                              "const": "personas",
+                              "type": "string"
+                            },
+                            {
+                              "const": "pixel-art",
+                              "type": "string"
+                            },
+                            {
+                              "const": "thumbs",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "seed": {
+                          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                          "description": "Letters, digits, - and _ (1 to 64).",
+                          "type": "string"
+                        },
+                        "url": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        },
+                        "presetUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "signed-in",
+        "x-mcp": false
       }
     },
     "/api/v1/backups.createDestination": {
@@ -24676,7 +26540,7 @@
       "post": {
         "operationId": "domains.add",
         "summary": "Add a custom domain",
-        "description": "Adds a custom domain (and optional path) to a service and returns it together with the DNS record to create. The route goes live once DNS points at the service's node and a certificate is issued. Set forward to make it a redirect-only domain, for example www to the apex.",
+        "description": "Adds a custom domain (and optional path) to a service and returns it together with the DNS record to create. The route goes live once DNS points at the service's node and a certificate is issued. Set forward to make it a redirect-only domain, for example www to the apex. When its DNS is ok or proxied, the panel checks a few seconds later, once the node has the route, that the domain reaches the node (the domain's origin in domains.list).",
         "tags": [
           "domains"
         ],
@@ -25032,6 +26896,32 @@
                             }
                           ]
                         },
+                        "pointsTo": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "origin": {
+                          "anyOf": [
+                            {
+                              "const": "node",
+                              "type": "string"
+                            },
+                            {
+                              "const": "elsewhere",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unknown",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "originCheckedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "certificate": {
                           "type": "object",
                           "required": [
@@ -25262,6 +27152,22 @@
                             },
                             {
                               "type": "null"
+                            }
+                          ]
+                        },
+                        "origin": {
+                          "anyOf": [
+                            {
+                              "const": "node",
+                              "type": "string"
+                            },
+                            {
+                              "const": "elsewhere",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unknown",
+                              "type": "string"
                             }
                           ]
                         },
@@ -25585,6 +27491,32 @@
                         }
                       ]
                     },
+                    "pointsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
                     "certificate": {
                       "type": "object",
                       "required": [
@@ -25687,7 +27619,7 @@
       "get": {
         "operationId": "domains.checkDns",
         "summary": "Check a domain's DNS",
-        "description": "Resolves the domain through public resolvers now and classifies the answer (ok, missing, wrong target, Cloudflare proxied). Returns the records to create and a Cloudflare DNS link when the zone is on Cloudflare. Also refreshes the stored status.",
+        "description": "Resolves the domain through public resolvers now and classifies the answer (ok, missing, wrong target, Cloudflare proxied). Returns the records to create and a Cloudflare DNS link when the zone is on Cloudflare. For a custom domain that is ok or proxied it also checks that requests to it reach the service's node (origin: node, elsewhere or unknown), which tells whether a Cloudflare-proxied record points at the node. Also refreshes the stored status.",
         "tags": [
           "domains"
         ],
@@ -25871,6 +27803,22 @@
                         },
                         {
                           "type": "null"
+                        }
+                      ]
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
                         }
                       ]
                     },
@@ -26181,6 +28129,32 @@
                               }
                             ]
                           },
+                          "pointsTo": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "origin": {
+                            "anyOf": [
+                              {
+                                "const": "node",
+                                "type": "string"
+                              },
+                              {
+                                "const": "elsewhere",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "originCheckedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "certificate": {
                             "type": "object",
                             "required": [
@@ -26364,7 +28338,7 @@
       "post": {
         "operationId": "domains.retryCertificate",
         "summary": "Regenerate a domain's certificate",
-        "description": "Asks Let's Encrypt again for the certificate of a domain whose certificate is pending or failed, without restarting the node's proxy: every other domain keeps serving. The domain's DNS must point at the service's node (it is checked now and the op refuses otherwise). Allowed once a minute per domain. Let's Encrypt itself allows 5 failed validations per host name per hour, so fix what the last error names before trying again. The domain shows certificate status pending until the node reports a certificate or a new failure.",
+        "description": "Asks Let's Encrypt again for the certificate of a domain whose certificate is pending or failed, without restarting the node's proxy: every other domain keeps serving. The domain's DNS must point at the service's node (it is checked now and the op refuses otherwise); behind Cloudflare's proxy the origin check runs too, and the op refuses (reason originElsewhere) while something other than the node answers. Allowed once a minute per domain. Let's Encrypt itself allows 5 failed validations per host name per hour, so fix what the last error names before trying again. The domain shows certificate status pending until the node reports a certificate or a new failure.",
         "tags": [
           "domains"
         ],
@@ -26653,6 +28627,32 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "pointsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
                     },
                     "certificate": {
                       "type": "object",
@@ -27058,6 +29058,32 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "pointsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
                     },
                     "certificate": {
                       "type": "object",
@@ -27560,6 +29586,32 @@
                         }
                       ]
                     },
+                    "pointsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
                     "certificate": {
                       "type": "object",
                       "required": [
@@ -27951,6 +30003,32 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "pointsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
                     },
                     "certificate": {
                       "type": "object",
@@ -28407,6 +30485,32 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "pointsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "anyOf": [
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "elsewhere",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
                     },
                     "certificate": {
                       "type": "object",
@@ -38988,6 +41092,11 @@
                               },
                               "name": {
                                 "type": "string"
+                              },
+                              "avatarUrl": {
+                                "maxLength": 200,
+                                "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                                "type": "string"
                               }
                             }
                           }
@@ -39162,6 +41271,11 @@
                                 "type": "string"
                               },
                               "name": {
+                                "type": "string"
+                              },
+                              "avatarUrl": {
+                                "maxLength": 200,
+                                "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                                 "type": "string"
                               }
                             }
@@ -40310,6 +42424,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     },
@@ -42104,7 +44223,7 @@
       "get": {
         "operationId": "mcp.info",
         "summary": "Get MCP server information",
-        "description": "Returns whether the MCP server is on, its URL, the OAuth metadata URL, config snippets for model hosts and how many tools it offers.",
+        "description": "Returns whether the MCP server is on, its two safety switches, its URL, the OAuth metadata URL, config snippets and one-click install links for model hosts, and how many tools it offers.",
         "tags": [
           "mcp"
         ],
@@ -42127,13 +44246,22 @@
                   "type": "object",
                   "required": [
                     "enabled",
+                    "askBeforeDestructive",
+                    "readOnlyByDefault",
                     "url",
                     "oauthMetadataUrl",
                     "snippets",
+                    "installLinks",
                     "tools"
                   ],
                   "properties": {
                     "enabled": {
+                      "type": "boolean"
+                    },
+                    "askBeforeDestructive": {
+                      "type": "boolean"
+                    },
+                    "readOnlyByDefault": {
                       "type": "boolean"
                     },
                     "url": {
@@ -42143,6 +44271,14 @@
                       "type": "string"
                     },
                     "snippets": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^(.*)$": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "installLinks": {
                       "type": "object",
                       "patternProperties": {
                         "^(.*)$": {
@@ -42247,8 +44383,8 @@
     "/api/v1/mcp.update": {
       "post": {
         "operationId": "mcp.update",
-        "summary": "Turn the MCP server on or off",
-        "description": "Switches the MCP endpoint on or off for the whole panel. Off refuses every token and OAuth flow but keeps them.",
+        "summary": "Change the MCP server settings",
+        "description": "Changes the MCP settings for the whole panel; fields left out keep their value. enabled switches the endpoint on or off: off refuses every token and OAuth flow but keeps them. askBeforeDestructive (on by default): destructive calls from MCP tokens wait for a person in approvals; off, they run right away, still audited and still refused for read-only tokens. readOnlyByDefault (on by default): the OAuth consent page preselects read only for a new AI tool; off, it preselects read and change.",
         "tags": [
           "mcp"
         ],
@@ -42267,11 +44403,14 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "enabled"
-                ],
                 "properties": {
                   "enabled": {
+                    "type": "boolean"
+                  },
+                  "askBeforeDestructive": {
+                    "type": "boolean"
+                  },
+                  "readOnlyByDefault": {
                     "type": "boolean"
                   }
                 }
@@ -42288,13 +44427,22 @@
                   "type": "object",
                   "required": [
                     "enabled",
+                    "askBeforeDestructive",
+                    "readOnlyByDefault",
                     "url",
                     "oauthMetadataUrl",
                     "snippets",
+                    "installLinks",
                     "tools"
                   ],
                   "properties": {
                     "enabled": {
+                      "type": "boolean"
+                    },
+                    "askBeforeDestructive": {
+                      "type": "boolean"
+                    },
+                    "readOnlyByDefault": {
                       "type": "boolean"
                     },
                     "url": {
@@ -42304,6 +44452,14 @@
                       "type": "string"
                     },
                     "snippets": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^(.*)$": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "installLinks": {
                       "type": "object",
                       "patternProperties": {
                         "^(.*)$": {
@@ -43510,6 +45666,19 @@
                         }
                       ]
                     },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -43714,6 +45883,59 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
                     },
                     "usage": {
                       "anyOf": [
@@ -44231,6 +46453,19 @@
                               }
                             ]
                           },
+                          "locationSource": {
+                            "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                            "anyOf": [
+                              {
+                                "const": "detected",
+                                "type": "string"
+                              },
+                              {
+                                "const": "manual",
+                                "type": "string"
+                              }
+                            ]
+                          },
                           "tags": {
                             "type": "array",
                             "items": {
@@ -44435,6 +46670,59 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "docker": {
+                            "type": "object",
+                            "required": [
+                              "version",
+                              "latest",
+                              "updateAvailable",
+                              "checkedAt",
+                              "reason"
+                            ],
+                            "properties": {
+                              "version": {
+                                "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                                "type": "string"
+                              },
+                              "latest": {
+                                "anyOf": [
+                                  {
+                                    "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "updateAvailable": {
+                                "anyOf": [
+                                  {
+                                    "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "checkedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "reason": {
+                                "anyOf": [
+                                  {
+                                    "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            }
                           },
                           "usage": {
                             "anyOf": [
@@ -44909,6 +47197,19 @@
                         }
                       ]
                     },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -45113,6 +47414,59 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
                     },
                     "usage": {
                       "anyOf": [
@@ -45575,6 +47929,19 @@
                         }
                       ]
                     },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -45779,6 +48146,59 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
                     },
                     "usage": {
                       "anyOf": [
@@ -46026,6 +48446,19 @@
                         }
                       ]
                     },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -46230,6 +48663,59 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
                     },
                     "usage": {
                       "anyOf": [
@@ -46485,6 +48971,19 @@
                         }
                       ]
                     },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -46689,6 +49188,59 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
                     },
                     "usage": {
                       "anyOf": [
@@ -46842,7 +49394,7 @@
       "post": {
         "operationId": "nodes.updateDocker",
         "summary": "Update Docker on a node",
-        "description": "Upgrades Docker Engine with the distribution's package manager. Running containers restart with the daemon. With dryRun it only reports the versions.",
+        "description": "Upgrades Docker Engine with the distribution's package manager. Running containers restart with the daemon. With dryRun it only reports the versions. Either way what it found becomes the node's docker (whether a newer version is there) on agents that check by themselves.",
         "tags": [
           "nodes"
         ],
@@ -46964,6 +49516,7 @@
                     "anyOf": [
                       {
                         "maxLength": 80,
+                        "description": "Any value, the detected one unchanged or null, makes it locationSource \"manual\": the panel never fills it in from the address again.",
                         "type": "string"
                       },
                       {
@@ -47086,6 +49639,19 @@
                         },
                         {
                           "type": "null"
+                        }
+                      ]
+                    },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
                         }
                       ]
                     },
@@ -47293,6 +49859,59 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
                     },
                     "usage": {
                       "anyOf": [
@@ -62881,20 +65500,45 @@
                           "type": "string"
                         },
                         {
-                          "const": "seylo-night",
-                          "type": "string"
-                        },
-                        {
                           "const": "classic",
                           "type": "string"
                         },
                         {
                           "const": "midnight",
                           "type": "string"
+                        },
+                        {
+                          "const": "graphite",
+                          "type": "string"
+                        },
+                        {
+                          "const": "clay",
+                          "type": "string"
+                        },
+                        {
+                          "const": "harbor",
+                          "type": "string"
+                        },
+                        {
+                          "const": "orchid",
+                          "type": "string"
+                        },
+                        {
+                          "const": "steel",
+                          "type": "string"
+                        },
+                        {
+                          "const": "marigold",
+                          "type": "string"
+                        },
+                        {
+                          "const": "meadow",
+                          "type": "string"
                         }
                       ]
                     },
                     "colorMode": {
+                      "description": "Which half of the preset shows: \"light\", \"dark\", or \"system\" to follow each viewer's device.",
                       "anyOf": [
                         {
                           "const": "light",
@@ -63027,20 +65671,45 @@
                           "type": "string"
                         },
                         {
-                          "const": "seylo-night",
-                          "type": "string"
-                        },
-                        {
                           "const": "classic",
                           "type": "string"
                         },
                         {
                           "const": "midnight",
                           "type": "string"
+                        },
+                        {
+                          "const": "graphite",
+                          "type": "string"
+                        },
+                        {
+                          "const": "clay",
+                          "type": "string"
+                        },
+                        {
+                          "const": "harbor",
+                          "type": "string"
+                        },
+                        {
+                          "const": "orchid",
+                          "type": "string"
+                        },
+                        {
+                          "const": "steel",
+                          "type": "string"
+                        },
+                        {
+                          "const": "marigold",
+                          "type": "string"
+                        },
+                        {
+                          "const": "meadow",
+                          "type": "string"
                         }
                       ]
                     },
                     "colorMode": {
+                      "description": "Which half of the preset shows: \"light\", \"dark\", or \"system\" to follow each viewer's device.",
                       "anyOf": [
                         {
                           "const": "light",
@@ -64057,7 +66726,7 @@
       "post": {
         "operationId": "settings.updateAppearance",
         "summary": "Update appearance settings",
-        "description": "Changes the theme preset, color mode, accent color or custom CSS. Omitted fields keep their value. Changing customCss needs the owner role (FORBIDDEN otherwise), because CSS can restyle every screen for everyone.",
+        "description": "Changes the theme preset, color mode, accent color or custom CSS. Omitted fields keep their value. Every preset has a light and a dark half and the color mode picks one; the old preset id \"seylo-night\" is taken as \"seylo\". Changing customCss needs the owner role (FORBIDDEN otherwise), because CSS can restyle every screen for everyone.",
         "tags": [
           "settings"
         ],
@@ -64078,13 +66747,10 @@
                 "type": "object",
                 "properties": {
                   "preset": {
+                    "description": "A theme preset. \"seylo-night\" (from before 0.2.5) is taken as \"seylo\".",
                     "anyOf": [
                       {
                         "const": "seylo",
-                        "type": "string"
-                      },
-                      {
-                        "const": "seylo-night",
                         "type": "string"
                       },
                       {
@@ -64094,10 +66760,43 @@
                       {
                         "const": "midnight",
                         "type": "string"
+                      },
+                      {
+                        "const": "graphite",
+                        "type": "string"
+                      },
+                      {
+                        "const": "clay",
+                        "type": "string"
+                      },
+                      {
+                        "const": "harbor",
+                        "type": "string"
+                      },
+                      {
+                        "const": "orchid",
+                        "type": "string"
+                      },
+                      {
+                        "const": "steel",
+                        "type": "string"
+                      },
+                      {
+                        "const": "marigold",
+                        "type": "string"
+                      },
+                      {
+                        "const": "meadow",
+                        "type": "string"
+                      },
+                      {
+                        "const": "seylo-night",
+                        "type": "string"
                       }
                     ]
                   },
                   "colorMode": {
+                    "description": "Which half of the preset shows: \"light\", \"dark\", or \"system\" to follow each viewer's device.",
                     "anyOf": [
                       {
                         "const": "light",
@@ -64155,20 +66854,45 @@
                           "type": "string"
                         },
                         {
-                          "const": "seylo-night",
-                          "type": "string"
-                        },
-                        {
                           "const": "classic",
                           "type": "string"
                         },
                         {
                           "const": "midnight",
                           "type": "string"
+                        },
+                        {
+                          "const": "graphite",
+                          "type": "string"
+                        },
+                        {
+                          "const": "clay",
+                          "type": "string"
+                        },
+                        {
+                          "const": "harbor",
+                          "type": "string"
+                        },
+                        {
+                          "const": "orchid",
+                          "type": "string"
+                        },
+                        {
+                          "const": "steel",
+                          "type": "string"
+                        },
+                        {
+                          "const": "marigold",
+                          "type": "string"
+                        },
+                        {
+                          "const": "meadow",
+                          "type": "string"
                         }
                       ]
                     },
                     "colorMode": {
+                      "description": "Which half of the preset shows: \"light\", \"dark\", or \"system\" to follow each viewer's device.",
                       "anyOf": [
                         {
                           "const": "light",
@@ -65321,6 +68045,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     }
@@ -65533,6 +68262,11 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                          "type": "string"
                         }
                       }
                     }
@@ -74063,6 +76797,11 @@
                     "name": {
                       "type": "string"
                     },
+                    "avatarUrl": {
+                      "maxLength": 200,
+                      "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                      "type": "string"
+                    },
                     "role": {
                       "description": "owner and admin may do everything; members only what their grants allow.",
                       "anyOf": [
@@ -74213,6 +76952,11 @@
                     "name": {
                       "type": "string"
                     },
+                    "avatarUrl": {
+                      "maxLength": 200,
+                      "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                      "type": "string"
+                    },
                     "role": {
                       "description": "owner and admin may do everything; members only what their grants allow.",
                       "anyOf": [
@@ -74360,6 +77104,11 @@
                           "type": "string"
                         },
                         "name": {
+                          "type": "string"
+                        },
+                        "avatarUrl": {
+                          "maxLength": 200,
+                          "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                           "type": "string"
                         },
                         "role": {
@@ -74643,6 +77392,11 @@
                           "name": {
                             "type": "string"
                           },
+                          "avatarUrl": {
+                            "maxLength": 200,
+                            "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
+                            "type": "string"
+                          },
                           "role": {
                             "description": "owner and admin may do everything; members only what their grants allow.",
                             "anyOf": [
@@ -74793,7 +77547,7 @@
       "post": {
         "operationId": "users.update",
         "summary": "Change a person's name or email",
-        "description": "Changes another account's display name or email. CONFLICT when the email is taken.",
+        "description": "Changes an account's display name or email (people change their own email with auth.changeEmail). CONFLICT when the email is taken.",
         "tags": [
           "users"
         ],
@@ -74867,6 +77621,11 @@
                       "type": "string"
                     },
                     "name": {
+                      "type": "string"
+                    },
+                    "avatarUrl": {
+                      "maxLength": 200,
+                      "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                       "type": "string"
                     },
                     "role": {
@@ -75035,6 +77794,11 @@
                       "type": "string"
                     },
                     "name": {
+                      "type": "string"
+                    },
+                    "avatarUrl": {
+                      "maxLength": 200,
+                      "description": "Path of the person's avatar image on the panel (/api/avatars/...); show initials when it fails to load.",
                       "type": "string"
                     },
                     "role": {
