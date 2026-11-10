@@ -1,0 +1,35 @@
+---
+title: What's new in 0.2.5
+description: A chat with the assistant on every page, personal details and avatars, themes in light and dark, faster page changes, Cloudflare origin checks and node locations.
+---
+
+0.2.5 updates a 0.2.4 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.5** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## New
+
+- **Chat with the assistant** from a bubble on every page or the **Assistant** page: your own chats with history, action cards, approval cards that are the same requests as on **Approvals**, and a per-person **Auto** mode. See [Chatting with it](/features/mcp-and-ai#chatting-with-it).
+- **Personal details** in **Settings → Your account**, above Security: your name, your email (changing it asks you to confirm it's you) and your avatar, an uploaded image or a generated face you pick by style. Every account gets a random face.
+- **Preferences** in **Settings → Your account**: hide the sidebar's **Hidden (N)** group, and take Dashboard, Nodes, Templates, Activity, Assistant or Approvals out of your sidebar. Settings always stays, and Approvals comes back while a request waits for you.
+- **Themes in light and dark.** Ten presets (Default, Classic, Midnight, Graphite, Clay, Harbor, Orchid, Steel, Marigold, Meadow), each with a light and a dark version, so **Light**, **Dark** and **System** work with every preset, and System follows your device when it switches. The accent color also sets links, focus rings, the selected sidebar item and button hovers. **Custom CSS** has a short guide and **Insert example**, and **Branding** shows the built-in logo and favicon when none is uploaded.
+- **Dashboard**: a greeting, counts as chips, projects as **Cards** (the default), **List** or **Table**, and a **Live** chip on the Nodes card with smooth 2-second graphs while you watch.
+- **Service usage**: CPU, memory and network each open their last 30 minutes, with a small graph in each cell.
+- **Node location** from the node's IP when it joins, marked **Detected** until saved. See [Node locations](/self-hosting/telemetry#node-locations).
+- **Docker version check**: nodes look for a newer Docker Engine once a day; the node's Machine card shows the version in amber with a "?" when there is one, and **Update Docker** is off when there is nothing newer.
+- **MCP install links** for popular AI tools. See [Connecting](/features/mcp-and-ai#connecting).
+- **Domains behind Cloudflare's proxy**: each row names the IP to point at, and an origin check tells whether Cloudflare reaches the node. See [Behind Cloudflare's proxy](/guides/domains-and-https#behind-cloudflares-proxy).
+- **Templates** show the apps' real logos.
+
+## Changed
+
+- **Faster page changes.** Pages start loading their data when you hover or focus a link, the service screens no longer wait for the service before asking for their own data, live updates refetch only the project, service or node they are about, a running build no longer refreshes the open screens every second, and a page change no longer redraws the sidebar.
+- **Scheduled Docker cleanup is on by default**: daily at 04:00 node time and when a disk passes 80%. **Settings → Docker cleanup** shows the last cleanup. See [Docker cleanup](/guides/docker-cleanup).
+- **Regenerate certificate** refuses while the origin check finds that something else answers for the domain.
+- The **Game servers first** column on Nodes shows only when a node runs next to Wings.
+- Opening a new panel without its setup link tells you to run `seylo panel setup-link` on the server.
+
+## After the update
+
+- Nodes whose cleanup schedule was never saved get scheduled cleanup turned on.
+- Nodes with an empty Location get one looked up once.
+- People who may use the assistant see its chat bubble.
+- Panels that used the Classic or Midnight preset keep the look they had.

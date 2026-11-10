@@ -38,3 +38,10 @@ That is all: no hostnames, domains, IP addresses, emails, project or service nam
 With telemetry on, the panel sends the report every 24 hours, at a time spread over the day so panels don't all report at once. It goes to `https://api.seylo.dev/telemetry`. The receiving end keeps one row per install per day and drops any other field, so even the exact send times are not stored. It also caps how many new installs it counts per day, per address and in total, so made-up install ids can't fill its database; a panel turned away by that cap is counted with its next report.
 
 Turning telemetry off stops the reports at once, and with it off at setup none is ever sent.
+
+## Node locations
+
+New in 0.2.5: when a node joins with an empty **Location**, the panel asks Seylo's site API once for the city and country of the node's public IP address (Geolocation by DB-IP), and fills in the field marked **Detected** until someone saves it. Only the IP address is sent; private and reserved addresses never are. The site API does not log or keep the address.
+
+It is not done after the installer's `--no-telemetry`, nor while `SEYLO_TELEMETRY=off` or `DO_NOT_TRACK=1` is set on the panel's container. A location you typed or saved is never replaced.
+

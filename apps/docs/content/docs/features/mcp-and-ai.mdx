@@ -45,6 +45,8 @@ claude mcp add --transport http seylo https://panel.example.com/mcp
 
 ### Connecting
 
+New in 0.2.5: **Settings → API keys and MCP** has one-click install links for popular AI tools, with the command or config each one needs. **Ask before destructive actions** and read-only for new tokens are on by default; both can be switched off there if you want your agents to act on their own.
+
 - **OAuth** (recommended): add the URL in a client that supports MCP's OAuth sign-in. The client registers itself, opens the panel in your browser, and you choose what it may do: **Read only** (the default) or **Read and change**. New in 0.2: the page always starts on **Read only**, even when the client asks to change things, and an **Allow** without a choice gives read only, so a client gets write access only when you pick it. The page says what the client asked for. Anyone can register a client under any name, so the page is titled with the host your answer goes back to ("Connect an app at `<host>`?") and marks the name the client gave itself as **name not verified**. Allow it only if you just started the connection from an app at that host. If you signed in more than 15 minutes ago, the panel asks you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) before it shows that page. Its access tokens last 24 hours and refresh by themselves; the connection lasts up to 90 days. **Connected tools** lists every client; revoking one ends all of its tokens.
 - **Token**: **Create token** under **MCP tokens** makes a token for clients that take a bearer token. Pick its projects, actions and expiry; it is read-only unless you turn that off. Send it as `Authorization: Bearer <token>`.
 
@@ -80,6 +82,17 @@ The panel also has a built-in assistant that uses the same tools, on your own An
 **Usage** shows the spend so far, the projected bill for the month, and usage per day, model and person.
 
 The assistant acts with the permissions of the person talking to it. It reads on its own, but every change it wants to make, not only deletions, waits in **Approvals** until a person approves it. Secrets are left out of what it sees.
+
+New in 0.2.5: **Settings → AI assistant** walks through getting an Anthropic API key, with links to the right pages.
+
+### Chatting with it
+
+New in 0.2.5: once the assistant is on (and has a key), a chat bubble shows at the bottom right of every page, and the sidebar has an **Assistant** page (**Assistant page** in Settings → AI assistant, on by default; anyone can also hide it from their own sidebar in **Settings → Preferences**).
+
+- Each person has their own chats, with history: start a **New chat**, rename, delete or search them. The bubble and the page show the same chats, and a new chat offers questions about the page you opened it on.
+- What the assistant does shows as an action card: what it ran, on what, and the result.
+- A change that needs a person shows as an approval card with **Approve** and **Reject**. It is the same request as on **Approvals**, so deciding in either place decides both, and the reply continues once it is decided. **Approvals** now shows where each request came from: **Assistant** and the chat, or **MCP** and the token.
+- **Auto** (in the chat's header) runs the assistant's changes without asking, with your permissions, deletions included. It is one setting per person, kept across chats and devices, and off until you turn it on. The composer says when it is on.
 
 ## The activity log
 

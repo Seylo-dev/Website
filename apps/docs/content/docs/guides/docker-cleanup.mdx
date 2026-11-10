@@ -32,7 +32,7 @@ On **Nodes**, open a node and its **Cleanup** view. **Scheduled cleanup** sets w
 
 | Setting | What it does |
 | --- | --- |
-| **Clean up on its own** | Off until you turn it on |
+| **Clean up on its own** | On by default from 0.2.5: every day at 04:00 node time and when a disk passes 80%. A node whose schedule was saved before keeps what was saved. |
 | **On a schedule** | A five-field **Cron expression** (minute, hour, day, month, weekday) in the node's own time zone, which the view names. It starts at `0 4 * * *`: every day at 04:00. **Next run** shows when it fires next. |
 | **When a disk is fuller than** | A percentage between 50 and 99, 80 to start with. The disk that holds the node's data (`/var/lib/seylo`) and Docker's disk are checked every 10 minutes; when the fuller one passes the line, the node cleans up. |
 | **What to remove** | **Old images** (past the newest 3 per service; the ones in use always stay), **Build cache** (what this panel's builders cached), **Stopped containers** (finished jobs, old generations, removed services) and **Unused volumes** |
@@ -53,6 +53,9 @@ Turn on either trigger or both, then **Save schedule**.
 Saving a schedule needs permission to manage nodes (owners and admins). AI tools need a person's approval to change it, since a schedule deletes things.
 
 ### Recent cleanups
+
+New in 0.2.5: **Settings → Docker cleanup** shows each node's last cleanup, with what started it and when.
+
 
 Below the schedule, **Recent cleanups** lists the node's cleanups, newest first: scheduled ones (**Schedule**), disk-triggered ones (**Disk 87%**, with the disk's use when it started) and the ones run by hand from **Settings → Docker cleanup** (**Manual** and who ran it). Each shows whether it was **Done** or **Failed**, the space it freed and how many items it removed; **What it removed** lists them (up to 200 lines). The header adds up what the kept runs freed in the last 30 days. The panel keeps the newest 100 runs per node.
 

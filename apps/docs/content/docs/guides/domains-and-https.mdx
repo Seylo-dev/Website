@@ -28,7 +28,19 @@ The panel checks the record through public resolvers and shows one of:
 | DNS ok | The domain points at the node |
 | Waiting for DNS | No record yet |
 | DNS points elsewhere | The record points at another address |
-| Behind Cloudflare proxy | Proxied by Cloudflare, so the panel cannot see the origin. It works once Cloudflare reaches the node. |
+| Behind Cloudflare proxy | Proxied by Cloudflare, so DNS shows Cloudflare's addresses. The origin check below tells whether Cloudflare reaches the node. |
+
+New in 0.2.5: each row names the IP its record should point at, next to the status.
+
+### Behind Cloudflare's proxy
+
+New in 0.2.5: for a proxied domain the panel also runs an **origin check**. It asks `http://<domain>/.well-known/seylo-origin/<random>` and the node's agent answers with a signature only that node can make, so the panel knows whether the record in Cloudflare reaches this service's node, not just Cloudflare. The check runs a few seconds after you add the domain, on **Check DNS** and before **Regenerate certificate**.
+
+- **Reaches the node**: the record in Cloudflare is right; the certificate follows.
+- **Points elsewhere**: something else answered (an old server, another host). Fix the record in Cloudflare to point at the IP the row shows. Until then **Regenerate certificate** refuses, since Let's Encrypt reaches the domain the same way and would fail.
+- No answer (Cloudflare's 52x, a timeout, an agent older than 0.2.5): the panel cannot tell, and says nothing either way.
+
+A certificate that stays on **Generating** behind the proxy says why under the row: usually the record does not reach the node yet, or **Always Use HTTPS** is on (see below). The check only connects to public addresses or this panel's own nodes, never to a private network a domain may resolve to.
 
 As soon as the domain reaches the node, Traefik requests a certificate and the route goes live. A certificate that cannot be issued shows **Certificate failed** with the reason from Let's Encrypt, and raises an alert.
 
