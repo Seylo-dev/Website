@@ -1,0 +1,18 @@
+---
+title: What's new in 0.2.7
+description: The panel as an installable app, with push notifications to each person's own phone and computer.
+---
+
+0.2.7 updates a 0.2.6 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.7** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## New
+
+- **The app and push notifications.** An owner or admin turns them on in **Settings → Notifications**, from the panel's domain over HTTPS (the switch says why it is disabled anywhere else: no domain, the domain not active yet, the page open on IP:port or the tailnet). Then everyone can install the panel as an app on their phone or computer, and pick in **Settings → Push notifications** which alerts reach which of their devices: crashes, failed deploys and builds, nodes going offline and coming back, uptime checks, backups, updates, approvals and their own security changes. People only get alerts for what they can see in the panel. See [The app and push notifications](/features/notifications#the-app-and-push-notifications).
+
+## Fixed
+
+- The port gate on a node could log "cannot reach the service" twice when two connections failed at the same moment. It logs it once.
+
+## After the update
+
+- The app and push notifications are off until an owner or admin turns them on.

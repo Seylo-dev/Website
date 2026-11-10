@@ -1,6 +1,6 @@
 ---
 title: Alerts and notifications
-description: Notification channels defined once, the events that raise alerts, default and per-service rules, and mutes.
+description: Notification channels defined once, the events that raise alerts, default and per-service rules, mutes, and the installable app with push notifications to people's own devices.
 ---
 
 Things that need attention raise an **alert**: a crash, a failed deploy, a node going offline. Every alert is recorded in the panel's alert feed (the dashboard and each service's **Alerts** tab show the recent ones). Rules decide which alerts also go to a **channel**.
@@ -85,3 +85,34 @@ The feed keeps an alert for 180 days after it was resolved. New in 0.2: alerts n
 ## Mutes
 
 A mute stops notifications for everything, a project, a service or a node, optionally for one event only and until a time. Muted alerts are still recorded in the feed, marked muted. Mutes are set through the API (`alerts.mute`, see the [API reference](/api-reference)) or by an AI assistant you allow to.
+
+## The app and push notifications
+
+New in 0.2.7. The panel can be installed as an app on a phone or computer, and each person can get push notifications from it on their own devices, without a channel or another app in between.
+
+### Turning it on
+
+An owner or admin turns it on in **Settings → Notifications → App and push notifications**. The card says what it is for, and the switch stays disabled, with the reason under it, until all of these hold:
+
+- The panel has a domain in **Settings → General**, and that domain is **Active** (it serves the panel over HTTPS with a trusted certificate).
+- The page is open on that domain, `https://<your domain>`. On the panel's IP:port or its tailnet address the switch says to open the domain, with a link. Browsers only install apps and allow notifications on a secure address, and an installed app stays tied to the address it was installed from, so those addresses are not offered, a tailnet with HTTPS included.
+- It is a browser signed in to the panel: not an API key, an MCP token or the assistant.
+
+Turning it off works from anywhere and removes everyone's devices; with devices in use the panel asks first. While it is on, pushes pause by themselves when the domain stops working (two failed domain checks in a row) and start again when it works. A new domain removes the old one's devices, since their app and service worker live on the old address.
+
+### Your devices and alerts
+
+Each person sets their own in **Settings → Push notifications** (under Your account):
+
+- **This device**: **Turn on** asks the browser for permission and adds this browser to your devices; **Turn off** removes it. **Send a test** sends a test push to each of your devices and says which ones took it. On iPhone and iPad, push works in the installed app only (iOS 16.4 or later): tap **Share**, then **Add to Home Screen**, open the panel from the Home Screen and turn push on there.
+- **Install the app**: **Install** where the browser offers it (Chrome, Edge), otherwise the browser's menu (**Install app** or **Add to Home screen**). The app opens in its own window with the panel's name, colors and icon: an uploaded square PNG favicon of 192 pixels or more, or an SVG one, is used instead of the built-in icon.
+- **Your devices**: every device that gets your pushes, with when it was added and last got one. Signing out on a device, or revoking its session in **Security**, removes it; so does a push service saying it is gone, or 5 failed sends in a row.
+- **What reaches your devices**: a switch per event. Problems are on to start with; **Deploy succeeded**, **Cron job failed** and the cleanup events are off. **Node back online** is offered here as well.
+
+You only get alerts for what you can see in the panel, checked when each alert is sent: a member gets their services' events, approvals they may decide and changes to their own sign-in methods and keys; owners and admins can also get node, update and panel access alerts. [Mutes](#mutes) silence pushes too. A tap on a notification opens the alert's page, in the app if it is open. A device gets at most 30 pushes in 10 minutes; the rest are in the alert feed.
+
+### Privacy
+
+Pushes go through the push service of the browser's maker: Google (Chrome, Edge on Android, most Android browsers), Mozilla (Firefox), Apple (Safari) or Microsoft (Edge on Windows). Each one is encrypted for its device ([RFC 8291](https://www.rfc-editor.org/rfc/rfc8291)), so the push service sees only when and how much, not what. The panel identifies itself with its own key and its domain, never a person's address, and posts only to those services' hosts: a device whose browser uses another push service cannot be added. The panel needs to reach them over HTTPS (outbound port 443).
+
+Device addresses and keys are sealed with the master key. Rotating the master key with `--new-panel-identity` (a leaked `panel.db`) removes every device and the panel's push key, so a copy of the database cannot send notifications to anyone's phone; people turn push on again on each device.
