@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { type Config, loadConfig } from "./config";
 import { type Database, openDatabase } from "./db";
+import { createGeoSource } from "./geo/source";
 import { createInstallerSource } from "./installer/source";
 import { MAX_REPORT_BYTES } from "./reports/routes";
 
@@ -23,7 +24,8 @@ try {
 }
 
 const installer = createInstallerSource(config.installer);
-const { app, reports } = createApp({ config, sql: db.sql, installer });
+const geo = createGeoSource(config.geo);
+const { app, reports } = createApp({ config, sql: db.sql, installer, geo });
 
 app.listen({
   port: config.port,
@@ -48,6 +50,13 @@ const installerCheckSeconds = Number.isFinite(config.installer.cacheSeconds)
 const installerTimer = setInterval(checkInstaller, installerCheckSeconds * 1000);
 checkInstaller();
 
+// The geolocation database: loaded at boot (the Docker image carries one), and with GEO_AUTO_UPDATE
+// the next month's DB-IP file is downloaded once it is out. Until a database loads, /geo answers 503.
+const GEO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const refreshGeo = () => void geo.refresh();
+const geoTimer = setInterval(refreshGeo, GEO_CHECK_INTERVAL_MS);
+refreshGeo();
+
 console.log(`site api listening on http://localhost:${config.port}, data in ${db.location}`);
 
 const SHUTDOWN_GRACE_MS = 4000;
@@ -60,6 +69,7 @@ async function shutdown(signal: string) {
   console.log(`${signal}: shutting down`);
   clearInterval(purgeTimer);
   clearInterval(installerTimer);
+  clearInterval(geoTimer);
   await Promise.race([app.stop(), Bun.sleep(SHUTDOWN_GRACE_MS)]);
   await db.close().catch((error) => console.error("closing the database failed:", error));
   process.exit(0);

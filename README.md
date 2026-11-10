@@ -4,12 +4,12 @@ The repo behind [seylo.dev](https://seylo.dev): the landing page, the docs and t
 workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and the templates) lives in
 [Seylo-dev/App](https://github.com/Seylo-dev/App).
 
-| Folder                               | Stack                 | Serves                                                      |
-| ------------------------------------ | --------------------- | ----------------------------------------------------------- |
-| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4   | `seylo.dev`; redirects `seylo.dev/l/*` (reports) to the API |
-| [`apps/docs`](apps/docs)             | Next 16, Fumadocs     | `docs.seylo.dev`, with the API and CLI references           |
-| [`apps/api`](apps/api)               | Bun, Elysia, Postgres | `api.seylo.dev` (telemetry, reports), `install.seylo.dev`   |
-| [`tools/hero-shot`](tools/hero-shot) | Playwright            | The landing's hero image, captured from a running panel     |
+| Folder                               | Stack                 | Serves                                                         |
+| ------------------------------------ | --------------------- | -------------------------------------------------------------- |
+| [`apps/landing`](apps/landing)       | Next 16, Tailwind 4   | `seylo.dev`; redirects `seylo.dev/l/*` (reports) to the API    |
+| [`apps/docs`](apps/docs)             | Next 16, Fumadocs     | `docs.seylo.dev`, with the API and CLI references              |
+| [`apps/api`](apps/api)               | Bun, Elysia, Postgres | `api.seylo.dev` (telemetry, reports, geo), `install.seylo.dev` |
+| [`tools/hero-shot`](tools/hero-shot) | Playwright            | The landing's hero image, captured from a running panel        |
 
 Names, domains and the GitHub repos come from [`brand/brand.json`](brand/brand.json).
 
@@ -61,6 +61,9 @@ are not copied to Postgres. Export them first if they matter, then remove the vo
 Nothing else is needed. Optional:
 
 - `STATS_TOKEN` on the api: enables `GET /telemetry/summary` (see `apps/api/.env.example` for the rest).
+- A volume on the api at `/app/apps/api/data/geo`: keeps the geolocation database `GET /geo` reads across
+  deploys. Without it every new image downloads it again at build time (about 60 MB from DB-IP), and the api
+  fetches each new month's file by itself either way (`apps/api/README.md`, Geolocation).
 - `NEXT_PUBLIC_SITE_URL` on the docs, only if the domains change. It is baked in at build time (Easypanel passes
   env to the build), so redeploy after changing it.
 

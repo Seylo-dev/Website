@@ -119,6 +119,7 @@ describe("database errors", () => {
       config: { trustProxy: true, statsToken: "s", reportBaseUrl: REPORT_BASE_URL, budgets: DEFAULT_DAILY_BUDGETS },
       sql: failing,
       installer: { get: async () => null, health: () => ({ state: "pending", serving: null, lastCheck: null }) },
+      geo: { lookup: () => null, health: () => ({ state: "missing", database: null, lastUpdate: null }) },
     }).app;
     const logged = spyOn(console, "error").mockImplementation(() => {});
     try {

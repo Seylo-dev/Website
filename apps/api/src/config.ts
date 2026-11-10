@@ -19,6 +19,21 @@ export interface InstallerConfig {
   localPath: string | null;
 }
 
+export interface GeoConfig {
+  /**
+   * The DB-IP City Lite database GET /geo reads (MaxMind format, .mmdb). The updater writes
+   * `<dbPath>.json` next to it with the month of the file.
+   */
+  dbPath: string;
+  /**
+   * Download the newest month's file at boot and every 6 hours while the loaded one is older
+   * (GEO_AUTO_UPDATE, on in production). Off, the file is only read: `bun run geo:update` fetches it.
+   */
+  autoUpdate: boolean;
+  /** DB-IP's free download, `{month}` standing for "2026-11". Not a setting. */
+  downloadUrl: string;
+}
+
 export interface Config {
   port: number;
   production: boolean;
@@ -39,6 +54,7 @@ export interface Config {
   /** What the site takes in per UTC day from everyone together: REPORT_MIB_PER_DAY, TELEMETRY_INSTALLS_PER_DAY. */
   budgets: DailyBudgets;
   installer: InstallerConfig;
+  geo: GeoConfig;
 }
 
 const MIB = 1024 * 1024;
@@ -49,6 +65,14 @@ function wholeNumber(env: Record<string, string | undefined>, name: string, fall
   if (!value) return fallback;
   if (!/^\d{1,9}$/.test(value)) throw new Error(`${name} must be a whole number, not "${value}".`);
   return Number(value);
+}
+
+/** "true" or "false" from the environment, or `fallback` when unset. */
+function flag(env: Record<string, string | undefined>, name: string, fallback: boolean): boolean {
+  const value = env[name]?.trim();
+  if (!value) return fallback;
+  if (value !== "true" && value !== "false") throw new Error(`${name} must be true or false, not "${value}".`);
+  return value === "true";
 }
 
 const apiRoot = resolve(import.meta.dir, "..");
@@ -81,6 +105,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       publicKey: brand.minisignPublicKey,
       cacheSeconds: Number(env.INSTALLER_CACHE_SECONDS ?? 300),
       localPath: env.INSTALL_SCRIPT_PATH ?? (production ? null : devInstallerPath),
+    },
+    geo: {
+      dbPath: resolve(env.GEO_DB_PATH?.trim() || resolve(apiRoot, "data/geo/dbip-city-lite.mmdb")),
+      autoUpdate: flag(env, "GEO_AUTO_UPDATE", production),
+      downloadUrl: "https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz",
     },
   };
 }

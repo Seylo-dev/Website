@@ -6,12 +6,14 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "geo:update": "bun src/geo/update.ts"
   },
   "dependencies": {
     "elysia": "1.4.31",
     "elysia-rate-limit": "4.6.3",
-    "markdown-it": "15.0.3"
+    "markdown-it": "15.0.3",
+    "mmdb-lib": "3.0.3"
   },
   "devDependencies": {
     "@types/bun": "1.4.4",

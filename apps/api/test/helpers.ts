@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createApp } from "../src/app";
 import { DEFAULT_DAILY_BUDGETS, type DailyBudgets } from "../src/daily-limits";
 import { type Database, type DatabaseOptions, openDatabase } from "../src/db";
+import type { GeoSource } from "../src/geo/source";
 import type { InstallerSource } from "../src/installer/source";
 
 export const REPORT_BASE_URL = "https://site.test/l";
@@ -12,6 +13,11 @@ export const REPORT_BASE_URL = "https://site.test/l";
 const noInstaller: InstallerSource = {
   get: async () => null,
   health: () => ({ state: "pending", serving: null, lastCheck: null }),
+};
+
+const noGeo: GeoSource = {
+  lookup: () => null,
+  health: () => ({ state: "missing", database: null, lastUpdate: null }),
 };
 
 /**
@@ -77,6 +83,7 @@ export async function testApp(
   options: {
     statsToken?: string;
     installer?: InstallerSource;
+    geo?: GeoSource;
     backend?: TestBackend;
     trustProxy?: boolean;
     budgets?: Partial<DailyBudgets>;
@@ -93,6 +100,7 @@ export async function testApp(
     },
     sql: db.sql,
     installer: options.installer ?? noInstaller,
+    geo: options.geo ?? noGeo,
     newInstallsPerDayPerIp: options.newInstallsPerDayPerIp,
   });
   return { ...app, db };

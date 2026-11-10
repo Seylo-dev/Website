@@ -2,6 +2,8 @@ import type { SQL } from "bun";
 import { Elysia } from "elysia";
 import type { Config } from "./config";
 import { createDailyBudget } from "./daily-limits";
+import { geoRoutes } from "./geo/routes";
+import type { GeoSource } from "./geo/source";
 import { installerRoutes } from "./installer/routes";
 import type { InstallerSource } from "./installer/source";
 import { reportRoutes } from "./reports/routes";
@@ -13,6 +15,8 @@ export interface AppDeps {
   config: Pick<Config, "trustProxy" | "statsToken" | "reportBaseUrl" | "budgets">;
   sql: SQL;
   installer: InstallerSource;
+  /** The geolocation database GET /geo reads. */
+  geo: GeoSource;
   /** New installs one address may start a telemetry row for per day. Tests lower it. */
   newInstallsPerDayPerIp?: number;
 }
@@ -21,7 +25,7 @@ export interface AppDeps {
 const REQUEST_ERRORS = new Set(["VALIDATION", "NOT_FOUND", "PARSE", "INVALID_COOKIE_SIGNATURE", "INVALID_FILE_TYPE"]);
 
 /** The whole API without a listening server, so tests can drive it with `app.handle()`. */
-export function createApp({ config, sql, installer, newInstallsPerDayPerIp }: AppDeps) {
+export function createApp({ config, sql, installer, geo, newInstallsPerDayPerIp }: AppDeps) {
   const reports = createReportStore(sql);
   // Shared by both routes: one table, one row per kind per day.
   const budget = createDailyBudget(sql, config.budgets);
@@ -42,11 +46,15 @@ export function createApp({ config, sql, installer, newInstallsPerDayPerIp }: Ap
     })
     // 200 while there is a verified installer to serve (or none was checked yet), even when the
     // latest check failed: `installer.state` says "stale" then. 503 only when /install.sh can't
-    // serve anything.
+    // serve anything. `geo` reports the geolocation database without changing either.
     .get("/healthz", ({ set }) => {
       const health = installer.health();
       if (health.state === "failing") set.status = 503;
-      return { status: health.state === "ok" || health.state === "pending" ? "ok" : "degraded", installer: health };
+      return {
+        status: health.state === "ok" || health.state === "pending" ? "ok" : "degraded",
+        installer: health,
+        geo: geo.health(),
+      };
     })
     .use(
       telemetryRoutes({
@@ -67,6 +75,7 @@ export function createApp({ config, sql, installer, newInstallsPerDayPerIp }: Ap
         getServer,
       }),
     )
+    .use(geoRoutes({ geo, trustProxy: config.trustProxy, getServer }))
     .use(installerRoutes(installer));
 
   return { app, reports };

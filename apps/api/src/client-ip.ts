@@ -32,7 +32,7 @@ export const CLOUDFLARE_RANGES = [
 ] as const;
 
 /** An address as bytes: 4 for IPv4, 16 for IPv6. */
-type Address = number[];
+export type Address = number[];
 
 function parseIpv4(text: string): Address | null {
   const parts = text.split(".");
@@ -92,7 +92,8 @@ export function parseIp(text: string): Address | null {
   return bytes;
 }
 
-function parseRange(cidr: string): { network: Address; bits: number } {
+/** "10.0.0.0/8" or "2001:db8::/32" as a network and its prefix length; throws on a malformed range. */
+export function parseRange(cidr: string): { network: Address; bits: number } {
   const [address, bits] = cidr.split("/");
   const network = parseIp(address ?? "");
   if (!network) throw new Error(`bad range ${cidr}`);
@@ -101,7 +102,8 @@ function parseRange(cidr: string): { network: Address; bits: number } {
 
 const cloudflare = CLOUDFLARE_RANGES.map(parseRange);
 
-function inRange(address: Address, { network, bits }: { network: Address; bits: number }): boolean {
+/** Whether `address` is in the range; an IPv4 address is never in an IPv6 range, or the other way round. */
+export function inRange(address: Address, { network, bits }: { network: Address; bits: number }): boolean {
   if (address.length !== network.length) return false;
   const whole = Math.floor(bits / 8);
   for (let i = 0; i < whole; i++) if (address[i] !== network[i]) return false;

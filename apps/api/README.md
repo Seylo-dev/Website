@@ -1,6 +1,6 @@
 # Site API (`apps/api`)
 
-Bun + Elysia, with Postgres in production and a SQLite file in dev. Three jobs, all public and
+Bun + Elysia, with Postgres in production and a SQLite file in dev. Four jobs, all public and
 unauthenticated:
 
 | Route | What |
@@ -10,8 +10,9 @@ unauthenticated:
 | `POST /l` | Upload a troubleshoot report (Markdown body, max 512 KB, 20 uploads per hour per IP, IPv6 per /64). Refused with 422 if it still contains something that looks like a secret. Returns `{ id, url, expiresAt, deleteToken }`. |
 | `GET /l/:id` | The report as a locked-down HTML page (no scripts, no remote images, `noindex`). `GET /l/:id/raw` returns the Markdown. |
 | `DELETE /l/:id` | Deletes a report early with `Authorization: Bearer <deleteToken>`. |
+| `GET /geo?ip=<address>` | Where a public IPv4 or IPv6 address is: `{ city, region, country, countryCode, attribution }`, each `null` when unknown, `attribution` always `"Geolocation by DB-IP (https://db-ip.com)"`. The panel asks once per node to fill in its Location. 400 `{ error: "invalid_ip" \| "not_public" }` for anything but one public address, 503 `{ error: "unavailable" }` with `Retry-After` while no database is loaded. 120 lookups per hour per IP (IPv6: per /64). Answered with `Cache-Control: no-store`; the address is never logged or stored. |
 | `GET /install.sh` | The installer from the latest GitHub release, served only after it matches the release's signed manifest, cached for 5 minutes. On the `install.` host it is also served at `/`, which is what `curl -fsSL https://install.seylo.dev \| sudo sh` hits. `X-Installer-Version` and `X-Installer-Sha256` name the release and the hash. |
-| `GET /healthz` | JSON: `status` (`ok` or `degraded`) and `installer` (what is served and how the last release check went). 200 unless there is no verified installer to serve, then 503. |
+| `GET /healthz` | JSON: `status` (`ok` or `degraded`), `installer` (what is served and how the last release check went) and `geo` (the geolocation database: `ok`, `stale` when the last update failed, `missing`). 200 unless there is no verified installer to serve, then 503; `geo` changes neither. |
 
 Reports expire 30 days after upload: reads hide them right away and an hourly sweep deletes them.
 
@@ -42,6 +43,7 @@ drops the requests before they reach this process.
 bun run dev      # from this folder, or `bun run dev:api` from the repo root
 bun test
 bun run start    # what the Docker image runs: src/index.ts, no build step
+bun run geo:update  # downloads the geolocation database (about 60 MB) for /geo in dev
 ```
 
 Settings are environment variables, see `.env.example`. All are optional in dev; production needs
@@ -72,6 +74,34 @@ point `SITE_API_PG_URL` at a server where the tests may create and drop throwawa
 docker run -d --name site-api-pg -e POSTGRES_PASSWORD=test -p 127.0.0.1:55432:5432 postgres:17-alpine
 SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
 ```
+
+## Geolocation
+
+`GET /geo` reads DB-IP's [IP to City Lite](https://db-ip.com/db/download/ip-to-city-lite) database, a
+MaxMind-format `.mmdb` DB-IP publishes at the start of every month under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The license asks for attribution: every answer
+carries `"attribution": "Geolocation by DB-IP (https://db-ip.com)"`, and a page that shows a result (the
+panel's node Location, the docs) says "Geolocation by DB-IP" with a link to https://db-ip.com.
+
+- The file lives at `GEO_DB_PATH` (default `apps/api/data/geo/dbip-city-lite.mmdb`), with
+  `dbip-city-lite.mmdb.json` next to it saying which month it is.
+- `src/geo/update.ts` (`bun run geo:update`) downloads
+  `https://download.db-ip.com/free/dbip-city-lite-<YYYY-MM>.mmdb.gz` for this month, or last month's while
+  this month's is not out, unpacks it next to the old one, checks that it opens as an IPv6 city database,
+  and only then renames it into place. A download that fails or doesn't check out leaves the old file as
+  it was. A file that is already the newest is not downloaded again.
+- The Docker image runs it at build time, so a new container answers from its first request. A failed
+  download there doesn't fail the build: the API tries again at start.
+- With `GEO_AUTO_UPDATE=true` (the default in production) the API checks at boot and every 6 hours whether
+  the loaded file is this month's, and downloads the new one when it is out. The new file is loaded
+  without a restart; until one loads, `/geo` answers 503. In dev it is off: run `bun run geo:update` once.
+- The database is read memory-mapped from a private copy, so it stays out of the heap (it is over
+  100 MB) and replacing the file under a running API is safe.
+- Without a volume the file is downloaded again with every new image. To keep it across deploys, mount a
+  volume at `/app/apps/api/data/geo`.
+
+The address asked about is looked up and forgotten: it is not logged and not stored, and the answer is
+sent with `Cache-Control: no-store`. The rate limit counts the caller in memory like on every other route.
 
 ## Where it sits
 
@@ -107,7 +137,10 @@ SITE_API_PG_URL=postgres://postgres:test@127.0.0.1:55432/postgres bun test
 - `src/app.ts` builds the Elysia app (tests drive it with `app.handle()`); `src/index.ts` opens the
   database, listens, runs the hourly report sweep and shuts down cleanly on SIGTERM.
 - `src/db.ts`: the connection (Postgres or SQLite), the pool and the tables.
-- `src/telemetry/`, `src/reports/`, `src/installer/`: one folder per job, each with its routes and store.
+- `src/telemetry/`, `src/reports/`, `src/installer/`, `src/geo/`: one folder per job, each with its routes
+  and store (for geo: `database.ts` reads the file, `update.ts` downloads it, `source.ts` keeps it loaded,
+  `address.ts` refuses private and reserved addresses). The tests build a small `.mmdb` of their own
+  (`test/mmdb.ts`) and never download DB-IP's.
 - `src/reports/redaction.ts`: the secret patterns a report is checked against. The agent redacts
   before upload; this is the second line of defence. Add a rule here with a test in
   `test/redaction.test.ts` when a new kind of credential shows up in reports.
