@@ -37096,6 +37096,102 @@
         "x-mcp": false
       }
     },
+    "/api/v1/github.detectBuilder": {
+      "get": {
+        "operationId": "github.detectBuilder",
+        "summary": "Suggest how to build a repository",
+        "description": "Says whether a repository has a Dockerfile at its root on a branch, read through the App (installationId) or the connected GitHub account (accountId), so a new app can start with the Dockerfile builder. Best effort: dockerfile is false when GitHub does not answer.",
+        "tags": [
+          "github"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9]{16}$",
+              "description": "Panel-issued id.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "installationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z0-9]{16}$",
+              "description": "Panel-issued id.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z0-9]{16}$",
+              "description": "Panel-issued id.",
+              "type": "string"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "branch",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 255,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "dockerfile"
+                  ],
+                  "properties": {
+                    "dockerfile": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "project:services.create",
+        "x-mcp": true
+      }
+    },
     "/api/v1/github.deviceDisconnect": {
       "post": {
         "operationId": "github.deviceDisconnect",
@@ -53637,6 +53733,7 @@
                     "networkName",
                     "collapsed",
                     "position",
+                    "imageUrl",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -53683,6 +53780,17 @@
                         {
                           "minimum": 0,
                           "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageUrl": {
+                      "anyOf": [
+                        {
+                          "maxLength": 200,
+                          "type": "string"
                         },
                         {
                           "type": "null"
@@ -53821,6 +53929,7 @@
                     "networkName",
                     "collapsed",
                     "position",
+                    "imageUrl",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -53867,6 +53976,17 @@
                         {
                           "minimum": 0,
                           "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageUrl": {
+                      "anyOf": [
+                        {
+                          "maxLength": 200,
+                          "type": "string"
                         },
                         {
                           "type": "null"
@@ -53939,6 +54059,7 @@
                           "networkName",
                           "collapsed",
                           "position",
+                          "imageUrl",
                           "createdAt",
                           "updatedAt"
                         ],
@@ -53991,6 +54112,17 @@
                               }
                             ]
                           },
+                          "imageUrl": {
+                            "anyOf": [
+                              {
+                                "maxLength": 200,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "format": "date-time",
                             "type": "string"
@@ -54014,6 +54146,147 @@
         "x-op-kind": "query",
         "x-permission": "signed-in",
         "x-mcp": true
+      }
+    },
+    "/api/v1/projects.removeImage": {
+      "post": {
+        "operationId": "projects.removeImage",
+        "summary": "Remove a project's image",
+        "description": "Deletes the project's uploaded image, so its initial shows again.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "projectId"
+                ],
+                "properties": {
+                  "projectId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "protected",
+                    "serviceCount",
+                    "nodeCount",
+                    "guestCount",
+                    "networkName",
+                    "collapsed",
+                    "position",
+                    "imageUrl",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "minLength": 1,
+                      "maxLength": 40,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]*$",
+                      "description": "Shown in the sidebar; unique, case-insensitive.",
+                      "type": "string"
+                    },
+                    "description": {
+                      "maxLength": 500,
+                      "type": "string"
+                    },
+                    "protected": {
+                      "type": "boolean"
+                    },
+                    "serviceCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nodeCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "guestCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "networkName": {
+                      "type": "string"
+                    },
+                    "collapsed": {
+                      "type": "boolean"
+                    },
+                    "position": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageUrl": {
+                      "anyOf": [
+                        {
+                          "maxLength": 200,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "project:projects.update",
+        "x-mcp": false
       }
     },
     "/api/v1/projects.reorder": {
@@ -54166,6 +54439,154 @@
         "x-mcp": false
       }
     },
+    "/api/v1/projects.setImage": {
+      "post": {
+        "operationId": "projects.setImage",
+        "summary": "Set a project's image",
+        "description": "Shows an image instead of the project's initial, for everyone who sees the project. The file travels as a base64 data URL: PNG, JPEG or WebP, at most 1 MiB (the web app crops it to a square of 256 pixels first). SVG is refused. A new image replaces the old one.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "projectId",
+                  "dataUrl"
+                ],
+                "properties": {
+                  "projectId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "dataUrl": {
+                    "maxLength": 1398166,
+                    "pattern": "^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$",
+                    "errorMessage": "must be a PNG, JPEG or WebP image as a base64 data URL",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "protected",
+                    "serviceCount",
+                    "nodeCount",
+                    "guestCount",
+                    "networkName",
+                    "collapsed",
+                    "position",
+                    "imageUrl",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "minLength": 1,
+                      "maxLength": 40,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]*$",
+                      "description": "Shown in the sidebar; unique, case-insensitive.",
+                      "type": "string"
+                    },
+                    "description": {
+                      "maxLength": 500,
+                      "type": "string"
+                    },
+                    "protected": {
+                      "type": "boolean"
+                    },
+                    "serviceCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nodeCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "guestCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "networkName": {
+                      "type": "string"
+                    },
+                    "collapsed": {
+                      "type": "boolean"
+                    },
+                    "position": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageUrl": {
+                      "anyOf": [
+                        {
+                          "maxLength": 200,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "project:projects.update",
+        "x-mcp": false
+      }
+    },
     "/api/v1/projects.update": {
       "post": {
         "operationId": "projects.update",
@@ -54232,6 +54653,7 @@
                     "networkName",
                     "collapsed",
                     "position",
+                    "imageUrl",
                     "createdAt",
                     "updatedAt"
                   ],
@@ -54278,6 +54700,17 @@
                         {
                           "minimum": 0,
                           "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageUrl": {
+                      "anyOf": [
+                        {
+                          "maxLength": 200,
+                          "type": "string"
                         },
                         {
                           "type": "null"
@@ -61058,6 +61491,93 @@
         "x-op-kind": "query",
         "x-permission": "service:services.view",
         "x-mcp": true
+      }
+    },
+    "/api/v1/services.reorder": {
+      "post": {
+        "operationId": "services.reorder",
+        "summary": "Reorder a project's services",
+        "description": "Sets the order of a project's services in the caller's own sidebar, dashboard and project page. serviceIds lists the project's services top to bottom; compose members follow their stack, ids of other projects or members are ignored, and unlisted services follow by name. Other people's order does not change.",
+        "tags": [
+          "services"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "projectId",
+                  "serviceIds"
+                ],
+                "properties": {
+                  "projectId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "serviceIds": {
+                    "maxItems": 1000,
+                    "uniqueItems": true,
+                    "type": "array",
+                    "items": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "projectId",
+                    "serviceIds"
+                  ],
+                  "properties": {
+                    "projectId": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    },
+                    "serviceIds": {
+                      "type": "array",
+                      "items": {
+                        "pattern": "^[a-z0-9]{16}$",
+                        "description": "Panel-issued id.",
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "project:services.view",
+        "x-mcp": false
       }
     },
     "/api/v1/services.restart": {
