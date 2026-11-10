@@ -1,6 +1,6 @@
 ---
 title: What's new in 0.2.6
-description: Drag projects and services into your own order, pick the builder before the first deploy, an installer that asks, and smooth screens after opening a code editor.
+description: Drag projects and services into your own order, project images, pick the builder before the first deploy, an installer that asks, a taller console on the Overview, and smooth screens after opening a code editor.
 ---
 
 0.2.6 updates a 0.2.5 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.6** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
@@ -8,13 +8,17 @@ description: Drag projects and services into your own order, pick the builder be
 ## New
 
 - **Drag to reorder.** Drag projects in the sidebar or on the dashboard, and services in the sidebar, on the dashboard (Cards and List) and on the project page. It is one order everywhere, kept on the server for each person, so it follows you to every device and nobody else's changes. New services go last. The keyboard works too: Tab to an item's handle, then Space, the arrow keys and Space.
+- **A project image.** A project's **Settings** tab has an **Image** card: upload a PNG, JPEG or WebP and it shows instead of the project's initial in the sidebar, on the dashboard and in the project's header, for everyone who sees the project. See [Project](/concepts#project).
 - **Build with** in the New app dialog, for a GitHub or Git repository: Railpack, Nixpacks or Dockerfile (with its path), so **Deploy right away** builds the way you want. A GitHub repository with a Dockerfile at its root starts on Dockerfile. See [Builders](/guides/github-and-git#builders).
 - **The installer asks** when you run it from a terminal without a mode: set up a new panel here, or join this server to a panel you have (paste the command from **Nodes → Add node**). See [Run the installer](/installation#run-the-installer).
+- **A service's Overview**: the console is as tall as the cards beside it (480 to 600 px), and the Domains card has a **+** to add a domain without leaving the page.
+- **The Source tab** shows GitLab, Gitea and Bitbucket only once they are connected in **Settings → Git providers** (or when this service already uses one), with a link there to add one.
 
 ## Fixed
 
 - **Choppy screens after opening a code editor.** Once the Environment tab, a Dockerfile source or the custom CSS editor had opened, the editor's theme was rebuilt on every frame, on every page, until a reload. It now repaints only when the theme, the color mode, the accent or the custom CSS changes.
 - The Environment tab loads the editor when you open it and creates it after the page has eased in, so opening the tab no longer stutters.
+- **A Docker update on a node** said "Rolling out vdocker" and could stay at 0 of 1 done. It now says **Updating Docker** and finishes as soon as the node is back with the new Docker version.
 
 ## After the update
 
