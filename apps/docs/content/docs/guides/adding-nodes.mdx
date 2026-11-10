@@ -11,6 +11,8 @@ On **Nodes**, click **Add node**. Leave **Build images on this node** ticked, or
 curl -fsSL https://install.seylo.dev | sudo sh -s -- join --panel 'https://panel.example.com' --token '<token>' --version '<version>'
 ```
 
+New in 0.2.6: on the new server you can also run `curl -fsSL https://install.seylo.dev | sudo sh`, pick **2) Join this server to a Seylo panel you already have**, and paste the command there.
+
 The command pipes the installer from `install.seylo.dev`, which serves it only after checking it against the signed release (see [What the installer checks](/security#what-the-installer-checks)). `--version` is the panel's own release: the installer takes the agent from that release's signed manifest, so the node gets the agent of the panel's version. A panel built without a release (a development build) leaves `--version` out, and the node gets the latest stable release. New in 0.2: on 0.1, the command had no `--version`, so a new node got the latest stable agent, whatever release the panel ran.
 
 The installer checks the server, installs Docker when it is missing (without asking since 0.2.1, see [Docker](/installation#docker)), installs the agent as the `seylo.service` systemd unit and joins the panel. The agent creates its own Ed25519 key pair; the panel stores the public key, and every later connection is a signed challenge, so the token is useless after the first use. The node shows up on **Nodes** a few seconds later.

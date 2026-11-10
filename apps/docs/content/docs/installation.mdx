@@ -27,7 +27,17 @@ Run the installer as root on a server you reach over SSH. A fresh VPS is the eas
 curl -fsSL https://install.seylo.dev | sudo sh
 ```
 
-Without arguments the installer sets up the panel and makes this server its first node. It:
+New in 0.2.6: run from a terminal without arguments, the installer first asks what this server should do:
+
+```text
+What should this server do?
+  1) Set up a new Seylo panel here (this server becomes its first node)
+  2) Join this server to a Seylo panel you already have
+```
+
+**1** (or Enter) sets up a panel, as below. **2** asks for the join command from the panel's **Nodes → Add node**: paste it whole (the installer only reads its `--panel`, `--token`, `--pin` and `--version`, it never runs it), or paste the panel's address and then the token. See [Join a server](/guides/adding-nodes#join-a-server). A run that names a mode (`panel`, `join`, `uninstall`) or passes `--panel` or `--token`, or that has no terminal, asks nothing.
+
+Setting up a panel, the installer makes this server its first node. It:
 
 1. checks the system (Linux, systemd, CPU architecture),
 2. checks that ports 80 and 443, the panel's port (3000) and the agents' TLS port (3443) are free, and stops if another program holds one of them (nginx or Apache, for example), before it changes anything,
@@ -158,7 +168,7 @@ It still stops, with what to do, for snap Docker, Docker older than 23 and a dis
 
 ### Without a terminal
 
-New in 0.2.1: the installer asks nothing, so it runs the same with no terminal (cloud-init, automation, a CI job, `ssh` without `-t`), and a `join` command from **Add node** works as it is. `--yes` and `--install-docker` still work; they only matter for a Docker that does not start.
+New in 0.2.1: the installer asks nothing without a terminal, so it runs the same from cloud-init, automation, a CI job or `ssh` without `-t`, and a `join` command from **Add node** works as it is. The 0.2.6 menu only shows to a person at a terminal who named no mode; `SEYLO_NO_PROMPT=1` turns it off there too. `--yes` and `--install-docker` still work; they only matter for a Docker that does not start.
 
 Installers before 0.2.1 asked whether to install a missing Docker. Without a terminal they stopped before installing anything and said to re-run with `--install-docker` (the v0.1.0 one stopped with `cannot create /dev/tty`). A join command from a 0.2.1 pre-release panel still runs that older installer, the latest stable one, so **Add node** says to add `--install-docker` at its end for a server without Docker.
 
