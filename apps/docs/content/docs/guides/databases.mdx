@@ -118,8 +118,8 @@ Changed in 0.2.11: every other change used to be refused. Now the confirm dialog
 | A newer version of KeyDB or Dragonfly | They take patch updates only: another version may not read the data files. |
 | A skipped MongoDB, MariaDB or MySQL version | They upgrade one version at a time, so it may refuse the data files. |
 | A version Seylo does not offer, as the target or as what runs | Not tested by Seylo, for example: `mongo:8.2.12` is MongoDB 8.2, which Seylo does not offer. |
-| A floating tag such as `mongo:8.2` or `latest`, as the target or as what runs | It is not an exact release: it moves to each new release, so the release behind it can change on the next deploy, and Seylo cannot check it against what runs. |
-| A digest, as the target or as what runs | It does not show which release it is, so Seylo cannot check the change. |
+| A floating tag such as `mongo:8.2` or `latest`, as the target or as what runs | It is not an exact release: it moves to each new release, so the release behind it can change on the next deploy, and Seylo cannot check it against what runs. A rollback to an earlier deployment of the tag runs the older release it pulled then, on newer data files (see [Rollbacks](#rollbacks)). |
+| A digest as the target, or a database that runs an image known by its digest only | It does not show which release it is, so Seylo cannot check the change. |
 | Another Postgres base system, such as Debian's `postgres:17.6` on an Alpine database | Its C library may sort text in another order, so indexes on text columns may need `REINDEX`. The database starts as usual, so the old container does not come back for this one. |
 
 For a MongoDB move to another version or image, the list also says that MongoDB may refuse data whose feature compatibility version it does not support (see [MongoDB](#mongodb)). It ends with "If the new version never gets healthy, the old container comes back on the same data."
@@ -186,7 +186,7 @@ New in 0.2.11. MySQL 8.4 turns the old `mysql_native_password` sign-in method of
 
 When the panel cannot list the accounts, nothing changes either, and the dialog shows the same checkbox, which needs no list. The check signs in as MySQL's root user, so it works for a database whose admin user is not root too, also right after a password reset, before the next deploy.
 
-The same check runs before a move to a MySQL image from 8.4 on that Seylo does not offer, such as `mysql:9.1.0`, or to a tag that names no release, when such accounts can sign in to what runs. MySQL 9 removed that sign-in method, so there the only way out is switching the accounts.
+The same check runs before a move to a MySQL image from 8.4 on that Seylo does not offer, such as `mysql:9.1.0`, or to a tag that names no release, when such accounts can sign in to what runs. For both, the only way out is switching the accounts, and the dialog has no checkbox: MySQL 9 removed that sign-in method, and the MySQL a tag that names no release runs may not have it.
 
 A MySQL 8.4 database can also turn those logins on or off without changing its image: the card has a **Keep old mysql_native_password logins working** switch with **Apply**. **Turn old mysql_native_password logins on?** (or **off?**) and **Update** restart the database on the image it runs, also a tag such as `mysql:8.4`, with nothing to accept and no backup step. Turning them off checks for such accounts first, as above. The switch is disabled while the database is stopped or deploying, and after a change that did not finish.
 
@@ -194,13 +194,13 @@ An exported MySQL 8.4 that ran with these logins on keeps them when it is import
 
 ### Rollbacks
 
-A rollback on the **Deployments** tab only takes a deployment of the image the database runs, so it never goes back across a version change or a patch update. That stays so with any image: what you accept on the **Version** card is for that change only. Changed in 0.2.11: the tab no longer offers **Roll back** on a database's deployments of another image, which the rollback then refused.
+A rollback on the **Deployments** tab only takes a deployment of the image the database runs, and it runs the release that deployment pulled. With an exact tag or a digest, it never goes back across a version change or a patch update. With a floating tag such as `mongo:8.0` or `latest`, the tag stays the same while the release behind it moves, so an earlier deployment of that tag can still be rolled back to, and it runs the release the tag pointed at then: an older release on data files a newer one wrote, with no backup step and nothing to accept. What you accept on the **Version** card is for that change only. Changed in 0.2.11: the tab no longer offers **Roll back** on a database's deployments of another image, which the rollback then refused.
 
 ### Through the API and MCP
 
 `databases.versionChoices` lists the catalog's versions, each with its `kind`, `risk` and `risks` (what `databases.setVersion` needs `acceptRisk` for) and `message`, and says `anyImage`, `repository`, `release`, `blocked` and, for MySQL, `nativePassword`. `customOnCurrent` is deprecated: it is `anyImage` while nothing blocks a change.
 
-`databases.setVersion` takes a `version` or any `image` (then no `version` is needed), with `acceptRisk`, `confirmNoBackup` and, for MySQL 8.4, `keepNativePassword`, also alone on the image that runs. It refuses, with nothing changed: `riskNotAccepted` (`details.risk`, `details.risks`, `details.message`, `details.backupRequired`), `backupRequired`, `nativePasswordUsers` (`details.accounts`, `details.count`), `nativePasswordCheckFailed`, `fcvFailed`, `pgdataFailed`, `customImage` (another repository), `noNode`, `stopped`, `deployRunning` and `current`. `databases.create` takes `image` too. AI tools need an approval for a change (see [Approvals](/features/mcp-and-ai#approvals)).
+`databases.setVersion` takes a `version` or any `image` (then no `version` is needed), with `acceptRisk`, `confirmNoBackup` and, for MySQL 8.4, `keepNativePassword`, also alone on the image that runs. It refuses, with nothing changed: `riskNotAccepted` (`details.risk`, `details.risks`, `details.message`, `details.backupRequired`), `backupRequired`, `nativePasswordUsers` (`details.accounts`, `details.count`), `nativePasswordCheckFailed`, `fcvFailed`, `pgdataFailed`, `customImage` (another repository), `customCommand` (a MySQL database that runs its own command, not mysqld's, so `--mysql-native-password=ON` has nowhere to go), `noNode`, `stopped`, `deployRunning` and `current`. `keepNativePassword: true` on a MySQL line without that option (8.0, MySQL 9 or a tag that names no release) is a `BAD_REQUEST` with `details.field` `keepNativePassword`. `databases.create` takes `image` too. AI tools need an approval for a change (see [Approvals](/features/mcp-and-ai#approvals)).
 
 ## Clone or export a database
 
