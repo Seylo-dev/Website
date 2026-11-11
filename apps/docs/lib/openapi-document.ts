@@ -48,6 +48,7 @@ const tagNames: Record<string, string> = {
   projects: "Projects",
   registries: "Registry logins",
   services: "Services",
+  serviceTransfer: "Export and import",
   settings: "Settings",
   setup: "Setup",
   system: "System",
@@ -77,6 +78,9 @@ interface PanelDocument {
 
 const displayName = (tag: string) => tagNames[tag] ?? tag;
 
+/** What the generator appends to the x-permission of an action only owners and admins hold. */
+const adminOnlySuffix = " (owners and admins)";
+
 /** "service:services.deploy" -> a sentence about who may call the operation. */
 function access(op: Operation): string {
   const permission = op["x-permission"];
@@ -86,8 +90,15 @@ function access(op: Operation): string {
   else if (permission === "signed-in, whole account")
     lines.push("Any signed-in caller, but not an API key or MCP token limited to some projects or actions.");
   else if (permission) {
-    const [scope, action] = permission.includes(":") ? permission.split(":", 2) : ["global", permission];
-    if (scope === "service") lines.push(`Needs \`${action}\` on the service (a grant on its project covers it).`);
+    // "service:services.export (owners and admins)": a scoped action that grants never hand to members.
+    const adminOnly = permission.endsWith(adminOnlySuffix);
+    const bare = adminOnly ? permission.slice(0, -adminOnlySuffix.length) : permission;
+    const [scope, action] = bare.includes(":") ? bare.split(":", 2) : ["global", bare];
+    if (adminOnly && (scope === "service" || scope === "project"))
+      lines.push(
+        `Needs \`${action}\` on the ${scope}, which only owners and admins hold: it is never shared with members.`,
+      );
+    else if (scope === "service") lines.push(`Needs \`${action}\` on the service (a grant on its project covers it).`);
     else if (scope === "project") lines.push(`Needs \`${action}\` on the project.`);
     else lines.push(`Needs \`${action}\`, which owners and admins hold.`);
   }
