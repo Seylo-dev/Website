@@ -11,22 +11,24 @@ Postgres 18, pgvector, Valkey, KeyDB, Dragonfly and ClickHouse are available fro
 
 ## Engines and versions
 
-Every image is pinned to an exact release, so a redeploy runs the same bytes. The newest version is the default.
+Every image in Seylo's catalog is pinned to an exact release, so a redeploy runs the same bytes. The newest version is the default.
 
-| Engine | Versions | Port | Web UI | Shell |
-| --- | --- | --- | --- | --- |
-| PostgreSQL | 18 (new in 0.2), 17, 16, 15 | 5432 | pgweb | `psql` |
-| PostgreSQL with pgvector (new in 0.2) | 18, 17, 16, 15 | 5432 | pgweb | `psql` |
-| MySQL | 8.4, 8.0 | 3306 | phpMyAdmin | `mysql` |
-| MariaDB | 11.8, 11.4, 10.11 | 3306 | phpMyAdmin | `mariadb` |
-| MongoDB | 9.0 (new in 0.2.9), 8.0, 7.0 | 27017 | mongo-express | `mongosh` |
-| Redis | 8.2, 7.4 | 6379 | Redis Commander | `redis-cli` |
-| Valkey (new in 0.2) | 9.1, 9.0, 8.1 | 6379 | Redis Commander | `valkey-cli` |
-| KeyDB (new in 0.2) | 6.3 | 6379 | Redis Commander | `keydb-cli` |
-| Dragonfly (new in 0.2) | 2.0 | 6379 | Redis Commander | `redis-cli` |
-| ClickHouse (new in 0.2) | 26.8, 26.3 | 9000 (native), 8123 (HTTP) | ClickHouse's Play page | `clickhouse-client` |
+| Engine | Versions | Image | Port | Web UI | Shell |
+| --- | --- | --- | --- | --- | --- |
+| PostgreSQL | 18 (new in 0.2), 17, 16, 15 | `postgres` | 5432 | pgweb | `psql` |
+| PostgreSQL with pgvector (new in 0.2) | 18, 17, 16, 15 | `pgvector/pgvector` | 5432 | pgweb | `psql` |
+| MySQL | 8.4, 8.0 | `mysql` | 3306 | phpMyAdmin | `mysql` |
+| MariaDB | 11.8, 11.4, 10.11 | `mariadb` | 3306 | phpMyAdmin | `mariadb` |
+| MongoDB | 9.0 (new in 0.2.9), 8.0, 7.0 | `mongo` | 27017 | mongo-express | `mongosh` |
+| Redis | 8.2, 7.4 | `redis` | 6379 | Redis Commander | `redis-cli` |
+| Valkey (new in 0.2) | 9.1, 9.0, 8.1 | `valkey/valkey` | 6379 | Redis Commander | `valkey-cli` |
+| KeyDB (new in 0.2) | 6.3 | `eqalpha/keydb` | 6379 | Redis Commander | `keydb-cli` |
+| Dragonfly (new in 0.2) | 2.0 | `ghcr.io/dragonflydb/dragonfly` | 6379 | Redis Commander | `redis-cli` |
+| ClickHouse (new in 0.2) | 26.8, 26.3 | `clickhouse/clickhouse-server` | 9000 (native), 8123 (HTTP) | ClickHouse's Play page | `clickhouse-client` |
 
 The **New database** form lists them with their versions, except KeyDB, Dragonfly and ClickHouse, which it does not offer for now (since 0.2.9; existing ones keep working). Through the API, `databases.engines` returns every engine with the exact images (see the [API reference](/api-reference)).
+
+New in 0.2.11: a database can run any other tag or digest of its engine's image instead of the pinned one, with **Use another image** in the **New database** form or on its **Version** card (see [Use another image](/guides/databases#use-another-image)). Such images are not tested by Seylo, and a floating tag such as `latest` can pull another release on the next deploy. Images of other repositories are refused.
 
 ## Connection strings
 
@@ -56,7 +58,8 @@ With a self-signed certificate, Redis-like clients must skip verification themse
 
 ## PostgreSQL
 
-- **Postgres 18** is new in 0.2 and the default. Its image keeps the data under `/var/lib/postgresql/18/docker`, so the data volume is mounted at `/var/lib/postgresql`; 15 to 17 keep it at `/var/lib/postgresql/data`. That matters when you browse the volume with **Files**.
+- **Postgres 18** is new in 0.2 and the default. Its image keeps the data under `/var/lib/postgresql/18/docker`, so the data volume is mounted at `/var/lib/postgresql`; 15 to 17 keep it at `/var/lib/postgresql/data`. That matters when you browse the volume with **Files**. Since 0.2.11, Seylo sets `PGDATA` to the folder of the data before a database with its volume at `/var/lib/postgresql` changes version, so a version that cannot read it fails instead of starting on an empty database (see [Postgres and PGDATA](/guides/databases#postgres-and-pgdata)).
+- **Base system**: the catalog's plain images are Alpine, the pgvector ones Debian trixie. Another base system, such as Debian's `postgres:17.6` on an Alpine database, is a risk you accept on the **Version** card: its C library may sort text in another order, so indexes on text columns may need `REINDEX`.
 - **pgvector**: tick **Include pgvector** in the **New database** form. The database runs the `pgvector/pgvector` image of the same major version. The extension is installed but not turned on: run this once in each database that uses it (the **Connection** tab reminds you):
 
   ```sql
@@ -65,10 +68,15 @@ With a self-signed certificate, Redis-like clients must skip verification themse
 
   The pgvector images are Debian-based and the plain ones Alpine, so their data is not interchangeable: an existing database cannot switch to or from pgvector. Create a new one and restore a dump into it.
 
+## MySQL
+
+- **MySQL 8.4** has the old `mysql_native_password` sign-in method off. Since 0.2.11, before a change from 8.0 to 8.4, Seylo checks the running database for accounts that sign in with it, and changes nothing while there are any, until you switch them to `caching_sha2_password` or keep their logins working in 8.4 (see [MySQL 8.4 and mysql_native_password](/guides/databases#mysql-84-and-mysql_native_password)). MySQL 9 has no `mysql_native_password` at all.
+
 ## MongoDB
 
-- **MongoDB 9.0** is new in 0.2.9 and the default. New databases get `mongo:9.0.4`, `mongo:8.0.34` or `mongo:7.0.45`. Existing 8.0 and 7.0 databases keep the image they run until you take the patch update in their **Version** card.
-- A MongoDB database moves up one version at a time, 7.0 to 8.0 to 9.0, and Seylo sets the feature compatibility version first (see [Change the version](/guides/databases#change-the-version)).
+- **MongoDB 9.0** is new in 0.2.9 and the default. Since 0.2.11, new databases get `mongo:9.0.8`, `mongo:8.0.38` or `mongo:7.0.45`. Existing 9.0 and 8.0 databases keep the image they run until you take the patch update on their **Version** card, which needs no backup. The upgrade from 7.0 to 8.0 to 9.0, backups, the web UI and exposing over TLS ran on these images in Seylo's test setup.
+- **MongoDB 7.0** stays on 7.0.45: when 0.2.11 was made, Docker Hub's `mongo:7.0.48` had only a Windows image (its Linux images are under `7.0.48-jammy`), so a node could not pull it. **Use another image** takes `mongo:7.0.48-jammy` as a patch update, like any newer release of 7.0, not tested by Seylo.
+- A MongoDB database moves up one version at a time without a risk, 7.0 to 8.0 to 9.0, and Seylo sets the feature compatibility version first (see [MongoDB version changes](/guides/databases#mongodb)). Other moves, such as to `mongo:8.2.12`, are a risk you accept: Seylo runs no compatibility step for them, and MongoDB refuses data whose compatibility version it does not support. 8.2 was MongoDB's short-lived rapid release, which no longer gets fixes.
 
 ## Valkey, KeyDB and Dragonfly
 
@@ -84,6 +92,28 @@ They speak the Redis protocol, so Redis clients and drivers work unchanged. Like
 - Besides the native protocol on port 9000, the HTTP interface on 8123 is available inside the project. Its URL is on the **Connection** tab (**HTTP URL**, **HTTP port**) and in `${{db.INTERNAL_HTTP_URL}}` and `${{db.INTERNAL_HTTP_PORT}}`: `http://<user>:<password>@db:8123/<database>`.
 - Only the native port is exposed, with TLS from the node's agent (`clickhouse-client --secure`), and clients sign in there as the admin user. The HTTP port is never exposed, so HTTP clients reach ClickHouse only from the same node.
 - The web UI is ClickHouse's own **Play** page, already signed in as the admin. Requests that carry credentials of their own (`user`, `password` or `quota_key` parameters) are refused.
+
+## Tested version changes
+
+New in 0.2.11. Every version change Seylo makes without a risk ran in Seylo's test setup on the catalog's images, the way a node runs it: a new container on the same data volume, with the panel's environment and commands. Each one kept the data:
+
+| Change | What was checked |
+| --- | --- |
+| MongoDB 7.0 to 8.0 to 9.0 (since 0.2.9) | The data, on 8.0.38 and 9.0.8 since 0.2.11 |
+| MariaDB 10.11 to 11.4 (since 0.2.9), and 11.4 to 11.8 | The data, with the system tables upgraded on each start |
+| MySQL 8.0 to 8.4 | The upgrade completes; a table, its view and procedure, and the root and app logins work on 8.4. An account made with `mysql_native_password` signs in to 8.4 once old logins are kept on. |
+| Redis 7.4 to 8.2 | Both the RDB base file and the append-only file are read, and the TTLs kept |
+| Valkey 8.1 to 9.0 to 9.1, and 8.1 straight to 9.1 | The same as for Redis |
+| ClickHouse 26.3 to 26.8 | A MergeTree table in two parts, which 26.8 merges, and a user made with SQL |
+| PostgreSQL 17 patch update, `17.6-alpine` to `17.11-alpine` | The data, on a newer Alpine too: amcheck finds the text index whole |
+
+Some of the risks ran there too:
+
+- MongoDB 8.0 to `mongo:8.2.12`, a version Seylo does not offer: the data was kept with no compatibility step, since 8.2 opens data whose feature compatibility version is 8.0.
+- MongoDB 9.0 set to the 8.0 image: 8.0 refused the 9.0 data, the deploy failed, and the 9.0 container came back with the data.
+- PostgreSQL 18 set to 17 (with `PGDATA` set), and 17 set to 18: neither got healthy, and each came back on the version it ran, with its data.
+
+Images you give with **Use another image** are not tested by Seylo.
 
 ## Backups and restores
 
@@ -110,6 +140,7 @@ While it runs the disk holds both copies. A database that cannot be renamed (one
 
 ## Limits
 
-- Postgres never changes its major version in place, and no Postgres database switches to or from pgvector: create a new database and restore a dump into it. Since 0.2.9 the other engines change version on the **Settings** tab, within the rules in [Change the version](/guides/databases#change-the-version). No engine goes back to an older version.
+- Postgres does not upgrade its major version in place, and no Postgres database switches to or from pgvector: create a new database and restore a dump into it. Since 0.2.11 the **Version** card takes a Postgres major as a risk, but it will most likely not start, and the old container comes back.
+- Since 0.2.9 the other engines change version on the **Settings** tab. The changes Seylo makes without a risk are in [Change the version](/guides/databases#change-the-version); since 0.2.11 the others go ahead once you accept [what can go wrong](/guides/databases#what-can-go-wrong). Data files do not go back: an older version may not open them, and going back means restoring a backup into a new database.
 - **Reset password** changes the password inside the running database, except for ClickHouse and Dragonfly, which read it from their environment when they start: a reset restarts them.
 - Exposure on the Redis-like engines, MongoDB and ClickHouse's native port goes through TLS from the node's agent. Postgres, MySQL and MariaDB serve TLS themselves, and need a 0.2.9 agent on the node to be exposed. MariaDB always presents its own self-signed certificate, and MariaDB 10.11 cannot be exposed.
