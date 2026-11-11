@@ -102,7 +102,7 @@ That is why a change of version, unlike a patch update, asks for a successful ba
 
 For MongoDB, Seylo first sets the feature compatibility version (`featureCompatibilityVersion`) of the running database to the version it runs. If that fails, nothing changes.
 
-While the change deploys, the card shows the deploy with **View log**. If the new version does not become healthy, the old one comes back on the same data, after up to 5 minutes of outage, and the card says the change did not finish: pick the version again to retry, or stay on the old image. MongoDB data stays readable by the old version, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database.
+While the change deploys, the card shows the deploy with **View log**. If the new version does not become healthy, the old one comes back on the same data, after up to 5 minutes of outage, and the card says the change did not finish: pick the version again to retry, or stay on the image that still runs (see [Another release tag](#another-release-tag)). MongoDB data stays readable by the old version, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database.
 
 A rollback on the **Deployments** tab only takes a deployment of the image the database runs, so it never goes back across a version change or a patch update.
 
@@ -110,7 +110,15 @@ Through the API and MCP, `databases.versionChoices` lists the versions with thei
 
 ### Another release tag
 
-**Use another tag of this version** in the confirm dialog takes another exact release tag of the engine's official image for that version, for example `mongo:8.0.40`, instead of the catalog's. It is not tested by Seylo and follows the same rules. Floating tags (`latest`, `8.0`) and digests are refused, since the rules read the version in the tag. A Postgres tag keeps the catalog's base system (`-alpine`, or `-trixie` for pgvector), because another C library sorts text differently under the same indexes. KeyDB and Dragonfly take the catalog's image only.
+**Use another tag of this version** in the confirm dialog takes another exact release tag of the engine's official image for the version you picked, for example `mongo:8.0.40`, instead of the catalog's. It is not tested by Seylo and follows the same rules. Floating tags (`latest`, `8.0`) and digests are refused, since the rules read the version in the tag. A Postgres tag keeps the catalog's base system (`-alpine`, or `-trixie` for pgvector), because another C library sorts text differently under the same indexes. KeyDB and Dragonfly take the catalog's image only.
+
+New in 0.2.10: for the version the database already runs, the card has **Another tag of `<engine>` `<version>`** next to **Change to**, for example **Another tag of MongoDB 8.0**. It is there also when the database runs the newest pinned image of its version and nothing else in the list can be picked. It opens the confirm dialog on the **Image** field, filled in with the image that runs: type another exact release tag of that version, such as a newer patch release the catalog does not have yet, and click **Update**. That is a patch update: no backup needed, and not tested by Seylo.
+
+- A newer release of the version is taken. An older one is refused ("`<tag>` is older than `<image>`"), and so is the image that already runs: **Update** stays disabled until you type another tag.
+- After a change that did not finish, the dialog is **Stay on `<image>`?** for the tag that still runs: **Update** sets it again, the database restarts on it, and the card no longer says the change did not finish. That is also the way to stay on a tag of your own that is newer than the catalog's image of its version, which the list shows as **older**.
+- The same rules hold as above: an exact release tag of the official image, no digest, the Postgres base system kept. KeyDB and Dragonfly have no such button. Nor does a database that is stopped or deploying.
+
+Through the API and MCP, `databases.versionChoices` returns `customOnCurrent`: whether `databases.setVersion` takes such a tag (`image`) for the version the database runs.
 
 ## Clone a database
 
