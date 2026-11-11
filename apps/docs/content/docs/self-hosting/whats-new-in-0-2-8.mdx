@@ -9,6 +9,10 @@ description: Move the panel to another server from Settings, with your nodes fol
 
 - **Move the panel to another server.** In **Settings → General**, the owner picks one of the nodes and the panel moves there: its database, keys, branding and uploads, and the image registry. Every node follows by itself with the same pin, so nothing has to be joined again, and any failure before the switch leaves the old panel running as it was. The old server keeps a stopped copy until you delete it. See [Moving the panel to another server](/self-hosting/the-panel#moving-the-panel-to-another-server).
 
+## Fixed
+
+- **The panel domain could go active for another server.** A domain proxied by Cloudflare whose record still pointed at another server (an old panel, or any app answering `{"status":"ok"}` on `/api/health`) passed the domain check, so `http://<ip>:3000` redirected people there. The check now asks the domain a one-time question only this panel can answer.
+
 ## After the update
 
 - Nodes need 0.2.8 too before they can take the panel or follow it; the update does that.

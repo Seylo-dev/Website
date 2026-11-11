@@ -50,7 +50,7 @@ A domain is worth setting early:
 
 ### Behind Cloudflare's proxy
 
-The panel domain can be proxied by Cloudflare (orange cloud). DNS then answers with Cloudflare's addresses, not the node's, so the panel can't check where the record points. New in 0.2.1: when every address of the domain is one of Cloudflare's, the panel shows **Proxied by Cloudflare**, skips the record check, and counts the domain as active once `https://<panel domain>/api/health` answers through Cloudflare with a trusted certificate. A domain that is already active stays active when you turn the proxy on later, as long as that check passes. Before 0.2.1 a proxied panel domain stayed at **Waiting for DNS**.
+The panel domain can be proxied by Cloudflare (orange cloud). DNS then answers with Cloudflare's addresses, not the node's, so the panel can't check where the record points. New in 0.2.1: when every address of the domain is one of Cloudflare's, the panel shows **Proxied by Cloudflare**, skips the record check, and counts the domain as active once `https://<panel domain>/api/health` answers through Cloudflare with a trusted certificate. Since 0.2.8 that answer must also prove it comes from this panel (a one-time nonce only this panel can answer), so a record that still points at another server, an old panel of yours included, never counts. A domain that is already active stays active when you turn the proxy on later, as long as that check passes. Before 0.2.1 a proxied panel domain stayed at **Waiting for DNS**.
 
 In Cloudflare:
 
@@ -202,12 +202,14 @@ What moves: everything in `/var/lib/seylo/panel/` (`panel.db`, `master.key`, `me
 
 What it does, in order:
 
-1. Checks first, and refuses with the reason: the new server must be online and run the panel's version; no update, deploy, build, move, backup or restore may be running; **Serve on IP address** must be on, Tailscale Serve off (both are tied to the old server; turn Tailscale Serve back on afterwards) and no master key rotation half done.
+1. Checks first, and refuses with the reason: the new server must be online, run the panel's version and connect over https:// (not a plain `http://` join from another host); no update, deploy, build, move, backup or restore may be running; the last move's old copy must be deleted; **Serve on IP address** must be on, Tailscale Serve off (both are tied to the old server; turn Tailscale Serve back on afterwards) and no master key rotation half done.
 2. The panel is read-only for the few minutes the move takes. Your apps keep running and serving.
 3. It copies the registry, then a consistent snapshot of the panel's folder, with a checksum for every file.
 4. It starts the panel on the new server, waits until it answers, and checks it presents the same agents' TLS key your nodes pin.
-5. It tells every node the new address, and each node checks it can reach it. If any step fails, nothing switches: the move stops, the new server's copy is deleted, and the old panel carries on.
-6. It switches: the old panel stops, and every node goes to the new address by itself, usually within half a minute, keeping its pin. The new panel runs no scheduled work until the first node reaches it.
+5. It tells every node the new address, and each node checks it reaches the moved panel there (not the old one). Until the switch, the moved panel turns nodes away, so a node that loses the old panel for a moment comes back to it. If any step fails, nothing switches: the move stops, the new server's copy is deleted, and the old panel carries on.
+6. It switches: the new server confirms it takes over, the old panel stops, and every node goes to the new address by itself, usually within half a minute, keeping its pin. The new panel runs no scheduled work until the first node reaches it.
+
+If the new server stops answering right at the switch, the panel cannot tell whether it took over, so it waits, read-only, and keeps your nodes; it carries on by itself once the server answers again. Only if that server is gone for good, press **Cancel anyway** (offered after 10 minutes).
 
 Nodes that are offline, or that joined over plain `http://` from another host, cannot follow. The check lists them; you can move anyway and join them again later with `seylo join --force`.
 
