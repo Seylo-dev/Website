@@ -40,7 +40,11 @@ New in 0.2.5: for a proxied domain the panel also runs an **origin check**. It a
 - **Points elsewhere**: something else answered (an old server, another host). Fix the record in Cloudflare to point at the IP the row shows. Until then **Regenerate certificate** refuses, since Let's Encrypt reaches the domain the same way and would fail.
 - No answer (Cloudflare's 52x, a timeout, an agent older than 0.2.5): the panel cannot tell, and says nothing either way.
 
-A certificate that stays on **Generating** behind the proxy says why under the row: usually the record does not reach the node yet, or **Always Use HTTPS** is on (see below). The check only connects to public addresses or this panel's own nodes, never to a private network a domain may resolve to.
+A certificate that stays on **Generating** behind the proxy says why under the row: usually the record does not reach the node yet, or **Always Use HTTPS** is on (see below).
+
+New in 0.2.8: a custom domain does not ask Let's Encrypt for its certificate until it reaches the node: its record points at the node, or behind Cloudflare the origin check says **Reaches the node**. Until then the row says the certificate waits for DNS, the route serves the node's own certificate, and no failed validation counts against Let's Encrypt's limit of 5 per host name per hour. The panel checks waiting domains again on its own, and **Check again** on the row checks at once; the certificate starts as soon as one says the domain arrived. Automatic domains (the node's wildcard record) and domains with their own certificate never wait. Also fixed in 0.2.8: a proxied domain whose certificate was issued kept showing **Generating**.
+
+Cloudflare's free certificate covers your domain and one level of subdomain (`example.com`, `*.example.com`), not deeper ones such as `app.eu1.example.com`. For a node's automatic domains under `*.eu1.example.com`, set that wildcard record to DNS only (grey cloud) so visitors get the node's Let's Encrypt certificate. The check only connects to public addresses or this panel's own nodes, never to a private network a domain may resolve to.
 
 As soon as the domain reaches the node, Traefik requests a certificate and the route goes live. A certificate that cannot be issued shows **Certificate failed** with the reason from Let's Encrypt, and raises an alert.
 

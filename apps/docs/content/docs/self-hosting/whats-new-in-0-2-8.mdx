@@ -25,7 +25,8 @@ description: Move the panel to another server from Settings, with your nodes fol
 
 - **The panel domain could go active for another server.** A domain proxied by Cloudflare whose record still pointed at another server (an old panel, or any app answering `{"status":"ok"}` on `/api/health`) passed the domain check, so `http://<ip>:3000` redirected people there. The check now asks the domain a one-time question only this panel can answer.
 
-- **A node joined to an old panel at the same address kept the old one.** The installer now joins again with the token when the panel there refuses the earlier join, instead of saying "Already joined".
+- **A node joined to an old panel at the same address kept the old one.** The installer now joins again with the token when the earlier join is dead there (another panel at that address, the node removed, a new `--pin`), instead of saying "Already joined". See [Adding nodes](/guides/adding-nodes).
+- **Domains behind Cloudflare stuck on Generating.** Fixed. And a custom domain now waits for its DNS before asking Let's Encrypt, with **Check again** on the row. See [Domains and HTTPS](/guides/domains-and-https#behind-cloudflares-proxy).
 
 - **A new database or Box did not show in the sidebar** until a reload. It shows at once.
 
