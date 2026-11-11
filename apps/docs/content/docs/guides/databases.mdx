@@ -20,6 +20,8 @@ Changed in 0.2.9: **New database** does not offer KeyDB, Dragonfly and ClickHous
 
 For Postgres, **Include pgvector** picks an image with the vector extension. Valkey, KeyDB, Dragonfly and ClickHouse need a 0.2 agent on the node. [Database engines](/guides/database-engines) has the connection strings, backups and limits of each.
 
+New in 0.2.11: tick **Use another image** under **Version** to run another tag or digest of the engine's own image instead of the pinned one, such as `mongo:8.2.12`, `postgres:17-alpine` or `redis:latest`. The **Image** field starts from the picked version's image (`pgvector/pgvector` with **Include pgvector**). It is not tested by Seylo, and for a floating tag the form says that what it points at can change on the next deploy. The database is recorded as the version its tag names (`mongo:8.2.12` is MongoDB 8.2); when the tag names none, the page shows the image instead, as in "MongoDB (mongo:latest)". A Postgres image whose tag names no release, such as `postgres:latest` or a digest, also gets `PGDATA=/var/lib/postgresql/docker` in the database's variables, so its data stays on the data volume whatever release the tag pulls (see [Postgres and PGDATA](#postgres-and-pgdata)). An image of another repository is refused: Seylo's settings for a database (its environment, data folder, health check and command) are made for its engine's image.
+
 Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name.
 
 ## Connect from an app
@@ -61,7 +63,7 @@ Exposing only opens a port on the node to the database, with TLS. Clients sign i
 
 The port only takes TLS. Postgres, MySQL and MariaDB serve TLS themselves, and the node refuses their clients that do not ask for it with the database's own kind of error: Postgres clients get "this port only accepts TLS connections: connect with sslmode=require", MySQL and MariaDB clients get error 3159. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name.
 
-MariaDB 10.11 has no TLS, so since 0.2.9 it cannot be exposed: **Expose** refuses it. MariaDB 11.4 and later can; to expose a 10.11 database, [change its version](#change-the-version) to 11.4 first.
+MariaDB 10.11 has no TLS, so since 0.2.9 it cannot be exposed: **Expose** refuses it. MariaDB 11.4 and later can; to expose a 10.11 database, [change its version](#change-the-version) to 11.4 first. A MariaDB version before 11.4 that Seylo does not offer, such as 10.6 or 11.2 run with **Use another image**, cannot be exposed either.
 
 The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. With a self-signed certificate, tell the client to require TLS without checking the certificate (for Postgres, `sslmode=require`).
 
@@ -73,17 +75,23 @@ Exposed Postgres, MySQL and MariaDB need the node's agent from 0.2.9, which keep
 
 **Reset password** creates a new password inside the running database. It is one password, inside and through the exposed port. ClickHouse and Dragonfly read the password when they start, so for them a reset restarts the database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting, wherever it connects from. You type the service name to confirm. The new password stays on screen with the number of services that need a restart: copy it then.
 
+Changed in 0.2.11: for MySQL and MariaDB, root gets the new password too, also when the database's admin user is not root (a database made by a template or the API with its own user). The database's container gives root the admin's password (`MYSQL_ROOT_PASSWORD`, `MARIADB_ROOT_PASSWORD`), but before, a reset changed the admin's password only, so signing in as root with it failed (ERROR 1045) after the next deploy, and so did the panel's own steps that sign in as root, such as the next reset and the [MySQL 8.4 check](#mysql-84-and-mysql_native_password).
+
+A database an older reset left that way still takes a reset: the admin's password changes, and the **New password** dialog says that root kept an older password, which the panel does not know, and how to set it: sign in as root with that older password and run `ALTER USER 'root'@'%' IDENTIFIED BY '<new password>'`, and the same for `'root'@'localhost'`. Later resets then change both. Through the API, `databases.resetPassword` returns that as `warning`.
+
 ## Backups
 
 On the database's **Backups** tab, schedule dumps to an S3-compatible bucket. Each run uses the engine's own dump tool. See [Backups](/guides/backups), and [Database engines](/guides/database-engines#backups-and-restores) for what each engine's backup and restore do.
 
 ## Change the version
 
-New in 0.2.9. A database's **Settings** tab has a **Version** card: the version and pinned image it runs, and the versions it can change to. The version in the page header links to it. Pick one under **Change to** and click **Change version**: the database deploys on the same data, with a short outage while it restarts. Versions it cannot change to are disabled in the list, with the reason. Changing the version takes the right to deploy the database.
+New in 0.2.9. A database's **Settings** tab has a **Version** card: the version and image it runs, the versions of Seylo's catalog it can change to under **Change to**, and, new in 0.2.11, **Use another image** for any other tag or digest of its engine's image. The version in the page header links to it. Pick a version and click **Change version**, or give another image: the database deploys on the same data, with a short outage while it restarts. Changing the version takes the right to deploy the database.
 
-A newer pinned image of the same version is a patch update. A newer version runs only where the engine upgrades its own data files in place:
+The card and the header show the version the image's tag names, such as "MongoDB 8.2" for `mongo:8.2.12`, or the image when the tag names none, such as "MongoDB (mongo:latest)".
 
-| Engine | Can change to |
+A newer image of the version that runs is a patch update: no backup needed, and the dialog's button is **Update**. Between the catalog's versions, these changes take no risk, since the engine upgrades its own data files in place:
+
+| Engine | Changes without a risk |
 | --- | --- |
 | PostgreSQL, with or without pgvector | Patch updates only. A major upgrade needs a dump and restore into a new database. |
 | MySQL | 8.0 to 8.4 |
@@ -92,36 +100,110 @@ A newer pinned image of the same version is a patch update. A newer version runs
 | Redis, Valkey, ClickHouse | Any newer version |
 | KeyDB, Dragonfly | Patch updates only |
 
-Going back to an older version, or to an older image of the same version, is refused for every engine. A Postgres database also stays with or without pgvector. No change starts while the database is stopped (the deploy would start it) or while a deploy of it runs.
+Each of them ran on the real images in Seylo's test setup; see [Tested version changes](/guides/database-engines#tested-version-changes). The **Change to** list leaves out the image that runs, and a version that takes a risk has a short note under it, such as "Skips a version".
 
 <Callout type="warn" title="A new version cannot be undone">
 Older versions cannot read the upgraded data files. Going back means restoring a backup into a new database.
 </Callout>
 
-That is why a change of version, unlike a patch update, asks for a successful backup from the last 24 hours first. If there is one, the confirm dialog shows when it finished. Without one, **Back up now** runs the database's backup schedule right there (**Set up backups** when it has none), or tick **Change without a backup**.
+### What can go wrong
 
-For MongoDB, Seylo first sets the feature compatibility version (`featureCompatibilityVersion`) of the running database to the version it runs. If that fails, nothing changes.
+Changed in 0.2.11: every other change used to be refused. Now the confirm dialog lists under **What can go wrong** one line for each risk the change takes, and the change goes ahead once you tick **I understand**:
 
-While the change deploys, the card shows the deploy with **View log**. If the new version does not become healthy, the old one comes back on the same data, after up to 5 minutes of outage, and the card says the change did not finish: pick the version again to retry, or stay on the image that still runs (see [Another release tag](#another-release-tag)). MongoDB data stays readable by the old version, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database.
+| Risk | What can go wrong |
+| --- | --- |
+| An older version, or an older release of the version that runs | Data files a newer version or release wrote may not open on it. MongoDB 8.0, for one, refuses 9.0 data whose feature compatibility version is 9.0. |
+| A Postgres major, up or down | Postgres does not open another major's data files without pg_upgrade or a dump and restore, which do not run here, so it will most likely not start. |
+| A version that keeps its data in another folder, such as Postgres 17 to 18 | Seylo runs it on the folder of the data that runs, so it will most likely not start. |
+| A newer version of KeyDB or Dragonfly | They take patch updates only: another version may not read the data files. |
+| A skipped MongoDB, MariaDB or MySQL version | They upgrade one version at a time, so it may refuse the data files. |
+| A version Seylo does not offer, as the target or as what runs | Not tested by Seylo, for example: `mongo:8.2.12` is MongoDB 8.2, which Seylo does not offer. |
+| A floating tag such as `mongo:8.2` or `latest`, as the target or as what runs | It is not an exact release: it moves to each new release, so the release behind it can change on the next deploy, and Seylo cannot check it against what runs. |
+| A digest, as the target or as what runs | It does not show which release it is, so Seylo cannot check the change. |
+| Another Postgres base system, such as Debian's `postgres:17.6` on an Alpine database | Its C library may sort text in another order, so indexes on text columns may need `REINDEX`. The database starts as usual, so the old container does not come back for this one. |
 
-A rollback on the **Deployments** tab only takes a deployment of the image the database runs, so it never goes back across a version change or a patch update.
+For a MongoDB move to another version or image, the list also says that MongoDB may refuse data whose feature compatibility version it does not support (see [MongoDB](#mongodb)). It ends with "If the new version never gets healthy, the old container comes back on the same data."
 
-Through the API and MCP, `databases.versionChoices` lists the versions with their reasons and `databases.setVersion` makes the change. AI tools need an approval for it (see [Approvals](/features/mcp-and-ai#approvals)).
+For a version in the list, the dialog shows the risks when it opens. For another image it learns them from the panel: the first click on the dialog's button changes nothing and shows them, and the next one, after **I understand**, makes the change. The deploy's log says `Risk accepted:` with the risks.
 
-### Another release tag
+### What protects the data
 
-**Use another tag of this version** in the confirm dialog takes another exact release tag of the engine's official image for the version you picked, for example `mongo:8.0.40`, instead of the catalog's. It is not tested by Seylo and follows the same rules. Floating tags (`latest`, `8.0`) and digests are refused, since the rules read the version in the tag. A Postgres tag keeps the catalog's base system (`-alpine`, or `-trixie` for pgvector), because another C library sorts text differently under the same indexes. KeyDB and Dragonfly take the catalog's image only.
+- **The old container comes back.** A database deploys by replacing its container on the same data. If the new one does not become healthy within 5 minutes, the old container comes back on the same data, and the card says "The change to `<image>` did not finish, so the database still runs `<image>`." Pick it again to retry, or stay on the image that runs (see [Use another image](#use-another-image)). That catches a version that refuses the data files and does not start. It does not undo what a new version already wrote: MongoDB data stays readable by the old version after one of the upgrades in the table above, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database. A change that starts healthy also stays, such as another Postgres base system.
+- **A backup first.** Every change but a newer patch of the version that runs asks for a successful backup from the last 24 hours, a change that takes a risk included. If there is one, the confirm dialog shows when it finished. Without one, **Back up now** runs the database's backup schedule right there (**Set up backups** when it has none), or tick **Change without a backup**.
+- **`PGDATA` for Postgres.** Before a Postgres move that could start on an empty database, Seylo pins the folder of the data; see [Postgres and PGDATA](#postgres-and-pgdata).
 
-New in 0.2.10: for the version the database already runs, the card has **Another tag of `<engine>` `<version>`** next to **Change to**, for example **Another tag of MongoDB 8.0**. It is there also when the database runs the newest pinned image of its version and nothing else in the list can be picked. It opens the confirm dialog on the **Image** field, filled in with the image that runs: type another exact release tag of that version, such as a newer patch release the catalog does not have yet, and click **Update**. That is a patch update: no backup needed, and not tested by Seylo.
+While the change deploys, the card shows **Deploying `<image>`** with **View log**.
 
-- A newer release of the version is taken. An older one is refused ("`<tag>` is older than `<image>`"), and so is the image that already runs: **Update** stays disabled until you type another tag.
-- After a change that did not finish, the dialog is **Stay on `<image>`?** for the tag that still runs: **Update** sets it again, the database restarts on it, and the card no longer says the change did not finish. That is also the way to stay on a tag of your own that is newer than the catalog's image of its version, which the list shows as **older**.
-- The same rules hold as above: an exact release tag of the official image, no digest, the Postgres base system kept. KeyDB and Dragonfly have no such button. Nor does a database that is stopped or deploying.
+### Postgres and PGDATA
 
-Through the API and MCP, `databases.versionChoices` returns `customOnCurrent`: whether `databases.setVersion` takes such a tag (`image`) for the version the database runs.
+New in 0.2.11. Postgres images from 18 on keep each major's data in a folder of its own, such as `/var/lib/postgresql/18/docker`, so an 18 database's volume is at `/var/lib/postgresql`. Older images look in `/var/lib/postgresql/data` and declare that folder a volume of its own, so on an 18 database's volume Docker gives it an anonymous volume: a 17 image there would start healthy on an empty database, the old container would not come back, and whatever was written there would go with the container on the next deploy.
+
+So before a Postgres database whose volume is at `/var/lib/postgresql` moves to another version, or from or to a tag that names no release, Seylo sets `PGDATA` in the database's own variables to the folder of the data that runs, with a comment that says why. For a database on 18 that is `/var/lib/postgresql/18/docker`; otherwise Seylo reads it from the running container, and when it cannot, nothing changes. The deploy's log says `PGDATA set to <folder>, the folder of the data that ran.` Every image of the database then runs on that folder, so a version that cannot read the data fails to start, and the old container comes back with the data. In Seylo's test setup, a Postgres 18 database set to 17 this way never got healthy and came back on 18.
+
+For a Postgres 18 database that means:
+
+- Its first change to another version, or to a tag without a release, leaves `PGDATA=/var/lib/postgresql/18/docker` in its variables, also when the change did not finish, and every later image runs on that folder. Through the API, `env.get` shows it.
+- A `PGDATA` you set in its variables yourself stays, and Seylo sets none.
+
+A database on 15, 16 or 17 has its volume at `/var/lib/postgresql/data` and gets no pin: an older image looks there and refuses another major's data, and Postgres 18 refuses a volume at that old folder. In the test setup, a 17 database set to 18 never got healthy and came back on 17.
+
+A database made from a Postgres tag that names no release, such as `postgres:latest` or a digest, gets `PGDATA=/var/lib/postgresql/docker` when it is created, so its data stays on the data volume whatever release the tag pulls.
+
+### What is still refused
+
+These changes stay refused, whatever you accept, and nothing changes:
+
+- An image of another repository. A database takes its engine's own image only: `postgres` (`pgvector/pgvector` with pgvector), `mysql`, `mariadb`, `mongo`, `redis`, `valkey/valkey`, `clickhouse/clickhouse-server`, `eqalpha/keydb` or `ghcr.io/dragonflydb/dragonfly`, with or without `docker.io/`. Seylo's settings for it (its environment, data folder, health check and command) are made for that image. So a Postgres database also stays with or without pgvector.
+- A database that is not placed on a node.
+- A stopped database: the deploy would start it. Start it first.
+- A database with a deploy running: wait for it to finish.
+- The image that already runs: nothing to change. The one exception is turning MySQL 8.4's old logins on or off (see [MySQL 8.4 and mysql_native_password](#mysql-84-and-mysql_native_password)).
+
+While the database is stopped, deploying or not placed on a node, **Change to** is disabled and **Use another image** is not there. A step that runs before the change refuses it too when it fails, with nothing changed: MongoDB's compatibility step, MySQL's account check, and reading where Postgres keeps its data.
+
+### Use another image
+
+New in 0.2.11, in place of 0.2.10's **Another tag of `<engine>` `<version>`**. **Use another image** opens **Run another image of `<engine>`?** on an **Image** field, filled in with the image that runs ("The database runs `<image>`. Give the image to run instead."). Type any tag or digest of the engine's own image:
+
+- A newer release of the version that runs, such as `mongo:8.0.40` on a MongoDB 8.0 database before the catalog has it: a patch update, with **Update** and no backup.
+- Another version, such as `mongo:9.0.8` or `mongo:8.2.12`: the same rules as the list, with the backup step, and a risk for a version Seylo does not offer.
+- A floating tag (`mongo:8.0`, `mongo:latest`), a digest (`mongo@sha256:...`) or an old release: a risk.
+
+The rules judge from what runs, read from the tags: the version a tag names (major.minor, a Postgres major, 26.8 for ClickHouse's 26.8.36.3), and whether it names an exact release. Until the panel answers, the dialog reads the version from the tag the same way, so a change of version shows the backup step at once. KeyDB and Dragonfly take it too: a newer version of them is a risk. Images other than the catalog's are not tested by Seylo.
+
+After a change that did not finish, the field starts from the image that still runs, and the dialog is **Stay on `<image>`?**: **Update** sets it again, the database restarts on it, and the card no longer says the change did not finish. On an image newer than the catalog's image of its version, the list shows that catalog image as **older**, with its risk.
+
+### MongoDB
+
+Before a one-step upgrade between the catalog's MongoDB versions (7.0 to 8.0, 8.0 to 9.0), Seylo sets the feature compatibility version (`featureCompatibilityVersion`) of the running database to the version it runs, and the dialog says so. If that fails, nothing changes. Since 0.2.11 that is the only MongoDB move that gets the step: for any other, such as a version Seylo does not offer, a skipped or older version, a floating tag or a digest, **What can go wrong** says that MongoDB may refuse data whose feature compatibility version it does not support. In Seylo's test setup, a MongoDB 8.0 database moved to `mongo:8.2.12` kept its data with no step, and a 9.0 database set to the 8.0 image never got healthy and came back on 9.0.
+
+### MySQL 8.4 and mysql_native_password
+
+New in 0.2.11. MySQL 8.4 turns the old `mysql_native_password` sign-in method off. Accounts made with it, common for older apps and users made by hand, cannot sign in to 8.4, while the data is fine. So before a change from 8.0 to 8.4 the panel lists the running database's accounts that use it (MySQL's own `mysql.sys`, `mysql.session` and `mysql.infoschema` left out), and the dialog says so first. If it finds any, nothing changes, and the dialog names them (10 at most, then "and N more"), with two ways out:
+
+- Switch them to `caching_sha2_password`, then change the version again: `ALTER USER 'user'@'host' IDENTIFIED WITH caching_sha2_password BY '…'`, which needs each account's password.
+- Tick **Keep mysql_native_password logins working in 8.4** and click **Change version** again. 8.4 then starts with `--mysql-native-password=ON`, and later deploys, rollbacks, clones and 8.4 patch updates keep it. The card shows **Logins**: **Old mysql_native_password logins are on**. Switching the accounts is still the lasting fix: MySQL 9 has no `mysql_native_password`.
+
+When the panel cannot list the accounts, nothing changes either, and the dialog shows the same checkbox, which needs no list. The check signs in as MySQL's root user, so it works for a database whose admin user is not root too, also right after a password reset, before the next deploy.
+
+The same check runs before a move to a MySQL image from 8.4 on that Seylo does not offer, such as `mysql:9.1.0`, or to a tag that names no release, when such accounts can sign in to what runs. MySQL 9 removed that sign-in method, so there the only way out is switching the accounts.
+
+A MySQL 8.4 database can also turn those logins on or off without changing its image: the card has a **Keep old mysql_native_password logins working** switch with **Apply**. **Turn old mysql_native_password logins on?** (or **off?**) and **Update** restart the database on the image it runs, also a tag such as `mysql:8.4`, with nothing to accept and no backup step. Turning them off checks for such accounts first, as above. The switch is disabled while the database is stopped or deploying, and after a change that did not finish.
+
+An exported MySQL 8.4 that ran with these logins on keeps them when it is imported (see [Export and import](/guides/export-and-import#databases)).
+
+### Rollbacks
+
+A rollback on the **Deployments** tab only takes a deployment of the image the database runs, so it never goes back across a version change or a patch update. That stays so with any image: what you accept on the **Version** card is for that change only. Changed in 0.2.11: the tab no longer offers **Roll back** on a database's deployments of another image, which the rollback then refused.
+
+### Through the API and MCP
+
+`databases.versionChoices` lists the catalog's versions, each with its `kind`, `risk` and `risks` (what `databases.setVersion` needs `acceptRisk` for) and `message`, and says `anyImage`, `repository`, `release`, `blocked` and, for MySQL, `nativePassword`. `customOnCurrent` is deprecated: it is `anyImage` while nothing blocks a change.
+
+`databases.setVersion` takes a `version` or any `image` (then no `version` is needed), with `acceptRisk`, `confirmNoBackup` and, for MySQL 8.4, `keepNativePassword`, also alone on the image that runs. It refuses, with nothing changed: `riskNotAccepted` (`details.risk`, `details.risks`, `details.message`, `details.backupRequired`), `backupRequired`, `nativePasswordUsers` (`details.accounts`, `details.count`), `nativePasswordCheckFailed`, `fcvFailed`, `pgdataFailed`, `customImage` (another repository), `noNode`, `stopped`, `deployRunning` and `current`. `databases.create` takes `image` too. AI tools need an approval for a change (see [Approvals](/features/mcp-and-ai#approvals)).
 
 ## Clone or export a database
 
 New in 0.2: **Clone** in the service's **More actions** menu copies a database into any project and node, empty with new passwords or with a copy of its data. See [Clone and move between projects](/guides/clone-and-move).
 
-New in 0.2.10: to take a database to another panel, **Export…** on its **Settings** tab downloads it as a .zip, and **Add a service → Import from a file** creates it there. Its data only goes in an encrypted file, since it opens with the database's logins, and the database is stopped for the whole download. The import runs the new panel's image of its version, unless its data was written by a newer release of it. See [Export and import](/guides/export-and-import#databases).
+New in 0.2.10: to take a database to another panel, **Export…** on its **Settings** tab downloads it as a .zip, and **Add a service → Import from a file** creates it there. Its data only goes in an encrypted file, since it opens with the database's logins, and the database is stopped for the whole download. The import runs the new panel's image of its version, unless that image could read its data differently: then, with its data, the database keeps the image it ran (a newer release, a floating tag or digest, another Postgres base system). See [Export and import](/guides/export-and-import#databases).
