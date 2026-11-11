@@ -98,11 +98,11 @@ Going back to an older version, or to an older image of the same version, is ref
 Older versions cannot read the upgraded data files. Going back means restoring a backup into a new database.
 </Callout>
 
-That is why a change of version, unlike a patch update, asks for a successful backup from the last 24 hours first. The confirm dialog shows when the last one finished. Without one, **Back up now** runs the database's backup schedule right there (**Set up backups** when it has none), or tick **Change without a backup**.
+That is why a change of version, unlike a patch update, asks for a successful backup from the last 24 hours first. If there is one, the confirm dialog shows when it finished. Without one, **Back up now** runs the database's backup schedule right there (**Set up backups** when it has none), or tick **Change without a backup**.
 
 For MongoDB, Seylo first sets the feature compatibility version (`featureCompatibilityVersion`) of the running database to the version it runs. If that fails, nothing changes.
 
-While the change deploys, the card shows the deploy with **View log**. If the new version does not become healthy, the old one comes back on the same data and the card says the change did not finish: pick the version again to retry, or stay on the old image. MongoDB data stays readable by the old version, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database.
+While the change deploys, the card shows the deploy with **View log**. If the new version does not become healthy, the old one comes back on the same data, after up to 5 minutes of outage, and the card says the change did not finish: pick the version again to retry, or stay on the old image. MongoDB data stays readable by the old version, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database.
 
 A rollback on the **Deployments** tab only takes a deployment of the image the database runs, so it never goes back across a version change or a patch update.
 
