@@ -1,0 +1,34 @@
+---
+title: What's new in 0.2.9
+description: Change a database's version in place, MongoDB 9.0, and exposed databases that use their own user and password.
+---
+
+0.2.9 updates a 0.2.8 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.9** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## New
+
+- **Change a database's version.** A database's **Settings** tab has a **Version** card: the version and pinned image it runs, and the versions it can change to. A change deploys the database on the same data, with a short outage while it restarts. A newer pinned image of the same version is a patch update. A newer version is allowed where the engine upgrades its own files in place: MongoDB one version at a time (Seylo sets the feature compatibility version on the running database first, and changes nothing if that fails), MariaDB one version at a time (the container now upgrades its system tables on start), MySQL 8.0 to 8.4, and any newer Redis, Valkey or ClickHouse. Going back to an older version is refused for every engine, a rollback to a deployment from before the change included, and so is a Postgres major upgrade. A new version cannot be undone, so it asks for a backup from the last 24 hours first: **Back up now** runs one right there, or tick **Change without a backup**. **Use another tag of this version** takes another exact release tag of the engine's official image (not tested by Seylo). The version in the page header links to the card. See [Change the version](/guides/databases#change-the-version).
+- **MongoDB 9.0.** New databases can run MongoDB 9.0, now the default, and 8.0 and 7.0 moved to their newest releases, 8.0.34 and 7.0.45. See [Database engines](/guides/database-engines#mongodb).
+
+## Improved
+
+- **Exposed databases use their own user and password.** Exposing a database only opens a port to it, with TLS: clients sign in with the same user and password as inside, for every engine. Before, Postgres, MySQL, MariaDB, MongoDB and ClickHouse got a second user, `external`, with a password of its own. The exposed card on the **Connection** tab shows the same user and password, `${{<service>.EXPOSED_URL}}` carries them, and there is one **Reset password** for the database. The port stays TLS only: Postgres, MySQL and MariaDB clients that do not ask for TLS are refused by the node with the database's own kind of error. MariaDB 10.11 has no TLS, so it can no longer be exposed; 11.4 and later can. See [Expose with TLS](/guides/databases#expose-with-tls).
+- **The console follows its process across a restart.** When the process exits for a restart or a deploy, the console waits for the new one and attaches to it, instead of stopping at **Reconnect**. A shell that exits stays closed. See [Console and shell](/features/logs-and-terminals#console-and-shell).
+- **Sidebar.** An open project's services have a little room under them, so the next project reads as its own group.
+
+## Changed
+
+- **New database** offers Postgres, MySQL, MariaDB, MongoDB, Redis and Valkey. KeyDB, Dragonfly and ClickHouse are not offered for new databases for now; existing ones keep working.
+
+## Fixed
+
+- **The new password after a reset vanished.** The confirm dialog of **Reset password** closed it along with itself. It stays on screen now, with the number of services that need a restart.
+
+## After the update
+
+- Update the nodes too; the update does that. Exposed Postgres, MySQL and MariaDB databases need the node's agent from 0.2.9: until the node is updated their port stays closed, and **Exposed** cannot be turned on there ("Update the node first"). The **Connection** tab says "Closed until `<node>` updates to 0.2.9", with **Exposed** still on, and `${{<database>.EXPOSED_URL}}` is empty for services deployed meanwhile. The port opens by itself once the node is updated. MongoDB, ClickHouse and the Redis-like engines stay exposed on older nodes. See [Closed until the node updates](/guides/databases#closed-until-the-node-updates).
+- Clients that signed in as `external` need the database's own user and password now (copy them from the exposed card).
+- Redeploy the services that use `${{<database>.EXPOSED_URL}}` of a database from before 0.2.9. They run with the `external` URL they started with, and `external` keeps working for them until then. A stopped one keeps it too, since it starts again with the same URL.
+- Once no service in any project runs with that URL any more, the node disables `external` once, without deleting anything it owns: Postgres takes its LOGIN away, MySQL and MariaDB lock it, MongoDB and ClickHouse drop the user (their data belongs to the database, not the user). If you made a user named `external` yourself in such a database, it is disabled too: in Postgres `ALTER ROLE external LOGIN` brings it back, in MySQL or MariaDB `ALTER USER 'external'@'%' ACCOUNT UNLOCK`.
+- An exposed MariaDB 10.11 shows as not exposed and its port closes. To reach it from outside, change its version to 11.4 on its **Settings** tab (back it up first), or move its data to a MariaDB 11.4 or later database.
+- Existing MongoDB 8.0 and 7.0 databases keep the image they run until you take the patch update in their **Version** card. Existing MariaDB databases get the system table upgrade setting with their next deploy, which a version change is.
