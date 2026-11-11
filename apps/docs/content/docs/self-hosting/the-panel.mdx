@@ -202,12 +202,12 @@ What moves: everything in `/var/lib/seylo/panel/` (`panel.db`, `master.key`, `me
 
 What it does, in order:
 
-1. Checks first, and refuses with the reason: the new server must be online and run the panel's version; no update, deploy, build, move, backup or restore may be running; **Serve on IP address** must be on and Tailscale Serve off (both are tied to the old server; turn them back on afterwards).
+1. Checks first, and refuses with the reason: the new server must be online and run the panel's version; no update, deploy, build, move, backup or restore may be running; **Serve on IP address** must be on, Tailscale Serve off (both are tied to the old server; turn Tailscale Serve back on afterwards) and no master key rotation half done.
 2. The panel is read-only for the few minutes the move takes. Your apps keep running and serving.
 3. It copies the registry, then a consistent snapshot of the panel's folder, with a checksum for every file.
 4. It starts the panel on the new server, waits until it answers, and checks it presents the same agents' TLS key your nodes pin.
 5. It tells every node the new address, and each node checks it can reach it. If any step fails, nothing switches: the move stops, the new server's copy is deleted, and the old panel carries on.
-6. It switches: the old panel stops, and every node goes to the new address by itself within seconds, keeping its pin. The new panel runs no scheduled work until the first node reaches it.
+6. It switches: the old panel stops, and every node goes to the new address by itself, usually within half a minute, keeping its pin. The new panel runs no scheduled work until the first node reaches it.
 
 Nodes that are offline, or that joined over plain `http://` from another host, cannot follow. The check lists them; you can move anyway and join them again later with `seylo join --force`.
 
