@@ -27,17 +27,25 @@ What read the source goes in by name, never by this panel's ids: the GitHub App 
 
 ### What stays out, and why
 
-The dialog lists the rest under **Left out**:
+The dialog lists what the file does not hold under **Left out**:
 
 | What | Why |
 | --- | --- |
 | Deploy history, logs and built images | They belong to the old panel. The import builds the service again from its source, or pulls its image. |
 | The GitHub App, connected GitHub accounts and git host connections | They are the old panel's identities at GitHub and the other hosts. The import uses this panel's, matched by account or host. |
-| A git credential or registry login | Logins are panel-wide. The import picks one on the new panel, or you include it in an encrypted file. |
 | People's access (grants and invites) | Accounts differ between panels. |
-| Automatic domains | They belong to the old node's wildcard domain. The import offers one on the new node instead. |
-| The deploy trigger URL | Its token is stored hashed. The import makes a new one and shows it once. |
-| Previews | They follow pull requests on the old panel. Previews arrive off. |
+| The git credential or registry login, when the source uses one | Logins are panel-wide. The import picks one on the new panel, or you include it in an encrypted file. |
+| Previews, when they are on | They follow pull requests on the old panel. Previews arrive off. |
+
+For a key limited to some actions it also names each part it may not read (see [Permissions](#permissions)).
+
+These are in the file, but the import does not take them as they are:
+
+| What | What the import does |
+| --- | --- |
+| Automatic domains | They belong to the old node's wildcard domain. The import offers one on the new node instead (see [Domains](#domains)). |
+| The deploy trigger | Its token is stored hashed, so the file only says there is one. The import makes a new URL and shows it once. |
+| The template it was installed from | A custom template of the old panel may not exist here, so the imported service is not linked to a template. Its settings come along as they are. |
 
 Compose stacks and their members cannot be exported yet: the card says so instead of offering **Export…**. Protected services, the panel itself and preview services are not exported either, and an export is refused while a clone copies the service's data, while it moves to another node and while it still receives an import.
 
@@ -46,17 +54,24 @@ Compose stacks and their members cannot be exported yet: the card says so instea
 Pick one under **Secret values**:
 
 - **Encrypt with a passphrase** (the default): the settings and the secret values go inside `secrets.enc`, encrypted with a passphrase you type twice, 12 characters or more. The panel does not keep it and cannot recover it: without it nobody can open the file, Seylo included. With a passphrase, commands, URLs, host names and notes are encrypted too. **Include the git credential `<name>` (encrypted)** (or the registry login) adds the login the source uses, so the other panel can create it from the file.
-- **Leave secret values out**: the file holds every setting in clear (`service.json`) and no secret value. Variable values, file mount contents, database logins, certificates, basic auth hashes, the tunnel token and shared variables' values stay out. Commands, URLs, host names and notes are in the file as they are. On import, the variables arrive without values, file mounts empty, domains with basic auth need new passwords, and a database's data cannot come along.
+- **Leave secret values out**: the file holds every setting in clear (`service.json`) and no secret value. Variable values, file mount contents, database logins, certificates, basic auth hashes, the tunnel token and shared variables' values stay out. Commands, URLs, host names and notes are in the file as they are. On import, the variables arrive without values, file mounts empty, domains with basic auth need new passwords, a Cloudflare tunnel with its own token needs the token again under **Dev access** on the **Domains** tab before it can run, and a database's data cannot come along.
 
-The uploaded archive and the volume data are not encrypted in either mode, and the dialog says so. Keep the file where you would keep the service's code and data.
+The uploaded archive and the volume data are not encrypted in either mode, and the dialog says so. Neither are `manifest.json` and `README.txt`. The manifest names the service, its kind and its volumes, the panel's version and id and when it was exported, counts its variables, file mounts, domains, volumes, cron jobs and uptime checks, and holds each entry's size and SHA-256. The README names the service and its volumes. Keep the file where you would keep the service's code and data.
 
 ## Volume data
 
-Under **Volume data**, tick the volumes whose data goes in the file. All of them are ticked when the data can go; an unticked volume arrives empty. Its data cannot go in while the service is on no node or on several, its node is offline, another download of its data runs, or 3 downloads with volume data run on the panel already.
+Under **Volume data**, tick the volumes whose data goes in the file. All of them are ticked when the data can go; an unticked volume arrives empty. The dialog says why the data cannot go in when:
 
-**Stop `<name>` while its data is read, so it is consistent** is ticked by default. The service stops before the download starts and stays stopped until it ends. It starts again by itself when the download ends, when it breaks off (nothing read for 5 minutes), after 12 hours, when you click **Stop the export**, or when the panel restarts. Untick it to keep an app running meanwhile; files copied from a running service may be inconsistent.
+- the service is on no node or on several,
+- its node is offline,
+- the agent on its node is too old to read volumes ("The agent on `<node>` is too old to read volumes. Update the node."),
+- the key lacks a permission it needs: `files.read`, and for a database also `databases.credentials`, and `services.control` to stop it,
+- another download of its data runs,
+- or 3 downloads with volume data run on the panel already.
 
-While a download reads its data, the service's header says so, with **Stop the export**, and moving the service to another node, changing its volumes, deleting it, cloning it with its data and restoring a backup into it are refused. When the download stopped the service, **Start**, deploys and **Open editor** for a Box are refused too. Exporting volume data works from nodes on older agents.
+**Stop `<name>` while its data is read, so it is consistent** is ticked by default. The service stops before the download starts and stays stopped until it ends. It starts again by itself when the download ends, when it breaks off (nothing read for 5 minutes), after 12 hours, when you click **Stop the export**, or when the panel restarts. When it does not stop within 2 minutes, the download fails without reading its data and the service runs again. Untick it to keep an app running meanwhile; files copied from a running service may be inconsistent.
+
+While a download reads its data, the service's header says so, with **Stop the export**, and moving the service to another node, changing its volumes, deleting it, cloning it with its data and restoring a backup into it are refused. When the download stopped the service, **Start**, deploys and **Open editor** for a Box are refused too.
 
 ### A database's data
 
@@ -101,7 +116,7 @@ The review page shows what the import would create. At the top it says how many 
 
 The section counts the variables, "without values" when the file left them out. Variables that named the service itself now name the imported one, as a clone's do. Variables that read from services in this project are listed: check that they are the ones it means. A service it references that this project does not have is named, and those values stay empty until you import it too.
 
-**Shared variables** lists each project variable the service reads, as **missing here**, **the same here**, **differs here** or **no value in the file**. Pick **Add the missing ones** (the default), **Add and overwrite** or **Leave them**. A value from the file is only taken when it is one `KEY=value` line without references.
+**Shared variables** lists each project variable the service reads, as **missing here**, **the same here**, **differs here** or **no value in the file**. Pick **Add the missing ones** (the default), **Add and overwrite** or **Leave them**. A value from the file is only taken when it is one `KEY=value` line without references. **Add and overwrite** replaces a shared variable that **differs here** for every service in the project that reads it, and nothing puts the old value back, [Discard](#discard) included: check what reads it first.
 
 ### Domains
 
@@ -133,6 +148,8 @@ An app imported without any domain gets IP:port access, like a new app, only whe
 | Backup schedules | **Use destinations of the same name** (same name, provider and bucket), **Switched off** or **Leave them out** (the default from another panel) |
 | Database listeners | **Add** or **Skip** for each port. One open to anyone is skipped by default; one on a port in use is always skipped. |
 
+From another panel, cron jobs and uptime checks arrive **As in the file** by default, so the ones that were on are on. When the old service still runs, its cron jobs then run on both panels until one side is switched off. Pick **Switched off** then, and switch them on once the old service is stopped. Imported on the same panel, the defaults differ (see [Imported on the same panel](#imported-on-the-same-panel)).
+
 The Cloudflare tunnel arrives switched off, since two connectors on one token would split the traffic between the panels: turn it on once the old one is off. The maintenance page comes along. A service with a deploy trigger gets a new URL, shown once after the import.
 
 A cron job, uptime check, domain or other item that does not pass this panel's checks is left out with a note, never imported with weaker settings. **Worth knowing** lists the warnings, and **Left behind** what stays out and why.
@@ -154,6 +171,8 @@ Until its data is in, the service cannot start or deploy. Its header says it sti
 ### Discard
 
 When a part fails, the page says why, with **Retry**, which goes on from what the panel has, and **Discard**. **Discard** throws the import away and deletes the new service with whatever arrived, while its data is still going up. A service that is protected or has deployments is not deleted that way.
+
+**Discard** does not undo what **Import** wrote outside the service: shared variables it added or overwrote in the project stay, and so does a git credential or registry login made with **Create `<name>` from the file**.
 
 ## Imported on the same panel
 
@@ -190,7 +209,7 @@ While an export downloads or an import uploads volume data, a panel update does 
 
 Importing volume data onto a node needs its agent from 0.2.10. On an older node, the review page says "The agent on `<node>` is too old to take volume data from a file. Update the node, or leave the data out." Untick the data to import the settings, and the uploaded archive, without it. An offline node cannot take the data either: pick another node or leave the data out.
 
-Exporting volume data works from nodes on older agents.
+Exporting volume data does not need 0.2.10 on the node: it reads volumes the way moving a service to another node does, so agents from before 0.2.10 work. An agent too old for that gets "The agent on `<node>` is too old to read volumes. Update the node."
 
 ## Permissions
 
