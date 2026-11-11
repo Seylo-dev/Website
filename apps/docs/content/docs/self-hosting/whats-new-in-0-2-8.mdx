@@ -13,6 +13,8 @@ description: Move the panel to another server from Settings, with your nodes fol
 
 - **GitHub page.** A connected account can switch to a personal access token, or replace its token, from **Settings → GitHub** (before, only after a disconnect).
 - **Joining behind a firewall that decrypts HTTPS.** **Add node** offers the same token over the panel's IP and pinned key next to a domain command, and the agent and installer say when a firewall's TLS inspection replaced the panel's certificate, naming its issuer. See [Adding nodes](/guides/adding-nodes).
+- **A service can reference its own domain.** `${{<service>.DOMAIN}}`, `URL` and the other built-ins work in the service's own environment, for apps such as n8n that need their public address. See [References](/guides/environment-variables#built-in-variables).
+- **Service pages.** The usage strip shows on every tab, so the tabs no longer move when you switch; the Domains tab shows a red count of domains that still need DNS or a certificate; the header's node chip and domain link have icons. Project settings use two columns on wide screens.
 - **MCP setup for Claude.** The Claude Code command adds the panel for every project (`--scope user`), and **Copy the URL and open Claude** copies the server URL on the way to Claude's connectors page. Claude has no install link to do more.
 
 ## Fixed

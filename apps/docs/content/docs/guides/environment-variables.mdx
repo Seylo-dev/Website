@@ -57,6 +57,15 @@ Every service offers these besides its own keys:
 
 `URL` and `DOMAIN` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed.
 
+New in 0.2.8: a service can reference its own built-in variables by its own name, for an app that must know its public address. n8n, for example:
+
+```bash
+N8N_HOST=${{automations.DOMAIN}}
+WEBHOOK_URL=${{automations.URL}}
+```
+
+Its own `.env` keys stay out of reach that way (they are the lines of the same file): the editor marks `${{automations.SOME_KEY}}` as an error and says to write the value instead. Before 0.2.8 every reference to the service itself was an error and stayed unresolved.
+
 ## Secret variables
 
 Every value reaches the container the same way. Whether a variable is a secret matters where a value could be kept: crash reports and troubleshoot uploads strip secret values, Dockerfile builds never pass them as build args, and Nixpacks builds (which write their variables into the image) do not get them at all. A variable is a secret when its name contains `SECRET`, `TOKEN`, `PASS`, `KEY`, `PRIVATE`, `CREDENTIAL` or `DSN`, when its value is a URL with a password or a long random token, or when it references a secret (a database's `PASSWORD`, `INTERNAL_URL`, `INTERNAL_HTTP_URL` or `EXPOSED_URL`, or another service's secret). A comment on the line above, or after the value, overrides the guess:
