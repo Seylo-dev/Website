@@ -55,7 +55,7 @@ Every service offers these besides its own keys:
 | Apps, compose members and Boxes | `URL` (public URL of the primary domain), `DOMAIN` (its host), `INTERNAL_URL` (`http://<service>:<port>` on the project network), `INTERNAL_HOST`, `INTERNAL_PORT` |
 | Databases | `INTERNAL_URL` (connection URL on the project network), `INTERNAL_HOST`, `INTERNAL_PORT`, `EXPOSED_URL` (connection URL from anywhere, with TLS), `EXPOSED_HOST`, `EXPOSED_PORT`, `USER`, `PASSWORD`, `DATABASE`. ClickHouse (new in 0.2) also has `INTERNAL_HTTP_URL` (its HTTP interface, with the password) and `INTERNAL_HTTP_PORT`. |
 
-`URL` and `DOMAIN` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed.
+`URL` and `DOMAIN` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed, and since 0.2.9 while an exposed Postgres, MySQL or MariaDB waits for its node's update (see [Closed until the node updates](/guides/databases#closed-until-the-node-updates)). The exposed URL has the database's own user and password.
 
 New in 0.2.8: a service can reference its own built-in variables by its own name, for an app that must know its public address. n8n, for example:
 

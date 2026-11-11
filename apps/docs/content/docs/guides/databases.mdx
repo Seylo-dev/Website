@@ -1,6 +1,6 @@
 ---
 title: Databases
-description: Postgres, MySQL, MariaDB, MongoDB, Redis, Valkey, KeyDB, Dragonfly and ClickHouse on the project's private network, with web UIs, shells, TLS exposure and backups.
+description: Postgres, MySQL, MariaDB, MongoDB, Redis, Valkey, KeyDB, Dragonfly and ClickHouse on the project's private network, with web UIs, shells, TLS exposure, version changes and backups.
 ---
 
 ## Create a database
@@ -12,12 +12,11 @@ In a project, click **Add a service**, pick **Database**, then the engine and th
 | PostgreSQL | 18 (new in 0.2), 17, 16, 15, each also with pgvector (new in 0.2) |
 | MySQL | 8.4, 8.0 |
 | MariaDB | 11.8, 11.4, 10.11 |
-| MongoDB | 8.0, 7.0 |
+| MongoDB | 9.0 (new in 0.2.9), 8.0, 7.0 |
 | Redis | 8.2, 7.4 |
 | Valkey (new in 0.2) | 9.1, 9.0, 8.1 |
-| KeyDB (new in 0.2) | 6.3, unmaintained |
-| Dragonfly (new in 0.2) | 2.0 |
-| ClickHouse (new in 0.2) | 26.8, 26.3 |
+
+Changed in 0.2.9: **New database** does not offer KeyDB, Dragonfly and ClickHouse for now; existing ones keep working, and templates and the API still create them.
 
 For Postgres, **Include pgvector** picks an image with the vector extension. Valkey, KeyDB, Dragonfly and ClickHouse need a 0.2 agent on the node. [Database engines](/guides/database-engines) has the connection strings, backups and limits of each.
 
@@ -48,7 +47,9 @@ The **Tools** section on the Connection tab has:
 
 ## Expose with TLS
 
-To reach the database from your laptop or from another node, turn on **Exposed**. Since 0.2.8 it asks first for the port the node opens (1024 to 65535; empty picks a free one) and who may connect, and opens it when you click **Expose**; **Port and access** changes them later. The agent opens that port on the node and the panel creates a separate user that must use SSL; the internal URL and user do not change. Redis, Valkey, KeyDB and Dragonfly have one user, so exposing them uses that same user, only over TLS.
+To reach the database from your laptop or from another node, turn on **Exposed**. Since 0.2.8 it asks first for the port the node opens (1024 to 65535; empty picks a free one) and who may connect, and opens it when you click **Expose**; **Port and access** changes them later.
+
+Exposing only opens a port on the node to the database, with TLS. Clients sign in with the database's own user and password, the same as in the **Internal connection**, for every engine, and the internal URL does not change. The exposed card on the **Connection** tab shows that user and password, and **Copy** copies the URL. Changed in 0.2.9: before, Postgres, MySQL, MariaDB, MongoDB and ClickHouse got a second user for the exposed port; [What's new in 0.2.9](/self-hosting/whats-new-in-0-2-9#after-the-update) says what happens to it.
 
 **Exposure settings**:
 
@@ -58,17 +59,58 @@ To reach the database from your laptop or from another node, turn on **Exposed**
 | **TLS host name** | A name that points at the node gets a Let's Encrypt certificate. Empty uses a self-signed certificate. |
 | **Port** | The public port. Empty keeps the current one or picks a free port. |
 
-Postgres, MySQL and MariaDB serve TLS themselves and refuse plain logins for the exposed user. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name.
+The port only takes TLS. Postgres, MySQL and MariaDB serve TLS themselves, and the node refuses their clients that do not ask for it with the database's own kind of error: Postgres clients get "this port only accepts TLS connections: connect with sslmode=require", MySQL and MariaDB clients get error 3159. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name.
+
+MariaDB 10.11 has no TLS, so since 0.2.9 it cannot be exposed: **Expose** refuses it. MariaDB 11.4 and later can; to expose a 10.11 database, [change its version](#change-the-version) to 11.4 first.
 
 The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. With a self-signed certificate, tell the client to require TLS without checking the certificate (for Postgres, `sslmode=require`).
 
+### Closed until the node updates
+
+Exposed Postgres, MySQL and MariaDB need the node's agent from 0.2.9, which keeps the port TLS only. On an older node **Expose** refuses them ("Update the node first"), and one exposed before the update stays closed: the **Connection** tab says "Closed until `<node>` updates to 0.2.9", with **Exposed** still on, and `${{db.EXPOSED_URL}}` is empty for services deployed meanwhile. The port opens by itself once the node is updated. MongoDB, ClickHouse and the Redis-like engines stay exposed on older nodes.
+
 ## Reset a password
 
-**Reset password** (the admin user) and **Reset the exposed password** create a new password inside the running database. ClickHouse and Dragonfly read the admin password when they start, so for them a reset restarts the database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting. You type the service name to confirm.
+**Reset password** creates a new password inside the running database. It is one password, inside and through the exposed port. ClickHouse and Dragonfly read the password when they start, so for them a reset restarts the database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting, wherever it connects from. You type the service name to confirm. The new password stays on screen with the number of services that need a restart: copy it then.
 
 ## Backups
 
 On the database's **Backups** tab, schedule dumps to an S3-compatible bucket. Each run uses the engine's own dump tool. See [Backups](/guides/backups), and [Database engines](/guides/database-engines#backups-and-restores) for what each engine's backup and restore do.
+
+## Change the version
+
+New in 0.2.9. A database's **Settings** tab has a **Version** card: the version and pinned image it runs, and the versions it can change to. The version in the page header links to it. Pick one under **Change to** and click **Change version**: the database deploys on the same data, with a short outage while it restarts. Versions it cannot change to are disabled in the list, with the reason. Changing the version takes the right to deploy the database.
+
+A newer pinned image of the same version is a patch update. A newer version runs only where the engine upgrades its own data files in place:
+
+| Engine | Can change to |
+| --- | --- |
+| PostgreSQL, with or without pgvector | Patch updates only. A major upgrade needs a dump and restore into a new database. |
+| MySQL | 8.0 to 8.4 |
+| MariaDB | One version at a time: 10.11 to 11.4, then 11.4 to 11.8. The container upgrades its system tables on the first start of the new version. |
+| MongoDB | One version at a time: 7.0 to 8.0, then 8.0 to 9.0 |
+| Redis, Valkey, ClickHouse | Any newer version |
+| KeyDB, Dragonfly | Patch updates only |
+
+Going back to an older version, or to an older image of the same version, is refused for every engine. A Postgres database also stays with or without pgvector. No change starts while the database is stopped (the deploy would start it) or while a deploy of it runs.
+
+<Callout type="warn" title="A new version cannot be undone">
+Older versions cannot read the upgraded data files. Going back means restoring a backup into a new database.
+</Callout>
+
+That is why a change of version, unlike a patch update, asks for a successful backup from the last 24 hours first. The confirm dialog shows when the last one finished. Without one, **Back up now** runs the database's backup schedule right there (**Set up backups** when it has none), or tick **Change without a backup**.
+
+For MongoDB, Seylo first sets the feature compatibility version (`featureCompatibilityVersion`) of the running database to the version it runs. If that fails, nothing changes.
+
+While the change deploys, the card shows the deploy with **View log**. If the new version does not become healthy, the old one comes back on the same data and the card says the change did not finish: pick the version again to retry, or stay on the old image. MongoDB data stays readable by the old version, but MySQL and MariaDB may already have upgraded their files, which the old version can refuse: then restore the backup into a new database.
+
+A rollback on the **Deployments** tab only takes a deployment of the image the database runs, so it never goes back across a version change or a patch update.
+
+Through the API and MCP, `databases.versionChoices` lists the versions with their reasons and `databases.setVersion` makes the change. AI tools need an approval for it (see [Approvals](/features/mcp-and-ai#approvals)).
+
+### Another release tag
+
+**Use another tag of this version** in the confirm dialog takes another exact release tag of the engine's official image for that version, for example `mongo:8.0.40`, instead of the catalog's. It is not tested by Seylo and follows the same rules. Floating tags (`latest`, `8.0`) and digests are refused, since the rules read the version in the tag. A Postgres tag keeps the catalog's base system (`-alpine`, or `-trixie` for pgvector), because another C library sorts text differently under the same indexes. KeyDB and Dragonfly take the catalog's image only.
 
 ## Clone a database
 
