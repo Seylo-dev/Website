@@ -48,7 +48,7 @@ The **Tools** section on the Connection tab has:
 
 ## Expose with TLS
 
-To reach the database from your laptop or from another node, turn on **Exposed**. The agent opens a port on the node and the panel creates a separate user that must use SSL; the internal URL and user do not change. Redis, Valkey, KeyDB and Dragonfly have one user, so exposing them uses that same user, only over TLS.
+To reach the database from your laptop or from another node, turn on **Exposed**. Since 0.2.8 it asks first for the port the node opens (1024 to 65535; empty picks a free one) and who may connect, and opens it when you click **Expose**; **Port and access** changes them later. The agent opens that port on the node and the panel creates a separate user that must use SSL; the internal URL and user do not change. Redis, Valkey, KeyDB and Dragonfly have one user, so exposing them uses that same user, only over TLS.
 
 **Exposure settings**:
 
