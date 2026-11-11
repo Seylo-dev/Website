@@ -15,19 +15,15 @@ The server URL is your panel's address plus `/mcp`, for example `https://panel.e
 <Tab value="Claude Code">
 
 ```bash
-claude mcp add --transport http seylo https://panel.example.com/mcp
+claude mcp add --transport http --scope user seylo https://panel.example.com/mcp
 ```
+
+`--scope user` adds it for every project (since 0.2.8). Then run `/mcp` in Claude Code and pick `seylo` to sign in.
 
 </Tab>
 <Tab value="Claude Desktop">
 
-```json
-{
-  "mcpServers": {
-    "seylo": { "command": "npx", "args": ["-y", "mcp-remote", "https://panel.example.com/mcp"] }
-  }
-}
-```
+Claude (the desktop app and claude.ai) has no install link, so since 0.2.8 **Copy the URL and open Claude** copies the server URL and opens **Customize → Connectors**. Click **Add custom connector**, paste it, and if Claude asks how it signs in, pick **Register automatically**. On a Team or Enterprise plan an owner can add it once for everyone in **Organization settings → Connectors**; members then only click **Connect**. Claude connects from Anthropic's servers, so the panel has to be reachable from the internet.
 
 </Tab>
 <Tab value="Cursor">
