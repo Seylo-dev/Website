@@ -118,7 +118,7 @@ Changed in 0.2.11: every other change used to be refused. Now the confirm dialog
 | A newer version of KeyDB or Dragonfly | They take patch updates only: another version may not read the data files. |
 | A skipped MongoDB, MariaDB or MySQL version | They upgrade one version at a time, so it may refuse the data files. |
 | A version Seylo does not offer, as the target or as what runs | Not tested by Seylo, for example: `mongo:8.2.12` is MongoDB 8.2, which Seylo does not offer. |
-| A floating tag such as `mongo:8.2` or `latest`, as the target or as what runs | It is not an exact release: it moves to each new release, so the release behind it can change on the next deploy, and Seylo cannot check it against what runs. A rollback to an earlier deployment of the tag runs the older release it pulled then, on newer data files (see [Rollbacks](#rollbacks)). |
+| A floating tag such as `mongo:8.2` or `latest`, as the target or as what runs | It is not an exact release: it moves to each new release, so the release behind it can change on the next deploy, and Seylo cannot check it against what runs. An earlier deployment of the tag that pulled an older release is not offered as a rollback (see [Rollbacks](#rollbacks)). |
 | A digest as the target, or a database that runs an image known by its digest only | It does not show which release it is, so Seylo cannot check the change. |
 | Another Postgres base system, such as Debian's `postgres:17.6` on an Alpine database | Its C library may sort text in another order, so indexes on text columns may need `REINDEX`. The database starts as usual, so the old container does not come back for this one. |
 
@@ -194,7 +194,7 @@ An exported MySQL 8.4 that ran with these logins on keeps them when it is import
 
 ### Rollbacks
 
-A rollback on the **Deployments** tab only takes a deployment of the image the database runs, and it runs the release that deployment pulled. With an exact tag or a digest, it never goes back across a version change or a patch update. With a floating tag such as `mongo:8.0` or `latest`, the tag stays the same while the release behind it moves, so an earlier deployment of that tag can still be rolled back to, and it runs the release the tag pointed at then: an older release on data files a newer one wrote, with no backup step and nothing to accept. What you accept on the **Version** card is for that change only. Changed in 0.2.11: the tab no longer offers **Roll back** on a database's deployments of another image, which the rollback then refused.
+A rollback on the **Deployments** tab only takes a deployment of the same image the database runs: the same tag and the same release it pulled. So it never goes back across a version change or a patch update, and with a floating tag such as `mongo:8.0` or `latest`, an earlier deployment that pulled an older release behind the same tag is not offered either (a rollback runs the release that deployment pulled). What you accept on the **Version** card is for that change only. Changed in 0.2.11: the tab no longer offers **Roll back** on a database's deployments of another image, which the rollback then refused.
 
 ### Through the API and MCP
 
