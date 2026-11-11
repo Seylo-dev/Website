@@ -14,6 +14,8 @@ A node that is offline when its turn comes is skipped, and the rollout goes on w
 
 With the switch off, **Updates** shows the new version and its changelog, and **Update to `<version>`** runs the same steps when you choose. The **Update available** alert can tell you. On **Nodes**, **Update now** updates a single node's agent to the newest release on the release channel. It refuses when the node already runs that release or a newer one.
 
+New in 0.2.10: an update does not start while a [service export](/guides/export-and-import) downloads or an import uploads volume data, since restarting the panel or an agent would break it. **Update to `<version>`** says to wait until it ended, and the automatic run tries again at its next check.
+
 ### Nodes that were offline
 
 New in 0.2. When a node that was skipped as offline reconnects, the panel updates it in a run of its own, to the version and the signed manifest of the run it missed. **History** shows that run as started by **Node came back**, and the skipped step says what became of the node when you hover it:

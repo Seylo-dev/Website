@@ -1,0 +1,207 @@
+---
+title: Export and import
+description: Download a service as a .zip with its settings, secret values and volume data, and import it into a project on this panel or another one.
+---
+
+<Callout title="New in 0.2.10">
+Available from Seylo 0.2.10, to owners and admins. Importing volume data onto a node also needs its agent from 0.2.10.
+</Callout>
+
+A service's **Settings** tab has an **Export** card: **Export…** downloads the service as one .zip file. **Add a service → Import from a file** in a project on any panel, this one included, creates the service again from that file. To copy a service within this panel, [Clone](/guides/clone-and-move) is quicker; to move it to another node, see [Moving services](/guides/moving-services).
+
+## What goes in the file
+
+The **Export** dialog lists what goes in under **In the file** before anything is written:
+
+- the settings: source, build, ports, health check, resources, crash policy, deploy strategy, notes, and a database's or Box's settings,
+- environment variables and file mounts,
+- domains, with their certificates and access rules (basic auth, IP allowlist, rate limit, redirects), and the IP:port access settings,
+- database listeners (the exposed port and who may connect),
+- cron jobs, uptime checks, alert rules and backup schedules,
+- the maintenance page, the Cloudflare tunnel settings and whether it has a deploy trigger,
+- the shared variables it reads, by name,
+- an upload app's newest uploaded archive,
+- the data of the volumes you tick (see [Volume data](#volume-data)).
+
+What read the source goes in by name, never by this panel's ids: the GitHub App installation by its account, a connected GitHub account by its login, a git credential by its name, host and user, a git provider connection by its address, a registry login by its server and user. So does the commit it runs (for an image source, the digest that ran), for the first deploy after the import.
+
+### What stays out, and why
+
+The dialog lists the rest under **Left out**:
+
+| What | Why |
+| --- | --- |
+| Deploy history, logs and built images | They belong to the old panel. The import builds the service again from its source, or pulls its image. |
+| The GitHub App, connected GitHub accounts and git host connections | They are the old panel's identities at GitHub and the other hosts. The import uses this panel's, matched by account or host. |
+| A git credential or registry login | Logins are panel-wide. The import picks one on the new panel, or you include it in an encrypted file. |
+| People's access (grants and invites) | Accounts differ between panels. |
+| Automatic domains | They belong to the old node's wildcard domain. The import offers one on the new node instead. |
+| The deploy trigger URL | Its token is stored hashed. The import makes a new one and shows it once. |
+| Previews | They follow pull requests on the old panel. Previews arrive off. |
+
+Compose stacks and their members cannot be exported yet: the card says so instead of offering **Export…**. Protected services, the panel itself and preview services are not exported either, and an export is refused while a clone copies the service's data, while it moves to another node and while it still receives an import.
+
+## Secret values
+
+Pick one under **Secret values**:
+
+- **Encrypt with a passphrase** (the default): the settings and the secret values go inside `secrets.enc`, encrypted with a passphrase you type twice, 12 characters or more. The panel does not keep it and cannot recover it: without it nobody can open the file, Seylo included. With a passphrase, commands, URLs, host names and notes are encrypted too. **Include the git credential `<name>` (encrypted)** (or the registry login) adds the login the source uses, so the other panel can create it from the file.
+- **Leave secret values out**: the file holds every setting in clear (`service.json`) and no secret value. Variable values, file mount contents, database logins, certificates, basic auth hashes, the tunnel token and shared variables' values stay out. Commands, URLs, host names and notes are in the file as they are. On import, the variables arrive without values, file mounts empty, domains with basic auth need new passwords, and a database's data cannot come along.
+
+The uploaded archive and the volume data are not encrypted in either mode, and the dialog says so. Keep the file where you would keep the service's code and data.
+
+## Volume data
+
+Under **Volume data**, tick the volumes whose data goes in the file. All of them are ticked when the data can go; an unticked volume arrives empty. Its data cannot go in while the service is on no node or on several, its node is offline, another download of its data runs, or 3 downloads with volume data run on the panel already.
+
+**Stop `<name>` while its data is read, so it is consistent** is ticked by default. The service stops before the download starts and stays stopped until it ends. It starts again by itself when the download ends, when it breaks off (nothing read for 5 minutes), after 12 hours, when you click **Stop the export**, or when the panel restarts. Untick it to keep an app running meanwhile; files copied from a running service may be inconsistent.
+
+While a download reads its data, the service's header says so, with **Stop the export**, and moving the service to another node, changing its volumes, deleting it, cloning it with its data and restoring a backup into it are refused. When the download stopped the service, **Start**, deploys and **Open editor** for a Box are refused too. Exporting volume data works from nodes on older agents.
+
+### A database's data
+
+- A database is always stopped while its data is read, so it is down for the whole download. Export it when that is fine, or leave its data out and [back it up](/guides/backups) instead.
+- Its data goes in whole or not at all.
+- Only with a passphrase: the data opens with the database's logins, which go with it.
+
+## Download the file
+
+**Download .zip** starts the download. In the browser it needs a sign-in from the last 15 minutes, so the panel may ask you to [confirm it's you](/people/sign-in-and-security#confirm-its-you) first. The file is called `<service>-<yyyymmdd-hhmm>.seylo.zip`, in UTC.
+
+The dialog follows the download ("`<size>` sent so far."). When it is complete it shows the file's SHA-256, to compare with `shasum -a 256 <file>` on your machine. A download that ends without finishing says why; export again then. **Download again** gets a new link while the download has not started yet, for 2 minutes after the export.
+
+The .zip holds a `README.txt` that says what is inside. To look inside, use `unzip` or 7-Zip: some built-in zip tools fail on files over 4 GB. Import the file as it downloaded, not unzipped and zipped again.
+
+## Import from a file
+
+In a project, click **Add a service → Import from a file** (or the **+** next to the project in the sidebar). **Import a service** opens. Nothing is created until you click **Import** at the end of the review.
+
+### Pick the file
+
+Pick the **Project** when none is chosen, then pick or drop the .zip. The browser reads only the file's list of entries and its small entries, and refuses a damaged or edited file, or one that is not an export, before anything is sent ("This file cannot be imported: ..."). The panel checks every entry again.
+
+The file's summary shows the **Service**, its **Kind**, the **Size**, the panel version it came **From**, when it was **Exported** and whether its **Secret values** are encrypted or left out. For an encrypted file, type its **Passphrase**. **Continue** sends the small entries to the panel, which checks each one's size and SHA-256 against the manifest and opens `secrets.enc`. A wrong passphrase gets "That passphrase does not open this file."
+
+### The review page
+
+The review page shows what the import would create. At the top it says how many things need you before the import, or **Ready to import.** Every choice is saved and checked again at once, and every setting goes through the same checks as when you set it by hand.
+
+- **Name**: the file's, or `<name>-2` (`-3` and so on) when that name is taken in this project or something there already references it.
+- **Node**: the node of the same name, else the first node that is not disabled. A service that ran on several nodes starts on one: add the others on its **Scale** tab.
+
+### Source
+
+- **Read with**: what reads the source on this panel. The import picks the GitHub App installation, connected account, git credential, provider connection or registry login of the same account or host, and shows what read it on the old panel under the field. When nothing matches, it needs you: pick another one, **Create `<name>` from the file** when the encrypted file includes the login (it goes through the same checks as adding one by hand), or import without it (**Import without a source**, **Public repository, no credential** or **Public image, no login**). A GitHub or git provider source imported without one arrives without a source: connect one on the **Source** tab, then deploy.
+- **First deploy**: **The exported commit `<sha>`** (the default) or **The head of the branch**.
+- **Pull the exact image that ran (`<digest>`)**: an image source's first deploy pulls the digest that ran on the old panel. Off by default.
+- **Deploy on every push**: off by default, so a push does not deploy on two panels.
+- **Deploy when the import is done**: on unless the service was stopped when it was exported. It needs permission to deploy.
+
+### Environment
+
+The section counts the variables, "without values" when the file left them out. Variables that named the service itself now name the imported one, as a clone's do. Variables that read from services in this project are listed: check that they are the ones it means. A service it references that this project does not have is named, and those values stay empty until you import it too.
+
+**Shared variables** lists each project variable the service reads, as **missing here**, **the same here**, **differs here** or **no value in the file**. Pick **Add the missing ones** (the default), **Add and overwrite** or **Leave them**. A value from the file is only taken when it is one `KEY=value` line without references.
+
+### Domains
+
+Each domain has its status and **Add** or **Skip**:
+
+| Status | What it means |
+| --- | --- |
+| **free** | Added, unless you pick **Skip**. |
+| **used here** | Another service on this panel serves it. Skipped. |
+| **in use** | It is in use on this panel by something you cannot see. Skipped. |
+| **needs a password** | The file left the basic auth passwords out. Type a new one for each user (8 characters or more), or skip the domain. |
+| **certificate dropped** | Its own certificate is not in the file or does not pass this panel's checks. It is added with a Let's Encrypt certificate instead. |
+| **automatic** | The old node's automatic domain. Skipped; see below. |
+| **not accepted** | Its access rules do not pass this panel's checks. Skipped. |
+
+A custom domain whose DNS records still point at the old server waits before it asks Let's Encrypt for its certificate, like a newly added domain, and gets it once the records point at the new node (see [Domains and HTTPS](/guides/domains-and-https)).
+
+**Add the automatic domain `<name>.<wildcard>`** gives the service the new node's automatic domain instead of the old one, with the old automatic domain's access rules (basic auth, IP allowlist, rate limit, redirects) and its HTTPS choice: HTTPS off stays off, anything else gets a Let's Encrypt certificate. It is ticked when the file had an automatic domain. It is not offered when the node has no wildcard domain, the service has no port (databases and Boxes never get one), the host is taken, the old rules do not pass the checks, or the old automatic domain had basic auth and the file left its passwords out: add one on the **Domains** tab after the import then.
+
+An app imported without any domain gets IP:port access, like a new app, only when its file had no domains at all. One whose domains are all skipped stays closed, because the old one may have been behind basic auth or an IP allowlist: add a domain, or open IP:port access on its **Domains** tab.
+
+### Schedules, alerts, backups and listeners
+
+| Item | Choices |
+| --- | --- |
+| Cron jobs | **As in the file** or **Switched off** |
+| Uptime checks | **As in the file**, **Switched off** or **Leave them out** |
+| Alert rules | **Use channels of the same name** or **Leave them out** (the default from another panel) |
+| Backup schedules | **Use destinations of the same name** (same name, provider and bucket), **Switched off** or **Leave them out** (the default from another panel) |
+| Database listeners | **Add** or **Skip** for each port. One open to anyone is skipped by default; one on a port in use is always skipped. |
+
+The Cloudflare tunnel arrives switched off, since two connectors on one token would split the traffic between the panels: turn it on once the old one is off. The maintenance page comes along. A service with a deploy trigger gets a new URL, shown once after the import.
+
+A cron job, uptime check, domain or other item that does not pass this panel's checks is left out with a note, never imported with weaker settings. **Worth knowing** lists the warnings, and **Left behind** what stays out and why.
+
+### Data
+
+**Data** lists each volume in the file with its size in the file and unpacked; untick one to leave its data out, and it arrives empty. A database's data goes up whole or not at all. Files keep the owners, modes and links they had in the file. The page also says how much room the data may take on the node and how much the node last reported free. When it may take more than half of that, or a volume unpacks to more than 200 times its size, tick **I checked the size: import this data**.
+
+### Import and upload
+
+**Import** creates the service, stopped. In the browser it needs a sign-in from the last 15 minutes, like an export.
+
+Then **Uploading the file's data** sends what is left: the uploaded archive first, then each volume's data, in parts of 32 MiB. The archive goes to the panel; volume data goes through the panel straight to the node, without landing on the panel's disk. The panel and the node both check the SHA-256 from the manifest; data that does not match is thrown away and that entry starts over. Keep the page open while it runs: it warns before you leave.
+
+When everything is in, the page says `<name>` is imported: "It deploys now." with **Deploy when the import is done**, or "It is stopped: start it from its page when you are ready." A new deploy trigger URL is shown only then. **Open `<name>`** goes to the service.
+
+Until its data is in, the service cannot start or deploy. Its header says it still receives its imported data, with **Go on with the upload** for a closed page: pick the same .zip again, and only what did not go up yet is sent. Only the person who began an import can go on with it. A volume without a new part for 10 minutes, or a panel restart, starts that volume over. After 48 hours without a part the import fails: the service stays, without the data that did not arrive.
+
+### Discard
+
+When a part fails, the page says why, with **Retry**, which goes on from what the panel has, and **Discard**. **Discard** throws the import away and deletes the new service with whatever arrived, while its data is still going up. A service that is protected or has deployments is not deleted that way.
+
+## Imported on the same panel
+
+The file names the panel it came from. Imported on that same panel, cron jobs, uptime checks and backup schedules arrive switched off, so nothing runs twice; switch them on in the new service's tabs when you want them. Alert rules and backup schedules use the channels and destinations of the same name there. The original's domains show as **used here**, and in its own project the name gets `-2`.
+
+## Databases
+
+- An imported database runs this panel's image of its version. The review page says when the file ran another one. A version this panel does not offer blocks the import.
+- The exception is data from a newer release of the same version, such as a tag set with **Another tag of `<engine>` `<version>`** on the [Version card](/guides/databases#another-release-tag), or a panel that was updated before this one. Data cannot go back to an older release, so the database keeps that image, or, when this panel does not take it, the review page asks you to update this panel or leave the data out. Without its data, the database starts empty on this panel's image; set the newer tag again on the Version card once it runs.
+- The admin password comes from the file when it fits this panel's rule (12 to 128 letters, digits or `. _ ~ -`). Otherwise a new one is made, with a warning: apps that connect with the old one need the new one from the database's **Connection** tab. The data opens only with the file's own logins: when the password is replaced, the review page asks you to leave the data out, and the database starts empty.
+- Like every database since 0.2.9, it has one user, inside and through the exposed port. For a database from before 0.2.9 whose old `external` user the old panel had not retired yet, the copied data still holds that login. The import keeps its name, never its password, and the new node disables it the way 0.2.9 does (see [What's new in 0.2.9](/self-hosting/whats-new-in-0-2-9#after-the-update)), since nothing on the new panel uses it.
+- Listeners follow the rules of [Expose with TLS](/guides/databases#expose-with-tls): a MariaDB 10.11 gets none, since it has no TLS, and neither does a Postgres, MySQL or MariaDB on a node whose agent is older than 0.2.9. The review page says why; update the node, then expose the database on its **Connection** tab.
+
+## Limits and refusals
+
+| What | Limit |
+| --- | --- |
+| Services per file | One |
+| Settings | 2 MiB, or 3 MiB encrypted. A larger service cannot be exported. |
+| Uploaded archive | 512 MiB |
+| Volumes | 20 per service |
+| Passphrase | 12 to 1024 characters |
+| Download link | One minute; **Download again** for 2 minutes. Each export downloads once. |
+| Downloads with volume data | One per service and 3 per panel at a time |
+| A file in review | 24 hours |
+| An import waiting for its data | 48 hours. A volume without a part for 10 minutes starts over. |
+| Volume data that unpacks to more than 1100 times its size | Refused |
+
+A file that was changed after it was exported, or is damaged, is refused, in the browser and again by the panel: "The file was changed after it was exported, or it is damaged." A wrong passphrase gets its own answer: "That passphrase does not open this file." The check of an encrypted file uses its passphrase, so it proves the file against people who do not know the passphrase, not who exported it. A file whose secret values were left out is only checked against its own manifest, and the review page says so. A file from a newer export format asks you to update this panel first. Settings this panel does not know are skipped and listed.
+
+While an export downloads or an import uploads volume data, a panel update does not start, since restarting the panel or an agent would break it, and **Move the panel to another server** lists it in its checks.
+
+## Nodes and agents
+
+Importing volume data onto a node needs its agent from 0.2.10. On an older node, the review page says "The agent on `<node>` is too old to take volume data from a file. Update the node, or leave the data out." Untick the data to import the settings, and the uploaded archive, without it. An offline node cannot take the data either: pick another node or leave the data out.
+
+Exporting volume data works from nodes on older agents.
+
+## Permissions
+
+Only owners and admins export and import. Members do not see the **Export** card, and the panel refuses them an import, whatever their grants: the two actions, `services.export` on the service and `services.import` on the project, are never shared. An admin's API key limited to some projects exports and imports there only.
+
+An export only holds what the person or key may read: for a key limited to some actions, **Left out** names each part it may not read (for example "You do not have the env.view permission on it."). An import only writes what it may write in the project, and lists the rest under **Left behind**. The activity log records every export, how each download ended, every import and each entry it received.
+
+## Through the API
+
+The `serviceTransfer.*` actions do the same (see the [API reference](/api-reference)). They are not available to MCP clients or the assistant, and there are no command line commands for them yet.
+
+- `serviceTransfer.exportPreview` lists what goes in, what stays out and what blocks an export. `serviceTransfer.export` returns a one-minute `download.url` on the panel's address: a `GET` of it streams the .zip. `serviceTransfer.exportLink` gets a new link, and `serviceTransfer.cancelExport` stops a download.
+- `serviceTransfer.importBegin` takes the text of the file's small entries (`manifest.json`, `manifest.sig` and `secrets.enc`, or `service.json`, as `unzip -p` prints them) and the passphrase, and returns the review. `serviceTransfer.setChoices` saves choices and `serviceTransfer.importPreview` reads them back. `serviceTransfer.import` creates the service.
+- For each entry still pending, `serviceTransfer.uploadTicket` returns a one-minute link for one part at an offset, sent with a `PUT` of at most 32 MiB (`curl -T`). `serviceTransfer.getImport` says how many bytes of each entry the panel has, and `serviceTransfer.discardImport` throws an import away.

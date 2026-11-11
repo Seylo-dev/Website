@@ -18,6 +18,7 @@
     "guides/compose-stacks",
     "guides/templates",
     "guides/clone-and-move",
+    "guides/export-and-import",
     "---Data---",
     "guides/databases",
     "guides/database-engines",

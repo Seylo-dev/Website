@@ -120,6 +120,8 @@ New in 0.2.10: for the version the database already runs, the card has **Another
 
 Through the API and MCP, `databases.versionChoices` returns `customOnCurrent`: whether `databases.setVersion` takes such a tag (`image`) for the version the database runs.
 
-## Clone a database
+## Clone or export a database
 
 New in 0.2: **Clone** in the service's **More actions** menu copies a database into any project and node, empty with new passwords or with a copy of its data. See [Clone and move between projects](/guides/clone-and-move).
+
+New in 0.2.10: to take a database to another panel, **Export…** on its **Settings** tab downloads it as a .zip, and **Add a service → Import from a file** creates it there. Its data only goes in an encrypted file, since it opens with the database's logins, and the database is stopped for the whole download. The import runs the new panel's image of its version, unless its data was written by a newer release of it. See [Export and import](/guides/export-and-import#databases).
