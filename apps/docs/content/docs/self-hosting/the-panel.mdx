@@ -196,6 +196,25 @@ If a copy of `/var/lib/seylo/panel/` leaked, `sudo seylo panel rotate-key` gives
 
 ## Moving the panel to another server
 
-There is no built-in way to move the panel to another server yet; it is coming later. Until then, keep a backup of `/var/lib/seylo/panel/` (see [Backing up the panel](/self-hosting/backups)).
+New in 0.2.8. The owner moves the panel to another server in **Settings → General → Move the panel to another server**. The new server has to be one of your nodes first: join it with **Nodes → Add node**, then pick it here.
+
+What moves: everything in `/var/lib/seylo/panel/` (`panel.db`, `master.key`, `metrics.db`, the agents' TLS key, branding, uploaded sources) and the image registry with every built image. Your apps do not move: they keep running where they are, and you can move services with each service's **Move** afterwards.
+
+What it does, in order:
+
+1. Checks first, and refuses with the reason: the new server must be online and run the panel's version; no update, deploy, build, move, backup or restore may be running; **Serve on IP address** must be on and Tailscale Serve off (both are tied to the old server; turn them back on afterwards).
+2. The panel is read-only for the few minutes the move takes. Your apps keep running and serving.
+3. It copies the registry, then a consistent snapshot of the panel's folder, with a checksum for every file.
+4. It starts the panel on the new server, waits until it answers, and checks it presents the same agents' TLS key your nodes pin.
+5. It tells every node the new address, and each node checks it can reach it. If any step fails, nothing switches: the move stops, the new server's copy is deleted, and the old panel carries on.
+6. It switches: the old panel stops, and every node goes to the new address by itself within seconds, keeping its pin. The new panel runs no scheduled work until the first node reaches it.
+
+Nodes that are offline, or that joined over plain `http://` from another host, cannot follow. The check lists them; you can move anyway and join them again later with `seylo join --force`.
+
+After the move:
+
+- Open the panel at `http://<new server>:3000` (or your domain). Your sign-in, API keys and CLI logins keep working; a CLI logged in with the old IP address needs `seylo login http://<new server>:3000`.
+- With a panel domain, point its DNS record at the new server. Until then the domain does not reach the panel; nodes use the new IP address meanwhile and go back to the domain once it is active again.
+- The old server keeps a stopped copy of the panel, `master.key` included, until you press **Delete the old copy** on the moved panel. Delete it once the panel works on the new server.
 
 A panel installed again from scratch is a different panel to your nodes, even on the same server: since 0.2 each node refuses it until it is joined again with `seylo join --force` (see [The panel's identity](/guides/adding-nodes#the-panels-identity)).

@@ -35,7 +35,7 @@ Before every panel update, the update itself also copies `panel.db` and `metrics
 
 New in 0.2. A copy of `/var/lib/seylo/panel/` (a backup, an old disk) holds every secret the panel knows, readable with the `master.key` in it. `seylo panel rotate-key` gives the panel a new `master.key`: it seals every secret in `panel.db` again with the new key in one transaction, and replaces `master.key` only after that. From then on the old key opens nothing the panel stores.
 
-It does not make the copy harmless. The copy still opens with its own key, so every secret that was in it is exposed: change those yourself (environment values, database passwords, git and registry tokens, backup and notification credentials), and delete old copies and backups, including old snapshots in `/var/lib/seylo/update/panel-snapshots/`. Then take a new backup.
+It does not make the copy harmless. The copy still opens with its own key, so every secret that was in it is exposed: change those yourself (environment values, database passwords, git and registry tokens, backup and notification credentials), and delete old copies and backups, including old snapshots in `/var/lib/seylo/update/panel-snapshots/` and, after [moving the panel](/self-hosting/the-panel#moving-the-panel-to-another-server), the old server's copy (**Delete the old copy**). Then take a new backup.
 
 Pick one of two flags. The command refuses to run without exactly one:
 
