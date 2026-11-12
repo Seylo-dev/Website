@@ -1,0 +1,24 @@
+---
+title: What's new in 0.2.12
+description: Clones that keep Deploy on push, internal addresses of services on other nodes listed again in References, any container port for a domain, a certificate right away for a TLS host name set on a running database, and room after an open project with no services in the sidebar.
+---
+
+0.2.12 updates a 0.2.11 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.12** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## Improved
+
+- **A clone keeps Deploy on push.** Cloning an app built from a repository (GitHub, a git URL, GitLab, Gitea or Bitbucket) used to turn **Deploy on push** off on the clone. It now keeps the source's setting, and the **Clone** dialog has a **Deploy on push** switch, with a note on what each push to the branch then deploys. Pushes reach the clone through the GitHub App, like the source, or through a repository webhook of its own, made with the clone. A push while the clone's data is still being copied waits for the copy, and the clone deploys the head of its branch once the copy is done. A git URL needs a deploy trigger URL of its own, which a clone does not copy: make one on the clone's **Source** tab. An imported service still arrives with Deploy on push off. `services.clone` takes `deployOnPush`. See [Deploy on push](/guides/clone-and-move#deploy-on-push).
+- **References show internal addresses on other nodes again.** On the **Environment** tab, the **References** panel left out `INTERNAL_URL` and `INTERNAL_HOST` of an exposed database, or an app with a domain, on another node than the service you edit, so they looked missing. They are listed again, struck through, and their tip names the variable to use instead, such as `EXPOSED_URL`, since the project network does not reach across nodes. See [In the References panel](/guides/environment-variables#in-the-references-panel).
+- **Any container port for a domain.** In **Add domain** and **Edit routing**, the **Container port** of a service with ports was a list of the ports it declares, so a port the app listens on without declaring it could not get a domain. It is now a field that takes any port, and the arrow at its end lists the service's TCP ports to pick from. See [Custom domains](/guides/domains-and-https#custom-domains).
+
+## Fixed
+
+- **A TLS host name set on a running database got no certificate.** Setting or changing the **TLS host name** of an exposed database that was already running did not make the node ask Let's Encrypt for it until the database's next deploy or the agent's next restart, so the exposed port kept serving the self-signed certificate. The node now asks for it right away. See [Expose with TLS](/guides/databases#expose-with-tls).
+- **An open project with no services sat right on the next one** in the sidebar. It now has the same room after it as an open project with services, and collapsed projects still sit close together.
+
+## After the update
+
+- Update the nodes too; the update does that. The clone, **References**, **Container port** and sidebar changes need only the panel. The certificate for a TLS host name set on a running database needs the node's agent from 0.2.12.
+- An exposed database whose TLS host name was set while it ran, and that still serves the self-signed certificate, gets its Let's Encrypt certificate once its node updates, since the update restarts the agent. On a node that stays on an older agent, redeploy the database.
+- Clones made before 0.2.12 keep **Deploy on push** off. Turn it on in the clone's **Source** tab when you want it.
+- Scripts that call `services.clone`: a clone of an app built from a repository now keeps the source's Deploy on push. Pass `deployOnPush: false` to keep it off.
