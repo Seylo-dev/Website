@@ -180,6 +180,23 @@ Whether a new node builds is chosen when its join command is made: **Build image
 New in 0.2.1. Services build on their own node first when it can build, and nodes that join with the default join command can. A small node shows a warning next to **Can build** (**Less than 2 GB of memory**, **Only one CPU core**): turn **Can build** off for it on **Nodes**, or set the service's **Build node**. See [Where builds run](/guides/github-and-git#where-builds-run).
 </Accordion>
 
+<Accordion title='Builds fail with "lookup registry-1.docker.io on [::1]:53"'>
+The build log shows a lookup error like this, while the server itself resolves names (the **DNS resolution** health check passes). New in 0.2.13, the log adds the last line:
+
+```text
+... dial tcp: lookup registry-1.docker.io on [::1]:53: ... connection refused
+--> The build failed - the lines above say why
+--> A name lookup (DNS) failed in the build worker - if the name is right, the Container DNS check on the node's Health tab (or `seylo health` on the node) says why and how to fix it
+```
+
+The build worker is a container on Docker's default bridge and uses the DNS servers Docker gives containers. `[::1]:53` means it got none it can use, and BuildKit fell back to its own loopback address, where nothing answers. Apps on the node then cannot look up outside names either. Run **Health** on the node (**Run checks now**) or `seylo health`, and read **Container DNS** (new in 0.2.13): it says what containers get, where it comes from and what to do. Usually it is Docker's `dns` setting:
+
+- `"dns"` in `/etc/docker/daemon.json` has entries containers cannot use: an empty `""`, which on Docker 29 gives them `nameserver invalid IP` in `/etc/resolv.conf`, or a loopback address like `127.0.0.53`, which they get as it is and which in a container is the container itself. Put the IP addresses of DNS servers containers can reach there (`"dns": ["1.1.1.1", "8.8.4.4"]`) or remove the key, check the file with `dockerd --validate --config-file /etc/docker/daemon.json`, then run `systemctl restart docker`.
+- The setting is fine, but Docker 29.0 to 29.2 was reloaded (`systemctl reload docker`, for example to turn on live-restore, as the installer did before 0.2.13). On those versions a reload empties the setting until Docker restarts (moby#52060, fixed in Docker 29.3.0), and new containers get `nameserver invalid IP` for each entry. Run `systemctl restart docker`, not a reload, and leave the file as it is.
+
+With live-restore on, containers keep running through the restart; with it off, the restart stops every container on the server until they are started again, and the check's fix says how to turn live-restore on first. Containers that run through the restart keep the bad servers: restart the build worker with `docker restart` (or remove it with `docker buildx rm`, and the next build makes a new one), and apps and the panel with **Restart** on their page. The check names each one and how to restart it. Then deploy again. See [Container DNS](/guides/node-health#container-dns).
+</Accordion>
+
 <Accordion title='The join ends with "not connected to the panel yet" or "refused this node"'>
 New in 0.2.1, the installer waits up to a minute for the agent's first connection. **Installed, but not connected to the panel yet** means the server could not reach the panel: the block names the address and port, and the panel's server must accept connections there (3443 for a panel without a domain), with no firewall or cloud security group in the way. The agent keeps trying; `seylo status` shows the last error. **Installed, but the panel refused this node** (exit status 3) means the token was used or expired, the pin is wrong, or the node was removed or disabled: make a new join command in **Add node** and run it. See [Join a server](/guides/adding-nodes#join-a-server).
 </Accordion>

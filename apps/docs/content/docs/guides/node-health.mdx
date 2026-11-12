@@ -25,11 +25,12 @@ The agent also runs the checks every hour in the background. When a check that p
 | Docker Engine | Docker answers, version 25 or newer, overlay2 storage driver | Fails when Docker is unreachable or older than 23; warns on 23 and 24 and on other storage drivers. New in 0.2.1: on the panel's node, also warns on Docker older than 28 while the panel answers on `127.0.0.1` only (**Serve on IP address** off), since older Docker may let machines on the same local network reach ports published there |
 | Control groups | cgroup v2 with the cpu, memory and pids controllers | Fails on cgroup v1; warns when a controller is missing (limits and **Game servers first** need them) |
 | Docker buildx | On nodes that build: since 0.2.1 that is a node the panel sends builds (**Can build** on), or one with `can_build: true` in `config.yml`, which `--can-build` sets. Docker's buildx plugin is installed where builds look for it | Fails when it is missing, since every build on the node needs it: install the `docker-buildx-plugin` package (Docker from get.docker.com has it). A plugin only in root's `~/.docker/cli-plugins` does not count: builds run with a Docker config of their own. Skipped on nodes that don't build |
-| Docker live-restore | Docker's `live-restore` is on, so containers keep running while Docker restarts | Warns when it is off: every service and the panel stop while Docker restarts. See [Docker live-restore](/installation#docker-live-restore). |
+| Docker live-restore | Docker's `live-restore` is on, so containers keep running while Docker restarts | Warns when it is off: every service and the panel stop while Docker restarts. Its fix turns it on with a reload, which restarts nothing; changed in 0.2.13: on Docker 29.0 to 29.2 with a `dns` setting it adds `systemctl restart docker` right after the reload (see [Reloads on Docker 29.0 to 29.2](#reloads-on-docker-290-to-292)). See [Docker live-restore](/installation#docker-live-restore). |
 | Ports 80 and 443 | Free, or held by Seylo's Traefik or the Traefik Wings runs | Fails when another program or container holds them |
 | Proxy | The `seylo-traefik` container runs, or routes go to Wings' Traefik | Fails when the container is not running |
 | Route files | Every `seylo-*.yml` route file parses | Fails and names the files that do not |
-| DNS resolution | `github.com`, `ghcr.io`, `registry-1.docker.io` and the panel's host resolve | Fails and names what did not resolve |
+| DNS resolution | `github.com`, `ghcr.io`, `registry-1.docker.io` and the panel's host resolve on the server itself | Fails and names what did not resolve |
+| Container DNS | New in 0.2.13: Docker gives containers DNS servers they can use, in a short test container and in Seylo's running containers (build workers, apps, Traefik, the panel) | Fails when containers get no server they can use, so builds cannot pull images and apps cannot look up outside names, or when one of Seylo's running containers still has none; warns on usable servers next to unusable ones, only IPv6 servers while Docker's bridge has no IPv6, or a `dns` setting that breaks at Docker's next restart. See [Container DNS](#container-dns). |
 | Firewall | No host firewall, or ufw or firewalld allow 80, 443 and every IP:port address the agent serves | Warns when the firewall blocks 80, 443, or a first-run, timed expose or exposed database port, with the command for each; also warns when ufw allows the `seylo-edge` bridge but no interface has that name |
 | Clock | Synchronized with NTP and within 5 seconds of the panel's clock | Warns when not synchronized or more than 5 seconds off; fails at more than a minute off |
 | Panel connection | `GET <panel>/api/health` answers in under 800 ms (over the pinned key when the node joined with `--pin`) | Warns when slower; fails when the panel cannot be reached or is not healthy |
@@ -44,8 +45,87 @@ The agent also runs the checks every hour in the background. When a check that p
 | Ports 80 or 443 in use | Stop nginx, Apache or Caddy, or move their sites into Seylo as services |
 | Firewall blocks 80 or 443 | `ufw allow 80/tcp && ufw allow 443/tcp`, or the matching firewalld services |
 | Firewall blocks an IP:port address | `ufw allow <port>/tcp`, or `firewall-cmd --permanent --add-port=<port>/tcp && firewall-cmd --reload` |
-| Live-restore is off | Add `"live-restore": true` to `/etc/docker/daemon.json`, then `systemctl reload docker` (restarts nothing) |
+| Live-restore is off | Add `"live-restore": true` to `/etc/docker/daemon.json`, then `systemctl reload docker` (restarts nothing). On Docker 29.0 to 29.2 with a `dns` setting, run `systemctl restart docker` right after the reload: live-restore is on by then, so containers keep running (see [Reloads on Docker 29.0 to 29.2](#reloads-on-docker-290-to-292)) |
+| Containers get `nameserver invalid IP` | IP addresses in Docker's `dns` setting, or no setting, then `systemctl restart docker`, not a reload; then restart the containers that kept the old servers. See [Container DNS](#container-dns) |
 | No public address | Set it as the node's **Public address** on **Nodes** |
 | Disk almost full | **Settings → Docker cleanup**, or (new in 0.2) a scheduled or disk-triggered cleanup in the node's **Cleanup** view (see [Docker cleanup](/guides/docker-cleanup)), or grow the disk. Between checks, the node raises **Disk above 85%** on its own when its data or Docker disk passes 85% |
 | Docker too old | **Update Docker** on the node's row, or your package manager |
 | Docker unreachable | `systemctl start docker`, then check `journalctl -u docker` |
+
+## Container DNS
+
+New in 0.2.13. **DNS resolution** checks the server's own lookups. **Container DNS** checks the DNS servers Docker gives containers, which can be broken while the server resolves every name. Docker writes each container's `/etc/resolv.conf` itself: the host's servers, or, when Docker has a `dns` setting (`"dns"` in `daemon.json`, or `dockerd --dns`), that setting's servers alone, for every container. When none of them is a server a container can use:
+
+- builds cannot pull images. The build worker runs on Docker's default bridge, finds no server, and BuildKit falls back to its own loopback address, where nothing answers: `lookup registry-1.docker.io on [::1]:53: ... connection refused`.
+- apps cannot look up names outside the server. An app on its project network asks Docker's embedded DNS (`127.0.0.11`), which forwards outside names to the same servers.
+
+### What it reads
+
+- **A test container** on Docker's default bridge, where build workers run, named `seylo-dnscheck-<random>` with the label `seylo.dnscheck=true`. It prints its `/etc/resolv.conf`, which is what Docker gives a new container right now. It uses an image already on the node, `moby/buildkit`, `traefik`, `alpine` or `busybox` in that order, and never pulls one (`--pull never`). It runs with every check run (hourly and **Run checks now**) and is gone in well under a second; one that a cut-off run left behind is removed by a later run once it is two minutes old. Without one of those images no test container runs, and the check judges Docker's `dns` setting and, when the setting is fine, Seylo's running containers. With no `dns` setting at all it passes, since containers then get the host's servers.
+- **Seylo's running containers**: the build workers (`buildx_buildkit_seylo-builder-...`) and every container Seylo manages (apps, Traefik, the panel). The check reads the `resolv.conf` Docker keeps for each in its data folder and runs nothing in them. Containers on the host's network are skipped. A container keeps the servers it started with, also after the setting is fixed and through a Docker restart with live-restore on, so this is how the check finds the ones that still need a restart. A container on a project network has `nameserver 127.0.0.11`: the check reads the servers the embedded DNS forwards to from Docker's `# ExtServers:` note, which Docker 25 and later write. On older Docker such a container is not judged.
+- **Docker's `dns` setting**, to say where the servers come from: `"dns"` and `"ipv6"` in `daemon.json` (`/etc/docker/daemon.json`, or the file dockerd's `--config-file` names) and `--dns` on dockerd's command line. The check finds the host's dockerd through its pid file or `docker.service`, so it does not read a docker-in-docker container's or another user's rootless Docker. Docker reads `daemon.json` only when it starts, so when the setting in the file is not what containers get, the check says it applies at Docker's next restart. Docker's version says whether a reload can explain what the test container got (see [`nameserver invalid IP`](#nameserver-invalid-ip)).
+
+### Results
+
+A server counts when it is an IP address that is neither loopback (`127.0.0.53`, `::1`) nor unspecified (`0.0.0.0`): in a container on a bridge network, loopback is the container itself. Host names, addresses with a port, `""` and Docker's `invalid IP` do not count.
+
+| Result | When |
+| --- | --- |
+| Fails | The test container gets no server it can use. Docker refuses to start the test container over its DNS servers (Docker 28 does that for an empty entry). A running build worker, app, Traefik or the panel has no server it can use, named in the detail, also when new containers are fine again. Or, when no test container ran, the `dns` setting has no usable server. |
+| Warns | Usable servers next to ones that are not: lookups work, but the setting is still wrong. Only IPv6 servers while Docker's bridge has no IPv6 (`"ipv6": true`). A `dns` setting edited since Docker started that has wrong entries, which apply at the next restart. A `daemon.json` that does not parse, so Docker would not start with it. Nothing could be read (run `seylo health` as root). |
+| Passes | Containers get usable servers. The detail says which and where they come from: the `dns` setting, or the host's servers from the file Docker read them from (such as `/run/systemd/resolve/resolv.conf`). |
+
+The detail names the wrong entries and where they are, for example:
+
+```text
+containers get no DNS server they can use: a test container on Docker's default bridge (moby/buildkit:buildx-stable-1) gets "invalid IP", from "dns": [""] in /etc/docker/daemon.json ("" is not an IP address); builds cannot pull images (the build worker runs on Docker's default bridge) and apps cannot look up names outside this server
+```
+
+### `nameserver invalid IP`
+
+Docker writes `nameserver invalid IP` for a server it holds no address for. A container's `/etc/resolv.conf` then looks like this, where `# Overrides: [nameservers]` says the servers come from Docker's `dns` setting:
+
+```text
+nameserver invalid IP
+nameserver invalid IP
+search .
+
+# Based on host file: '/run/systemd/resolve/resolv.conf' (legacy)
+# Overrides: [nameservers]
+```
+
+Two things cause it:
+
+- **Entries that are not addresses.** Docker 29 starts with an empty `""` entry in `"dns"` (`dockerd --validate` accepts it too) and gives every container `nameserver invalid IP` for it. Docker 28 refuses to start containers instead. The check names the entry and the file.
+- **A reload on Docker 29.0 to 29.2**, with a setting that is fine. On those versions `systemctl reload docker`, or a SIGHUP to dockerd, empties the `dns` setting (moby#52060, fixed in Docker 29.3.0): every container created after the reload gets one `invalid IP` per entry until Docker restarts, and keeps it until it is restarted itself. For example, `"dns": ["8.8.8.8", "1.1.1.1"]` and a reload to turn on live-restore, as the installer did before 0.2.13, give every new container, build workers included, the two lines above. The check tells this case apart: when the test container has `invalid IP` for each entry of a setting whose entries are all IP addresses, it says Docker lost its `dns` setting in a reload, and does not tell you to change the file.
+
+### The fix
+
+The check's fix says what to do on this node:
+
+1. Fix the setting when its entries are wrong: IP addresses in `daemon.json` (`"dns": ["1.1.1.1", "8.8.4.4"]`), or no `"dns"` key so containers get the host's servers, then check the file with `dockerd --validate --config-file /etc/docker/daemon.json`. For `--dns` flags, `systemctl cat docker` shows where they are set and `systemctl edit docker` overrides `ExecStart`; run `systemctl daemon-reload` after. After a reload on Docker 29.0 to 29.2 the setting is fine, and this step is left out.
+2. Restart Docker with `systemctl restart docker`, not a reload: Docker reads its settings only when it starts, and on Docker 29.0 to 29.2 a reload empties the `dns` setting again. With live-restore on, containers keep running through the restart. With it off, the restart stops every container on the server, Wings' game servers included, until they are started again, so the fix says to turn live-restore on first (see [Reloads on Docker 29.0 to 29.2](#reloads-on-docker-290-to-292)).
+3. Restart the containers that kept the old servers. A container that runs through the restart keeps the servers it started with, and the check names Seylo's that still have none:
+   - a service such as an app, and the panel itself (its container is `seylo-panel00000000000-<n>`): **Restart** on its page in the panel, which restarts its containers in place, without a deploy.
+   - Traefik and Seylo's other containers that are not services: `docker restart <name>`.
+   - a build worker: `docker restart buildx_buildkit_<builder>0`, which keeps the build cache, or `DOCKER_CONFIG=/var/lib/seylo/builds/docker docker buildx rm <builder>`, and the next build makes a new one. With no build worker running, the next build starts one with the new servers.
+   - a Wings game server, which the check does not look at: restart it from Wings' panel.
+
+When new containers are fine again and only some of Seylo's containers still have no server (Docker was restarted since the reload), the fix lists only those containers: Docker holds its setting again and needs no restart. From then on, restart Docker instead of reloading it. Updating Docker to 29.3.0 or later makes reloads safe.
+
+The check never edits `daemon.json` or restarts Docker. A restart can stop every container on the server, Wings' game servers too, so the check says how and leaves the restart to you.
+
+### Reloads on Docker 29.0 to 29.2
+
+`systemctl reload docker` is how live-restore is turned on without stopping anything. On Docker 29.0 to 29.2 with a `dns` setting (in `daemon.json` or on dockerd's command line), that reload also empties the setting. So every hint that turns live-restore on adds `systemctl restart docker` right after the reload: this check's, the **Docker live-restore** check's and the warning in **Update Docker**. With live-restore on by then, the restart keeps containers running. Run the two back to back: containers created between them get `invalid IP`. The installer runs that restart itself (see [Docker live-restore](/installation#docker-live-restore)). Docker 28, 29.3.0 and later, and Docker without a `dns` setting keep the reload alone.
+
+### In the build log
+
+New in 0.2.13: when a build fails in the builder and its output shows a failed name lookup, the build log gets one more line after the failure, pointing at this check:
+
+```text
+--> The build failed - the lines above say why
+--> A name lookup (DNS) failed in the build worker - if the name is right, the Container DNS check on the node's Health tab (or `seylo health` on the node) says why and how to fix it
+```
+
+It looks at the last 64 KiB of output for BuildKit's `lookup <name> on <server>:53`, `dial tcp: lookup` and `no such host`, and for what `RUN` steps print when a lookup fails (apt, curl and git, pip, npm), which use the same servers: `Temporary failure in name resolution`, `Temporary failure resolving`, `Could not resolve host` and `getaddrinfo EAI_AGAIN`. A wrong host name in the build gives the same errors, hence "if the name is right". The failure message itself is unchanged.
