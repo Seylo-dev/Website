@@ -15,7 +15,7 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
      publicIpv4: "203.0.113.10",
      wildcardDomain: "de1.example.com",
 -    agentVersion: "0.9.4",
-+    agentVersion: "0.2.12",
++    agentVersion: "0.2.13",
      updateAvailable: false,
      canBuild: true,
      wings: { detected: false, version: null, sharedProxy: false },
@@ -24,7 +24,7 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
      publicIpv4: "198.51.100.7",
      wildcardDomain: "us1.example.com",
 -    agentVersion: "0.9.4",
-+    agentVersion: "0.2.12",
++    agentVersion: "0.2.13",
      updateAvailable: false,
      canBuild: false,
      canBuildWarning: "too small",
@@ -61,8 +61,8 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
    [ids.panel]: [
 -    service(ids.panelSvc, ids.panel, "panel", "app", "running", img("seylo/panel:0.9.4"), "panel.example.com", ids.de, 2, 118 * mb, {
 -      label: "0.9.4",
-+    service(ids.panelSvc, ids.panel, "panel", "app", "running", img("seylo/panel:0.2.12"), "panel.example.com", ids.de, 2, 118 * mb, {
-+      label: "0.2.12",
++    service(ids.panelSvc, ids.panel, "panel", "app", "running", img("seylo/panel:0.2.13"), "panel.example.com", ids.de, 2, 118 * mb, {
++      label: "0.2.13",
        ago: 3 * day,
      }, { protected: true }),
      service(ids.registry, ids.panel, "registry", "app", "running", img("distribution 3.0"), null, ids.de, 0.2, 21 * mb, {
@@ -72,8 +72,8 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
    panel: {
 -    currentVersion: "0.9.4",
 -    latestVersion: "0.9.4",
-+    currentVersion: "0.2.12",
-+    latestVersion: "0.2.12",
++    currentVersion: "0.2.13",
++    latestVersion: "0.2.13",
      updateAvailable: false,
      offeredVersion: null,
      latestIsPrerelease: false,
@@ -82,7 +82,7 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
    activeRun: {
      id: "run0000000000001",
 -    targetVersion: "0.9.4",
-+    targetVersion: "0.2.12",
++    targetVersion: "0.2.13",
      trigger: "auto",
      status: "running",
      startedBy: null,
@@ -136,7 +136,7 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
  export const viewer = { id: "user000000000001", email: "you@example.com", name: "", role: "owner", avatarUrl: avatars.owner };
  
 -export const systemInfo = { name: "Seylo", version: "0.9.4", panelId: "demo", startedAt: iso(3 * day), nodes: { total: 3, online: 3 } };
-+export const systemInfo = { name: "Seylo", version: "0.2.12", panelId: "demo", startedAt: iso(3 * day), nodes: { total: 3, online: 3 } };
++export const systemInfo = { name: "Seylo", version: "0.2.13", panelId: "demo", startedAt: iso(3 * day), nodes: { total: 3, online: 3 } };
  
  /** The node sheet's Cleanup view: a daily schedule with a disk line, and a few runs. */
  export function cleanupSchedule(nodeId: string) {
@@ -350,7 +350,7 @@ diff -ru a/demo/settings.ts b/demo/settings.ts
        {
          id: "run0000000000001",
 -        targetVersion: "0.9.3",
-+        targetVersion: "0.2.12",
++        targetVersion: "0.2.13",
          trigger: "auto",
          status: "succeeded",
          startedBy: null,
@@ -361,9 +361,9 @@ diff -ru a/demo/settings.ts b/demo/settings.ts
 -          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.9.2", toVersion: "0.9.3", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
 -          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.9.2", toVersion: "0.9.3", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
 -          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.9.2", toVersion: "0.9.3", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
-+          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.2.11", toVersion: "0.2.12", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
-+          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.2.11", toVersion: "0.2.12", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
-+          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.2.11", toVersion: "0.2.12", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
++          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.2.11", toVersion: "0.2.13", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
++          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.2.11", toVersion: "0.2.13", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
++          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.2.11", toVersion: "0.2.13", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
          ],
        },
      ],
@@ -390,7 +390,7 @@ diff -ru a/demo/settings.ts b/demo/settings.ts
      intervalHours: 24,
      nextSendAt: null,
 -    payload: { installId: "7f3c2a9e-1b44-4f0a-9c1e-5d2b8a6f0c11", panelVersion: "0.9.3", agentVersions: { "0.9.3": 3 }, nodes: 3, projects: 2, services: { app: 4, postgres: 1 }, users: 4, features: ["mcp", "ai"], platforms: { "linux/amd64": 2, "linux/arm64": 1 }, wingsNodes: 1 },
-+    payload: { installId: "7f3c2a9e-1b44-4f0a-9c1e-5d2b8a6f0c11", panelVersion: "0.2.12", agentVersions: { "0.2.12": 3 }, nodes: 3, projects: 2, services: { app: 4, postgres: 1 }, users: 4, features: ["mcp", "ai"], platforms: { "linux/amd64": 2, "linux/arm64": 1 }, wingsNodes: 1 },
++    payload: { installId: "7f3c2a9e-1b44-4f0a-9c1e-5d2b8a6f0c11", panelVersion: "0.2.13", agentVersions: { "0.2.13": 3 }, nodes: 3, projects: 2, services: { app: 4, postgres: 1 }, users: 4, features: ["mcp", "ai"], platforms: { "linux/amd64": 2, "linux/arm64": 1 }, wingsNodes: 1 },
    },
    // Settings > Personal details: the viewer's generated face (fixtures.ts avatars.owner).
    "avatars.mine": {

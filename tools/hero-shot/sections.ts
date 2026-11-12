@@ -240,7 +240,7 @@ const shots: Shot[] = [
       "updates.status": () => ({
         ...updateStatus,
         activeRun: null,
-        nodes: updateStatus.nodes.map((node) => ({ ...node, version: "0.2.12", updateAvailable: false })),
+        nodes: updateStatus.nodes.map((node) => ({ ...node, version: "0.2.13", updateAvailable: false })),
       }),
     },
     run: async (page) => {
@@ -411,7 +411,15 @@ const shots: Shot[] = [
       const m = (await main.boundingBox()) as Box;
       const backups = await card(page, "Backups");
       const b = (await backups.boundingBox()) as Box;
-      // The console card starts right under the Backups card: stop above it.
+      // The crop stops under the Backups card. When the Exposed card's certificate line fits next to
+      // "Allowed from" (it depends on the times in it), that card ends higher and the top of the console
+      // card under it would show: hide the console, so the left column ends with the Exposed card.
+      await main
+        .locator("section")
+        .filter({ has: page.getByText("Shell", { exact: true }) })
+        .evaluateAll((els) => {
+          for (const el of els) (el as HTMLElement).style.visibility = "hidden";
+        });
       return { x: m.x, y: 0, width: m.width, height: b.y + b.height + 12 };
     },
   },

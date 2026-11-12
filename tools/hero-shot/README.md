@@ -25,7 +25,7 @@ The hero and the seven sections (templates, settings, nodes, databases, logs and
 come from the panel's demo mode rather than a fleet: the panel runs from source on an empty data dir, the web
 app's Vite server sits in front of it, and Playwright answers the panel's API calls with the demo data of the
 panel's own browser tests (`test/playwright/demo` in the panel repo), patched here with generic data for these
-captures (`sections-demo.patch`: the released version 0.2.12, the 20 real node checks, an uptime history, a
+captures (`sections-demo.patch`: the released version 0.2.13, the 20 real node checks, an uptime history, a
 load-balanced service, access rules, an exposed Postgres with a Let's Encrypt certificate, varied log lines,
 the worker's env with its `${{api.URL}}` reference on the last line so the editor's hover opens over plain
 lines, no person's name). The template catalog is not mocked: the panel serves its real 23 templates and their
@@ -37,7 +37,7 @@ patch again with `diff -ru a/demo b/demo`.
 SEYLO=/tmp/seylo-shots               # the scratch copy of the panel's checkout
 DATA=$(mktemp -d) EMAIL=owner@example.com PASS=$(openssl rand -hex 12)
 mkdir -p out && printf '%s\n%s\n' "$EMAIL" "$PASS" > out/owner
-(cd $SEYLO/apps/panel && SEYLO_DATA_DIR=$DATA bun scripts/create-owner.ts "$EMAIL" "$PASS")
+printf '%s\n' "$PASS" | (cd $SEYLO/apps/panel && SEYLO_DATA_DIR=$DATA bun scripts/create-owner.ts "$EMAIL")  # password on stdin
 SEYLO_DATA_DIR=$DATA SEYLO_PORT=3951 SEYLO_HOST=127.0.0.1 SEYLO_SECURE_COOKIES=false bun $SEYLO/apps/panel/src/main.ts &
 (cd $SEYLO/apps/web && PANEL_URL=http://127.0.0.1:3951 ./node_modules/.bin/vite --port 3952 --strictPort --host 127.0.0.1) &
 
@@ -64,7 +64,10 @@ Every shot runs with color mode "system", so the browser's light or dark mode pi
 what a user gets with the default theme on a dark system. Both themes use the same demo data, and every page's clock is frozen at the moment the
 run started (`page.clock.setFixedTime`), so "5 minutes ago", countdowns and the like read the same in the light
 and the dark file. The env editor is the exception (`runningClock`): its syntax highlighting needs a running clock,
-and it shows no times. The light and dark files of a capture have the same pixel size. The ten `theme-*` shots
+and it shows no times. The time of day (the dashboard's greeting, log times, the backups' times) is the browser's,
+which follows `TZ`: the committed crops read about 06:00, "Good morning" and backups at 03:xx under "Daily at
+03:00", so run where it is morning or set a `TZ` where it is (`TZ=Pacific/Pago_Pago bun run sections.ts --both`
+in a European evening). The light and dark files of a capture have the same pixel size. The ten `theme-*` shots
 (the White label section's preset previews) show the dashboard in one preset each, at 1440x900 and 1x,
 written at 720x450, in its light and its dark half like the other shots.
 
@@ -76,7 +79,7 @@ demo's live samples, which the frozen clock stacks on one moment) and overrides 
 `metrics.nodes` gets livelier lines (the demo's three nodes at their own levels,
 faster swings and a little deterministic jitter, each line ending on the node's current usage so the numbers
 under the graphs match; the points are laid out from the run's frozen clock, so the light and the dark pass
-get the same lines), and `updates.status` has no rollout running and every node on 0.2.12, so the sidebar
+get the same lines), and `updates.status` has no rollout running and every node on 0.2.13, so the sidebar
 says "up to date". It refuses to save when the visible page shows `e2e`, `test`, `colima`, `failed`, an error
 or an empty state, and prints the sidebar's share of the width (`sidebarRatio`, 0.155 for the 248px sidebar at
 1600px) for `heroShot` in `apps/landing/lib/captures.ts`.
