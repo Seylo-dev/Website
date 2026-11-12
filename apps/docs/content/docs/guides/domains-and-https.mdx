@@ -32,6 +32,25 @@ The panel checks the record through public resolvers and shows one of:
 
 New in 0.2.5: each row names the IP its record should point at, next to the status.
 
+### No route on the node
+
+New in 0.2.13. A node routes a service's domains once a deployment of the service is live there. When the panel knows a domain has no route on its node, the row says why in place of **Certificate waits for DNS** or **Certificate waits for Cloudflare**, which read as a record to fix while the record was right:
+
+| The row reads | Why |
+| --- | --- |
+| **Not deployed yet** | The service has not deployed yet: its first build is queued, building or failed, or its first rollout failed, so nothing of it runs on the node, routes included. The note says its domains go live, and their certificates are asked for, once a deployment goes live, with a **Deployments** button. |
+| **Waiting for the first deploy** | The same, while its first deployment is on its way. |
+| **No route on `<node>`** | The node could not write the service's routes, for example because a host is routed by another service on the node. The note gives the node's own error ("`<node>` could not write this service's routes: ...") and says the node keeps serving the routes it wrote before and tries again every 10 seconds. Before, the error only showed in the agent's journal. |
+| **No route** | The service is a compose stack or a cron service, which take no domains (below). |
+
+While a domain has no route, the row offers no **Regenerate certificate**. While the service has not deployed, or is a stack or a cron service, the panel checks nothing through Cloudflare for its domains, since no check could pass; once a deployment goes live, or the node writes the routes it could not, it checks the waiting domains at once. Adding a domain to a service that has not deployed says it goes live once the service deploys.
+
+The node's error comes from nodes with agent 0.2.13. On the node, `seylo status` lists the service under **Recent errors** as `routes of <service>`, with "(still failing)", until a write works.
+
+Compose stacks and cron services take no domains: a stack runs no container of its own, so a domain belongs on the stack member that serves it, and a cron service serves no requests. Neither has a **Domains** tab, and `domains.add`, `domains.addAuto` and `domains.update` refuse them (reason `stackParent` or `cronService`). A stack or a cron service with domains from before shows a **Domains** tab with only those, each saying to put it on the stack member that serves it, or to remove it.
+
+In the API and MCP, `domains.list` and `domains.add` return `noRoute` with its `reason` (`notDeployed`, `stackParent`, `cronService` or `routeWriteFailed`, the last with the node and its error), and `domains.retryCertificate` refuses while the service has not deployed, and on a stack or a cron service.
+
 ### Behind Cloudflare's proxy
 
 New in 0.2.5: for a proxied domain the panel also runs an **origin check**. It asks `http://<domain>/.well-known/seylo-origin/<random>` and the node's agent answers with a signature only that node can make, so the panel knows whether the record in Cloudflare reaches this service's node, not just Cloudflare. The check runs a few seconds after you add the domain, on **Check again** or **Check now** on the row, and before **Regenerate certificate**. The row's chip, **Cloudflare proxy → `<IP>`**, names the node's IP, the address the record in Cloudflare must point at.
@@ -54,7 +73,7 @@ With Cloudflare's proxy (orange cloud) on, set SSL/TLS to **Full (strict)**. Fle
 
 ### Certificate waits for Cloudflare
 
-New in 0.2.13. While a custom domain behind Cloudflare's proxy waits for the origin check, its row reads **Certificate waits for Cloudflare**. Before, it read **Certificate waits for DNS**, with the same note whatever stopped the check. The record in Cloudflare exists; what holds the certificate up is that the panel's check through Cloudflare has not reached the node yet. Until it does, the domain is served over plain HTTP.
+New in 0.2.13. While a custom domain behind Cloudflare's proxy waits for the origin check, its row reads **Certificate waits for Cloudflare**, unless the domain has no route on the node (see [No route on the node](#no-route-on-the-node)). Before, it read **Certificate waits for DNS**, with the same note whatever stopped the check. The record in Cloudflare exists; what holds the certificate up is that the panel's check through Cloudflare has not reached the node yet. Until it does, the domain is served over plain HTTP.
 
 Under the row a note says what to fix, next to **Check again**, which runs the DNS and origin check at once. The panel also checks the domain again on its own, and once a minute while the **Domains** tab is open. When Cloudflare itself answered the check (its `cf-ray` or `server: cloudflare` header, or the `cf-mitigated` header of a challenge page), the note says why the check did not reach the node:
 

@@ -11,7 +11,7 @@ On the node with the problem:
 seylo status
 ```
 
-It shows the node and agent version, the panel it belongs to and whether it is connected (with the last connection error and when it retries), whether the node is behind on the panel's changes, reports waiting to be sent, every service on the node with its state, and recent errors.
+It shows the node and agent version, the panel it belongs to and whether it is connected (with the last connection error and when it retries), whether the node is behind on the panel's changes, reports waiting to be sent, every service on the node with its state, and recent errors. New in 0.2.13: those also list each service whose routes the agent cannot write, with "(still failing)" (see [No route on the node](/guides/domains-and-https#no-route-on-the-node)).
 
 ```bash
 seylo health
