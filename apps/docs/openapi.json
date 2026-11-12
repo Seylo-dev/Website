@@ -19882,7 +19882,10 @@
                         "tlsHostname",
                         "certificate",
                         "certificateIssuer",
-                        "certificateExpiresAt"
+                        "certificateExpiresAt",
+                        "selfSignedReason",
+                        "certificateError",
+                        "certificatePem"
                       ],
                       "properties": {
                         "enabled": {
@@ -19995,6 +19998,45 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "selfSignedReason": {
+                          "anyOf": [
+                            {
+                              "const": "noHostname",
+                              "type": "string"
+                            },
+                            {
+                              "const": "acmeMissing",
+                              "type": "string"
+                            },
+                            {
+                              "const": "engine",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "certificateError": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "certificatePem": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       }
                     },
@@ -20048,6 +20090,373 @@
         },
         "x-op-kind": "mutation",
         "x-permission": "project:services.create",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/databases.createUser": {
+      "post": {
+        "operationId": "databases.createUser",
+        "summary": "Create a database user",
+        "description": "Creates a user that signs in with its own password, with one access preset of databases.users presets: readOnly, readWrite, databaseAdmin or serverAdmin, on the database's own database (the server for serverAdmin). Postgres readOnly and readWrite use pg_read_all_data and pg_write_all_data, which cover every database of the server. MySQL and MariaDB take a host (default %, which services and the exposed port use). The password is generated when left out and returned once: Seylo does not keep it. The URLs are this user's internal and exposed connection URLs. Not on Redis, Valkey, KeyDB or Dragonfly (CONFLICT notOffered).",
+        "tags": [
+          "databases"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "name",
+                  "access"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 63,
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                    "type": "string"
+                  },
+                  "host": {
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "pattern": "^[A-Za-z0-9.%_:/-]+$",
+                    "type": "string"
+                  },
+                  "access": {
+                    "anyOf": [
+                      {
+                        "const": "readOnly",
+                        "type": "string"
+                      },
+                      {
+                        "const": "readWrite",
+                        "type": "string"
+                      },
+                      {
+                        "const": "databaseAdmin",
+                        "type": "string"
+                      },
+                      {
+                        "const": "serverAdmin",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "password": {
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9._~-]+$",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "user",
+                    "password",
+                    "internalUrl",
+                    "exposedUrl"
+                  ],
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "host",
+                        "authDatabase",
+                        "main",
+                        "system",
+                        "access",
+                        "roles",
+                        "locked",
+                        "ownsObjects",
+                        "definerObjects",
+                        "passwordForRename",
+                        "can",
+                        "why"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "host": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "authDatabase": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "main": {
+                          "type": "boolean"
+                        },
+                        "system": {
+                          "type": "boolean"
+                        },
+                        "access": {
+                          "anyOf": [
+                            {
+                              "const": "readOnly",
+                              "type": "string"
+                            },
+                            {
+                              "const": "readWrite",
+                              "type": "string"
+                            },
+                            {
+                              "const": "databaseAdmin",
+                              "type": "string"
+                            },
+                            {
+                              "const": "serverAdmin",
+                              "type": "string"
+                            },
+                            {
+                              "const": "custom",
+                              "type": "string"
+                            },
+                            {
+                              "const": "none",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "ownsObjects": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "definerObjects": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "passwordForRename": {
+                          "type": "boolean"
+                        },
+                        "can": {
+                          "type": "object",
+                          "required": [
+                            "passwordChange",
+                            "rename",
+                            "delete",
+                            "makeMain"
+                          ],
+                          "properties": {
+                            "passwordChange": {
+                              "type": "boolean"
+                            },
+                            "rename": {
+                              "type": "boolean"
+                            },
+                            "delete": {
+                              "type": "boolean"
+                            },
+                            "makeMain": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        "why": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "password": {
+                      "type": "string"
+                    },
+                    "internalUrl": {
+                      "type": "string"
+                    },
+                    "exposedUrl": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "service:databases.credentials",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/databases.deleteUser": {
+      "post": {
+        "operationId": "databases.deleteUser",
+        "summary": "Delete a database user",
+        "description": "Deletes a user that is not the main one; the data stays. Clients signed in with it stop connecting. Postgres refuses while the user owns tables or other objects (ownsObjects, details.count) unless reassignOwned, which gives them to the main user first in every database. MySQL and MariaDB refuse while views, routines, triggers or events run as it unless acceptOrphanDefiners. Refused for the main user (mainUser), the users the database needs (systemUser) and MongoDB's last user with root (lastAdmin).",
+        "tags": [
+          "databases"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "user"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "user": {
+                    "type": "object",
+                    "required": [
+                      "name"
+                    ],
+                    "properties": {
+                      "name": {
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      "host": {
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "pattern": "^[A-Za-z0-9.%_:/-]+$",
+                        "type": "string"
+                      },
+                      "authDatabase": {
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "reassignOwned": {
+                    "type": "boolean"
+                  },
+                  "acceptOrphanDefiners": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "deleted",
+                    "reassignedObjects"
+                  ],
+                  "properties": {
+                    "deleted": {
+                      "const": true,
+                      "type": "boolean"
+                    },
+                    "reassignedObjects": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "destructive",
+        "x-permission": "service:databases.credentials",
         "x-mcp": true
       }
     },
@@ -20430,7 +20839,10 @@
                         "tlsHostname",
                         "certificate",
                         "certificateIssuer",
-                        "certificateExpiresAt"
+                        "certificateExpiresAt",
+                        "selfSignedReason",
+                        "certificateError",
+                        "certificatePem"
                       ],
                       "properties": {
                         "enabled": {
@@ -20537,6 +20949,45 @@
                           "anyOf": [
                             {
                               "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "selfSignedReason": {
+                          "anyOf": [
+                            {
+                              "const": "noHostname",
+                              "type": "string"
+                            },
+                            {
+                              "const": "acmeMissing",
+                              "type": "string"
+                            },
+                            {
+                              "const": "engine",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "certificateError": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "certificatePem": {
+                          "anyOf": [
+                            {
                               "type": "string"
                             },
                             {
@@ -20747,11 +21198,191 @@
         "x-mcp": false
       }
     },
+    "/api/v1/databases.renameUser": {
+      "post": {
+        "operationId": "databases.renameUser",
+        "summary": "Rename a database user",
+        "description": "Gives a user a new name (MySQL and MariaDB: and host). Clients signed in with the old name stop connecting. Postgres keeps ownership and grants; an md5 password is cleared by Postgres, so it needs password. MySQL and MariaDB refuse while views, routines, triggers or events run as the user (definerObjects), unless acceptOrphanDefiners. MongoDB has no rename: a new user with the same roles and the given password replaces the old one. The main user: Postgres renames it in place and restarts the database (deploy: false leaves that for later, with failed sign-ins in its log until then), MySQL and MariaDB rename an admin other than root in place, ClickHouse restarts with the new name (not while it is stopped: notRunning); MySQL's root and MongoDB refuse with useSwitchMainUser (databases.switchMainUser). Seylo stores the new name: services that reference the database get it on their next deploy (affectedServiceIds).",
+        "tags": [
+          "databases"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "user",
+                  "name"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "user": {
+                    "type": "object",
+                    "required": [
+                      "name"
+                    ],
+                    "properties": {
+                      "name": {
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      "host": {
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "pattern": "^[A-Za-z0-9.%_:/-]+$",
+                        "type": "string"
+                      },
+                      "authDatabase": {
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 63,
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                    "type": "string"
+                  },
+                  "host": {
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "pattern": "^[A-Za-z0-9.%_:/-]+$",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9._~-]+$",
+                    "type": "string"
+                  },
+                  "acceptOrphanDefiners": {
+                    "type": "boolean"
+                  },
+                  "deploy": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "user",
+                    "password",
+                    "affectedServiceIds",
+                    "deploymentId",
+                    "warning"
+                  ],
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "minLength": 1,
+                          "maxLength": 128,
+                          "type": "string"
+                        },
+                        "host": {
+                          "minLength": 1,
+                          "maxLength": 255,
+                          "pattern": "^[A-Za-z0-9.%_:/-]+$",
+                          "type": "string"
+                        },
+                        "authDatabase": {
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "password": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "affectedServiceIds": {
+                      "type": "array",
+                      "items": {
+                        "pattern": "^[a-z0-9]{16}$",
+                        "description": "Panel-issued id.",
+                        "type": "string"
+                      }
+                    },
+                    "deploymentId": {
+                      "anyOf": [
+                        {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "warning": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "destructive",
+        "x-permission": "service:databases.credentials",
+        "x-mcp": true
+      }
+    },
     "/api/v1/databases.resetPassword": {
       "post": {
         "operationId": "databases.resetPassword",
         "summary": "Reset a database password",
-        "description": "Sets a new password for the database's user, the one used inside and through the exposed port alike. The user value exposed is still accepted for older callers and changes the same password as internal: there is no separate exposed user. Services that reference the password (PASSWORD, INTERNAL_URL, INTERNAL_HTTP_URL or EXPOSED_URL) get it on their next deploy or restart; anything else using the old password stops connecting. ClickHouse and Dragonfly read the admin password from their environment at start, so a new one restarts them. MySQL and MariaDB give root the same password as the admin, also an admin other than root (MYSQL_ROOT_PASSWORD, MARIADB_ROOT_PASSWORD); warning says when root kept an older password because it could not sign in to change it.",
+        "description": "Sets a new password for the database's user, the one used inside and through the exposed port alike. The user value exposed is still accepted for older callers and changes the same password as internal: there is no separate exposed user. Services that reference the password (PASSWORD, INTERNAL_URL, INTERNAL_HTTP_URL or EXPOSED_URL) get it on their next deploy or restart; anything else using the old password stops connecting. ClickHouse and Dragonfly read the admin password from their environment at start, so a new one restarts them (Redis, Valkey and KeyDB too, which would start with the old one again); a stopped database is refused (notRunning). MySQL and MariaDB give root the same password as the admin, also an admin other than root (MYSQL_ROOT_PASSWORD, MARIADB_ROOT_PASSWORD); warning says when root kept an older password because it could not sign in to change it.",
         "tags": [
           "databases"
         ],
@@ -20830,6 +21461,18 @@
                     "warning": {
                       "anyOf": [
                         {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "deploymentId": {
+                      "anyOf": [
+                        {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
                           "type": "string"
                         },
                         {
@@ -21072,7 +21715,10 @@
                         "tlsHostname",
                         "certificate",
                         "certificateIssuer",
-                        "certificateExpiresAt"
+                        "certificateExpiresAt",
+                        "selfSignedReason",
+                        "certificateError",
+                        "certificatePem"
                       ],
                       "properties": {
                         "enabled": {
@@ -21185,6 +21831,45 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "selfSignedReason": {
+                          "anyOf": [
+                            {
+                              "const": "noHostname",
+                              "type": "string"
+                            },
+                            {
+                              "const": "acmeMissing",
+                              "type": "string"
+                            },
+                            {
+                              "const": "engine",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "certificateError": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "certificatePem": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       }
                     },
@@ -21238,6 +21923,138 @@
         },
         "x-op-kind": "mutation",
         "x-permission": "service:databases.expose",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/databases.setUserPassword": {
+      "post": {
+        "operationId": "databases.setUserPassword",
+        "summary": "Set a database user's password",
+        "description": "Sets a new password for one user of the database (generated when left out). Anything signed in with the old password stops connecting. For the main user it is databases.resetPassword: Seylo stores it, the services that reference it get it on their next deploy (affectedServiceIds), and ClickHouse, Dragonfly, Redis, Valkey and KeyDB restart with it (deploymentId); a stopped database is refused (notRunning), since that deploy would start it. known: true only stores a main user's password that already works (when the stored one stopped signing in), after a sign-in test, without changing the database.",
+        "tags": [
+          "databases"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "user"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "user": {
+                    "type": "object",
+                    "required": [
+                      "name"
+                    ],
+                    "properties": {
+                      "name": {
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "type": "string"
+                      },
+                      "host": {
+                        "minLength": 1,
+                        "maxLength": 255,
+                        "pattern": "^[A-Za-z0-9.%_:/-]+$",
+                        "type": "string"
+                      },
+                      "authDatabase": {
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "password": {
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9._~-]+$",
+                    "type": "string"
+                  },
+                  "known": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "password",
+                    "affectedServiceIds",
+                    "deploymentId",
+                    "warning"
+                  ],
+                  "properties": {
+                    "password": {
+                      "type": "string"
+                    },
+                    "affectedServiceIds": {
+                      "type": "array",
+                      "items": {
+                        "pattern": "^[a-z0-9]{16}$",
+                        "description": "Panel-issued id.",
+                        "type": "string"
+                      }
+                    },
+                    "deploymentId": {
+                      "anyOf": [
+                        {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "warning": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "destructive",
+        "x-permission": "service:databases.credentials",
         "x-mcp": true
       }
     },
@@ -21458,7 +22275,10 @@
                             "tlsHostname",
                             "certificate",
                             "certificateIssuer",
-                            "certificateExpiresAt"
+                            "certificateExpiresAt",
+                            "selfSignedReason",
+                            "certificateError",
+                            "certificatePem"
                           ],
                           "properties": {
                             "enabled": {
@@ -21571,6 +22391,45 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "selfSignedReason": {
+                              "anyOf": [
+                                {
+                                  "const": "noHostname",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "acmeMissing",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "engine",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "certificateError": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "certificatePem": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           }
                         },
@@ -21638,6 +22497,496 @@
         },
         "x-op-kind": "destructive",
         "x-permission": "service:services.deploy",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/databases.switchMainUser": {
+      "post": {
+        "operationId": "databases.switchMainUser",
+        "summary": "Use another user as a database's main user",
+        "description": "Makes another user the one Seylo signs in with (the shell, the web UI, backups, the env references and the URLs): a new one with full rights, or an existing one (existing: true), which gets a new password since Seylo does not know its own, and full rights with grantAdmin when it lacks them (else notAdmin); a locked one is refused (locked). Seylo signs in as it before storing anything or giving it rights; a new user is removed again when that fails, and an existing one keeps the new password, which the error says. oldUser keep (default) leaves the old main user as it is; delete removes it (MySQL and MariaDB root: only root@%, root@localhost stays for the image), which MySQL and MariaDB refuse while views, routines, triggers or events run as it (definerObjects) unless acceptOrphanDefiners. MySQL and MariaDB give root the new main user's password, as they always have the main user's. Services that reference the database get the new name and password on their next deploy (affectedServiceIds). Not on ClickHouse, Redis, Valkey, KeyDB or Dragonfly (notOffered).",
+        "tags": [
+          "databases"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "name"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 63,
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                    "type": "string"
+                  },
+                  "existing": {
+                    "type": "boolean"
+                  },
+                  "password": {
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9._~-]+$",
+                    "type": "string"
+                  },
+                  "grantAdmin": {
+                    "type": "boolean"
+                  },
+                  "oldUser": {
+                    "anyOf": [
+                      {
+                        "const": "keep",
+                        "type": "string"
+                      },
+                      {
+                        "const": "delete",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "acceptOrphanDefiners": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "user",
+                    "password",
+                    "affectedServiceIds",
+                    "deploymentId",
+                    "warning"
+                  ],
+                  "properties": {
+                    "user": {
+                      "type": "string"
+                    },
+                    "password": {
+                      "type": "string"
+                    },
+                    "affectedServiceIds": {
+                      "type": "array",
+                      "items": {
+                        "pattern": "^[a-z0-9]{16}$",
+                        "description": "Panel-issued id.",
+                        "type": "string"
+                      }
+                    },
+                    "deploymentId": {
+                      "anyOf": [
+                        {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "warning": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "destructive",
+        "x-permission": "service:databases.credentials",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/databases.users": {
+      "get": {
+        "operationId": "databases.users",
+        "summary": "List a database's users",
+        "description": "Lists the users that can sign in to a running database, read from the engine itself: the main user (the one Seylo signs in with for the shell, the web UI, backups and the URLs), users made here or by hand, with their access and what the Users tab may do with each. presets are the access presets databases.createUser takes on this engine; main.rename says how the main user's name changes (inPlace, restart: a short restart, switch: databases.switchMainUser, none). Redis, Valkey, KeyDB and Dragonfly have one user, default, whose password is the only thing to change (notice says why). signIn is offline while the database is stopped or its node is away (only the main user, from what Seylo stores), and failed when Seylo's stored login no longer signs in. Seylo stores only the main user's password.",
+        "tags": [
+          "databases"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "serviceId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9]{16}$",
+              "description": "Panel-issued id.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "engine",
+                    "users",
+                    "truncated",
+                    "presets",
+                    "hosts",
+                    "canCreate",
+                    "notice",
+                    "main",
+                    "signIn",
+                    "message"
+                  ],
+                  "properties": {
+                    "engine": {
+                      "anyOf": [
+                        {
+                          "const": "postgres",
+                          "type": "string"
+                        },
+                        {
+                          "const": "mysql",
+                          "type": "string"
+                        },
+                        {
+                          "const": "mariadb",
+                          "type": "string"
+                        },
+                        {
+                          "const": "mongo",
+                          "type": "string"
+                        },
+                        {
+                          "const": "redis",
+                          "type": "string"
+                        },
+                        {
+                          "const": "valkey",
+                          "type": "string"
+                        },
+                        {
+                          "const": "keydb",
+                          "type": "string"
+                        },
+                        {
+                          "const": "dragonfly",
+                          "type": "string"
+                        },
+                        {
+                          "const": "clickhouse",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "host",
+                          "authDatabase",
+                          "main",
+                          "system",
+                          "access",
+                          "roles",
+                          "locked",
+                          "ownsObjects",
+                          "definerObjects",
+                          "passwordForRename",
+                          "can",
+                          "why"
+                        ],
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "host": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "authDatabase": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "main": {
+                            "type": "boolean"
+                          },
+                          "system": {
+                            "type": "boolean"
+                          },
+                          "access": {
+                            "anyOf": [
+                              {
+                                "const": "readOnly",
+                                "type": "string"
+                              },
+                              {
+                                "const": "readWrite",
+                                "type": "string"
+                              },
+                              {
+                                "const": "databaseAdmin",
+                                "type": "string"
+                              },
+                              {
+                                "const": "serverAdmin",
+                                "type": "string"
+                              },
+                              {
+                                "const": "custom",
+                                "type": "string"
+                              },
+                              {
+                                "const": "none",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "roles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "locked": {
+                            "type": "boolean"
+                          },
+                          "ownsObjects": {
+                            "anyOf": [
+                              {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "definerObjects": {
+                            "anyOf": [
+                              {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "passwordForRename": {
+                            "type": "boolean"
+                          },
+                          "can": {
+                            "type": "object",
+                            "required": [
+                              "passwordChange",
+                              "rename",
+                              "delete",
+                              "makeMain"
+                            ],
+                            "properties": {
+                              "passwordChange": {
+                                "type": "boolean"
+                              },
+                              "rename": {
+                                "type": "boolean"
+                              },
+                              "delete": {
+                                "type": "boolean"
+                              },
+                              "makeMain": {
+                                "type": "boolean"
+                              }
+                            }
+                          },
+                          "why": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    },
+                    "presets": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "const": "readOnly",
+                            "type": "string"
+                          },
+                          {
+                            "const": "readWrite",
+                            "type": "string"
+                          },
+                          {
+                            "const": "databaseAdmin",
+                            "type": "string"
+                          },
+                          {
+                            "const": "serverAdmin",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "hosts": {
+                      "type": "boolean"
+                    },
+                    "canCreate": {
+                      "type": "boolean"
+                    },
+                    "notice": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "main": {
+                      "type": "object",
+                      "required": [
+                        "user",
+                        "rename",
+                        "canSwitch"
+                      ],
+                      "properties": {
+                        "user": {
+                          "type": "string"
+                        },
+                        "rename": {
+                          "anyOf": [
+                            {
+                              "const": "inPlace",
+                              "type": "string"
+                            },
+                            {
+                              "const": "restart",
+                              "type": "string"
+                            },
+                            {
+                              "const": "switch",
+                              "type": "string"
+                            },
+                            {
+                              "const": "none",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "canSwitch": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "signIn": {
+                      "anyOf": [
+                        {
+                          "const": "ok",
+                          "type": "string"
+                        },
+                        {
+                          "const": "failed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "offline",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "message": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "service:databases.credentials",
         "x-mcp": true
       }
     },
@@ -27514,7 +28863,7 @@
       "post": {
         "operationId": "domains.add",
         "summary": "Add a custom domain",
-        "description": "Adds a custom domain (and optional path) to a service and returns it together with the DNS record to create. The route goes live once DNS points at the service's node and a certificate is issued. Until the panel sees the domain reach the node, its certificate waits (certificate.waitingForDns) and the node serves it over plain HTTP, without the redirect to HTTPS. Set forward to make it a redirect-only domain, for example www to the apex. When its DNS is ok or proxied, the panel checks a few seconds later, once the node has the route, that the domain reaches the node (the domain's origin in domains.list).",
+        "description": "Adds a custom domain (and optional path) to a service and returns it together with the DNS record to create. The route goes live once DNS points at the service's node and a certificate is issued. Until the panel sees the domain reach the node, its certificate waits (certificate.waitingForDns) and the node serves it over plain HTTP, without the redirect to HTTPS. Set forward to make it a redirect-only domain, for example www to the apex. When its DNS is ok or proxied, the panel checks a few seconds later, once the node has the route, that the domain reaches the node (the domain's origin in domains.list); for a service that has not deployed yet (domain.noRoute) it checks once a deployment goes live. Refused on a compose stack, which runs no container of its own (put the domain on the member that serves it), and on a cron service (reason stackParent or cronService).",
         "tags": [
           "domains"
         ],
@@ -27896,6 +29245,70 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "originReason": {
+                          "anyOf": [
+                            {
+                              "const": "cloudflareCertificate",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cloudflareUnreachable",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cloudflareChallenge",
+                              "type": "string"
+                            },
+                            {
+                              "const": "notFound",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "noRoute": {
+                          "type": "object",
+                          "required": [
+                            "reason"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "const": "notDeployed",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "stackParent",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "cronService",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "routeWriteFailed",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "deploymentId": {
+                              "pattern": "^[a-z0-9]{16}$",
+                              "description": "Panel-issued id.",
+                              "type": "string"
+                            },
+                            "nodeId": {
+                              "pattern": "^[a-z0-9]{16}$",
+                              "description": "Panel-issued id.",
+                              "type": "string"
+                            },
+                            "nodeName": {
+                              "type": "string"
+                            },
+                            "error": {
+                              "type": "string"
+                            }
+                          }
+                        },
                         "certificate": {
                           "type": "object",
                           "required": [
@@ -28148,6 +29561,26 @@
                             }
                           ]
                         },
+                        "originReason": {
+                          "anyOf": [
+                            {
+                              "const": "cloudflareCertificate",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cloudflareUnreachable",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cloudflareChallenge",
+                              "type": "string"
+                            },
+                            {
+                              "const": "notFound",
+                              "type": "string"
+                            }
+                          ]
+                        },
                         "checkedAt": {
                           "format": "date-time",
                           "type": "string"
@@ -28172,7 +29605,7 @@
       "post": {
         "operationId": "domains.addAuto",
         "summary": "Add an automatic domain",
-        "description": "Adds <name>.<wildcard> from the wildcard A record of the node the service runs on. Works right away with no DNS change. Fails when the node has no wildcard domain set.",
+        "description": "Adds <name>.<wildcard> from the wildcard A record of the node the service runs on. Works right away with no DNS change. Fails when the node has no wildcard domain set, and on a compose stack or a cron service (reason stackParent or cronService): a stack's domains go on its members.",
         "tags": [
           "domains"
         ],
@@ -28494,6 +29927,70 @@
                       "format": "date-time",
                       "type": "string"
                     },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "noRoute": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "const": "notDeployed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stackParent",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cronService",
+                              "type": "string"
+                            },
+                            {
+                              "const": "routeWriteFailed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "deploymentId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeName": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
+                    },
                     "certificate": {
                       "type": "object",
                       "required": [
@@ -28599,7 +30096,7 @@
       "get": {
         "operationId": "domains.checkDns",
         "summary": "Check a domain's DNS",
-        "description": "Resolves the domain through public resolvers now and classifies the answer (ok, missing, wrong target, Cloudflare proxied). Returns the records to create and a Cloudflare DNS link when the zone is on Cloudflare. For a custom domain that is ok or proxied it also checks that requests to it reach the service's node (origin: node, elsewhere or unknown), which tells whether a Cloudflare-proxied record points at the node. Also refreshes the stored status, and when the check shows a domain whose certificate waits for DNS reaching the node, the node asks Let's Encrypt for it right away.",
+        "description": "Resolves the domain through public resolvers now and classifies the answer (ok, missing, wrong target, Cloudflare proxied). Returns the records to create and a Cloudflare DNS link when the zone is on Cloudflare. For a custom domain that is ok or proxied it also checks that requests to it reach the service's node (origin: node, elsewhere or unknown), which tells whether a Cloudflare-proxied record points at the node; not while the service's nodes cannot have a route for it (Domain.noRoute notDeployed, stackParent or cronService). Also refreshes the stored status, and when the check shows a domain whose certificate waits for DNS reaching the node, the node asks Let's Encrypt for it right away.",
         "tags": [
           "domains"
         ],
@@ -28798,6 +30295,26 @@
                         },
                         {
                           "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
                           "type": "string"
                         }
                       ]
@@ -29135,6 +30652,70 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "originReason": {
+                            "anyOf": [
+                              {
+                                "const": "cloudflareCertificate",
+                                "type": "string"
+                              },
+                              {
+                                "const": "cloudflareUnreachable",
+                                "type": "string"
+                              },
+                              {
+                                "const": "cloudflareChallenge",
+                                "type": "string"
+                              },
+                              {
+                                "const": "notFound",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "noRoute": {
+                            "type": "object",
+                            "required": [
+                              "reason"
+                            ],
+                            "properties": {
+                              "reason": {
+                                "anyOf": [
+                                  {
+                                    "const": "notDeployed",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "stackParent",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "cronService",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "routeWriteFailed",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "deploymentId": {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              "nodeId": {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              "nodeName": {
+                                "type": "string"
+                              },
+                              "error": {
+                                "type": "string"
+                              }
+                            }
+                          },
                           "certificate": {
                             "type": "object",
                             "required": [
@@ -29321,7 +30902,7 @@
       "post": {
         "operationId": "domains.retryCertificate",
         "summary": "Regenerate a domain's certificate",
-        "description": "Asks Let's Encrypt again for the certificate of a domain whose certificate is pending or failed, without restarting the node's proxy: every other domain keeps serving. The domain's DNS must point at the service's node (it is checked now and the op refuses otherwise); behind Cloudflare's proxy the origin check runs too, and the op refuses (reason originElsewhere) while something other than the node answers, and (reason waitingForDns) while a domain whose certificate waits for DNS is not seen reaching the node; when the check shows it reaching the node, the certificate starts. Allowed once a minute per domain. Let's Encrypt itself allows 5 failed validations per host name per hour, so fix what the last error names before trying again. The domain shows certificate status pending until the node reports a certificate or a new failure.",
+        "description": "Asks Let's Encrypt again for the certificate of a domain whose certificate is pending or failed, without restarting the node's proxy: every other domain keeps serving. The domain's DNS must point at the service's node (it is checked now and the op refuses otherwise); behind Cloudflare's proxy the origin check runs too, and the op refuses (reason originElsewhere) while something other than the node answers, and (reason waitingForDns) while a domain whose certificate waits for DNS is not seen reaching the node; when the check shows it reaching the node, the certificate starts. Refused (reason notDeployed, stackParent or cronService, as in Domain.noRoute) while the service's nodes cannot have a route for the domain. Allowed once a minute per domain. Let's Encrypt itself allows 5 failed validations per host name per hour, so fix what the last error names before trying again. The domain shows certificate status pending until the node reports a certificate or a new failure.",
         "tags": [
           "domains"
         ],
@@ -29636,6 +31217,70 @@
                     "originCheckedAt": {
                       "format": "date-time",
                       "type": "string"
+                    },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "noRoute": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "const": "notDeployed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stackParent",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cronService",
+                              "type": "string"
+                            },
+                            {
+                              "const": "routeWriteFailed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "deploymentId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeName": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "certificate": {
                       "type": "object",
@@ -30070,6 +31715,70 @@
                     "originCheckedAt": {
                       "format": "date-time",
                       "type": "string"
+                    },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "noRoute": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "const": "notDeployed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stackParent",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cronService",
+                              "type": "string"
+                            },
+                            {
+                              "const": "routeWriteFailed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "deploymentId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeName": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "certificate": {
                       "type": "object",
@@ -30601,6 +32310,70 @@
                       "format": "date-time",
                       "type": "string"
                     },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "noRoute": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "const": "notDeployed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stackParent",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cronService",
+                              "type": "string"
+                            },
+                            {
+                              "const": "routeWriteFailed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "deploymentId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeName": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
+                    },
                     "certificate": {
                       "type": "object",
                       "required": [
@@ -31022,6 +32795,70 @@
                       "format": "date-time",
                       "type": "string"
                     },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "noRoute": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "const": "notDeployed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stackParent",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cronService",
+                              "type": "string"
+                            },
+                            {
+                              "const": "routeWriteFailed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "deploymentId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeName": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
+                    },
                     "certificate": {
                       "type": "object",
                       "required": [
@@ -31127,7 +32964,7 @@
       "post": {
         "operationId": "domains.update",
         "summary": "Change a domain's routing",
-        "description": "Changes path prefix, strip prefix, target port, HTTPS mode, the HTTP to HTTPS redirect or the forward target of a domain. Fields left out keep their value; forward null turns a redirect-only domain back into a normal one.",
+        "description": "Changes path prefix, strip prefix, target port, HTTPS mode, the HTTP to HTTPS redirect or the forward target of a domain. Fields left out keep their value; forward null turns a redirect-only domain back into a normal one. Refused on a compose stack or a cron service (reason stackParent or cronService), whose domains route nowhere: remove them there and add them to the service that serves the requests.",
         "tags": [
           "domains"
         ],
@@ -31506,6 +33343,70 @@
                     "originCheckedAt": {
                       "format": "date-time",
                       "type": "string"
+                    },
+                    "originReason": {
+                      "anyOf": [
+                        {
+                          "const": "cloudflareCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareUnreachable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cloudflareChallenge",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notFound",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "noRoute": {
+                      "type": "object",
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "const": "notDeployed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stackParent",
+                              "type": "string"
+                            },
+                            {
+                              "const": "cronService",
+                              "type": "string"
+                            },
+                            {
+                              "const": "routeWriteFailed",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "deploymentId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "pattern": "^[a-z0-9]{16}$",
+                          "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        "nodeName": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      }
                     },
                     "certificate": {
                       "type": "object",
@@ -46919,6 +48820,7 @@
                     "token",
                     "command",
                     "pinnedCommand",
+                    "setPanelCommand",
                     "expiresAt",
                     "insecureTransport",
                     "canBuild"
@@ -46936,6 +48838,16 @@
                       "type": "string"
                     },
                     "pinnedCommand": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "setPanelCommand": {
                       "anyOf": [
                         {
                           "type": "string"

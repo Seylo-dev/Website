@@ -289,6 +289,27 @@ Flags:
   -h, --help   help for restart
 ```
 
+### `seylo set-panel`
+
+For a node that joined over the panel's domain and stopped connecting, for example because
+a firewall on its network began decrypting HTTPS (TLS inspection). Unlike joining again it
+needs no join token and keeps the rest of config.yml. The panel's Add node dialog shows the
+command with the panel's IP address, agents' port and pin.
+
+It first connects to the new address (with the pin, or the system's certificate roots without
+one) and checks it is the panel this node belongs to. Only then does it write panel_url and
+panel_pin to config.yml (the old file stays as config.yml.bak) and restart the agent.
+
+```text
+Usage:
+  seylo set-panel <panel-url> [--pin sha256:<hex>] [flags]
+
+Flags:
+  -h, --help         help for set-panel
+      --insecure     accept a plain http:// panel URL on another host (the agent protocol is then unencrypted)
+      --pin string   the panel's key (sha256:<hex>), from the panel's Add node dialog; without it the certificate must come from a CA this server trusts
+```
+
 ### `seylo start`
 
 Start the agent service
