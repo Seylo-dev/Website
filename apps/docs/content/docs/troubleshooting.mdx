@@ -68,7 +68,18 @@ When the issuer is your own CA, the one that issued the panel's certificate, add
 </Accordion>
 
 <Accordion title="The certificate for a domain is not issued">
-The domain must point at the node that runs the service, and port 80 must reach the node from the internet, because Let's Encrypt checks over HTTP. Behind Cloudflare's proxy, set SSL/TLS to Full (strict) and turn off Always Use HTTPS, which sends that check to HTTPS. The domain's row on the **Domains** tab shows the DNS status and the last error from Let's Encrypt.
+The domain must point at the node that runs the service, and port 80 must reach the node from the internet, because Let's Encrypt checks over HTTP. Behind Cloudflare's proxy, set SSL/TLS to Full (strict), and see the next entry. The domain's row on the **Domains** tab shows the DNS status and the last error from Let's Encrypt.
+</Accordion>
+
+<Accordion title="A domain behind Cloudflare reads Certificate waits for Cloudflare">
+New in 0.2.13. The panel's check through Cloudflare has not reached the node yet, so the domain does not ask Let's Encrypt for a certificate. When Cloudflare's answer to the check said why, the note under the row says so:
+
+- **Full (strict)** refuses the node's temporary certificate (Cloudflare's 525 or 526): set SSL/TLS to **Full** for a few minutes, or turn off **Always Use HTTPS**, until the certificate is issued, then set it back. With a Redirect Rule or Page Rule that sends every path to HTTPS, only **Full** helps.
+- Cloudflare cannot reach the node (521 or 522): point the record in Cloudflare at the node's IP the row shows, and let Cloudflare in on ports 80 and 443.
+- 404 from the server Cloudflare reaches: the record points at another server, or the node does not have the domain yet.
+- A challenge or a block from Cloudflare's security (Bot Fight Mode, Under Attack mode, a WAF or rate limiting rule): let requests to `/.well-known/` on the domain through with a WAF skip rule, or turn Bot Fight Mode off.
+
+Then click **Check again**. **Always Use HTTPS** itself does not stop Let's Encrypt's check, and since 0.2.13 a redirect for every path does not either, on nodes with agent 0.2.13. See [Certificate waits for Cloudflare](/guides/domains-and-https#certificate-waits-for-cloudflare).
 </Accordion>
 
 <Accordion title="A deploy fails its health check">
