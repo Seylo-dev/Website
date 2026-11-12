@@ -42,7 +42,7 @@ The **Connection** tab shows each part and the full URL, and `${{db.INTERNAL_URL
 | Redis, Valkey, KeyDB, Dragonfly | `redis://default:<password>@db:6379` |
 | ClickHouse | `clickhouse://<user>:<password>@db:9000/<database>` |
 
-These are the default users; a database created through the API or a template may name its own. The database name defaults to the service name with `-` turned into `_` (`shop-db` becomes `shop_db`). The Redis-like engines have no database name.
+These are the default main users; a database created through the API or a template may name its own, and since 0.2.13 the **Users** tab can change it (see [Users](#users)). The database name defaults to the service name with `-` turned into `_` (`shop-db` becomes `shop_db`). The Redis-like engines have no database name.
 
 Exposed with TLS, the URL has the same user and password, points at the node's address or the **TLS host name** and adds what the driver needs:
 
@@ -50,11 +50,11 @@ Exposed with TLS, the URL has the same user and password, points at the node's a
 | --- | --- |
 | PostgreSQL | `postgresql://postgres:<password>@<host>:<port>/<database>?sslmode=require` |
 | MySQL, MariaDB | `mysql://root:<password>@<host>:<port>/<database>?ssl-mode=REQUIRED` |
-| MongoDB | `mongodb://root:<password>@<host>:<port>/<database>?authSource=admin&tls=true`, plus `&tlsAllowInvalidCertificates=true` with a self-signed certificate |
+| MongoDB | `mongodb://root:<password>@<host>:<port>/<database>?authSource=admin&tls=true`, plus `&tlsAllowInvalidCertificates=true` when no **TLS host name** is set |
 | Redis, Valkey, KeyDB, Dragonfly | `rediss://default:<password>@<host>:<port>` |
-| ClickHouse | `clickhouse://<user>:<password>@<host>:<port>/<database>?secure=true`, plus `&skip_verify=true` with a self-signed certificate |
+| ClickHouse | `clickhouse://<user>:<password>@<host>:<port>/<database>?secure=true`, plus `&skip_verify=true` when no **TLS host name** is set |
 
-With a self-signed certificate, Redis-like clients must skip verification themselves, for example `redis-cli --tls --insecure`. Postgres, MySQL and MariaDB clients that do not ask for TLS are refused (see [Expose with TLS](/guides/databases#expose-with-tls)), and MariaDB 10.11, which has no TLS, cannot be exposed.
+With a **TLS host name**, the MongoDB and ClickHouse URLs leave that option out, also while the node has no Let's Encrypt certificate for the name yet and serves a self-signed one: add it yourself meanwhile (see [Self-signed certificates](/guides/databases#self-signed-certificates)). With a self-signed certificate, Redis-like clients must skip verification themselves, for example `redis-cli --tls --insecure`. Postgres, MySQL and MariaDB clients that do not ask for TLS are refused (see [Expose with TLS](/guides/databases#expose-with-tls)), and MariaDB 10.11, which has no TLS, cannot be exposed.
 
 ## PostgreSQL
 
@@ -80,7 +80,7 @@ With a self-signed certificate, Redis-like clients must skip verification themse
 
 ## Valkey, KeyDB and Dragonfly
 
-They speak the Redis protocol, so Redis clients and drivers work unchanged. Like Redis, each has one user, `default`, with the generated password. Exposing one uses that same user over TLS (`rediss://`); the internal URL stays as it is.
+They speak the Redis protocol, so Redis clients and drivers work unchanged. Like Redis, each has one user, `default`, with the generated password. Exposing one uses that same user over TLS (`rediss://`); the internal URL stays as it is. The **Users** tab (since 0.2.13) shows only `default` and changes only its password: users made with `ACL SETUSER` live in memory only, since Seylo starts these engines without an ACL file, so the next restart or deploy removes them.
 
 - **Valkey** is a maintained fork of Redis, under the BSD license. It runs with append-only persistence, like Redis.
 - **KeyDB** has had no release since 6.3.4 (2023) and gets no security fixes, including the 2025 Redis Lua scripting advisories (CVE-2025-49844 and three more). `databases.engines` says so in its `notice`, and the panel only exposes it to the **Allowed IPs** you list, never to every address. Prefer Valkey for anything new. KeyDB publishes no multi-arch version tag, so it is pinned by digest.
@@ -88,10 +88,35 @@ They speak the Redis protocol, so Redis clients and drivers work unchanged. Like
 
 ## ClickHouse
 
-- The admin user is generated (`ch_` and 10 letters and digits) with full access management, so it can create users and grants with SQL.
+- The admin user is generated (`ch_` and 10 letters and digits) with full access management, so it can create users and grants with SQL. Since 0.2.13 the **Users** tab makes and changes SQL users too. The admin is the user the container starts with, which ClickHouse makes from its environment at every start, so a new name or password for it restarts the database, and it cannot be swapped for another user.
 - Besides the native protocol on port 9000, the HTTP interface on 8123 is available inside the project. Its URL is on the **Connection** tab (**HTTP URL**, **HTTP port**) and in `${{db.INTERNAL_HTTP_URL}}` and `${{db.INTERNAL_HTTP_PORT}}`: `http://<user>:<password>@db:8123/<database>`.
 - Only the native port is exposed, with TLS from the node's agent (`clickhouse-client --secure`), and clients sign in there as the admin user. The HTTP port is never exposed, so HTTP clients reach ClickHouse only from the same node.
 - The web UI is ClickHouse's own **Play** page, already signed in as the admin. Requests that carry credentials of their own (`user`, `password` or `quota_key` parameters) are refused.
+
+## Users
+
+New in 0.2.13. How the **Users** tab works is the same for every engine; see [Users](/guides/databases#users). What each access level grants:
+
+| Engine | **Read only** | **Read and write** | **Admin of `<database>`** | **Full admin** |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | `pg_read_all_data` (every table of every database on the server) and `CONNECT` on the database | `pg_read_all_data` and `pg_write_all_data` (every database on the server), `CONNECT`, `CREATE` and `TEMPORARY` on the database, and `USAGE` and `CREATE` on its `public` schema | Not offered | `SUPERUSER`, `CREATEDB`, `CREATEROLE` |
+| MySQL, MariaDB | `SELECT` and `SHOW VIEW` on the database | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `INDEX`, `DROP`, `REFERENCES`, temporary tables, `LOCK TABLES`, `EXECUTE`, views and triggers on the database; no `GRANT OPTION`, routines or events | `ALL PRIVILEGES` on the database, `WITH GRANT OPTION` | `ALL PRIVILEGES` on `*.*`, `WITH GRANT OPTION` |
+| MongoDB | `read` on the database | `readWrite` on the database | `dbOwner` on the database | `root` on `admin` |
+| ClickHouse | `SELECT` and `SHOW` on the database | `SELECT`, `INSERT`, `ALTER`, making tables, views and dictionaries, dropping tables and views, `TRUNCATE`, `OPTIMIZE` and `SHOW` on the database | `ALL` on the database, `WITH GRANT OPTION` | The main user's own rights on everything (`GRANT CURRENT GRANTS ON *.*`, `WITH GRANT OPTION`): the image's user lacks a few rights of `ALL`, so `ALL` would be refused |
+
+`pg_read_all_data` and `pg_write_all_data` came in Postgres 14, so an older Postgres offers **Full admin** only. Redis, Valkey, KeyDB and Dragonfly have no users to make.
+
+The main user and how it changes:
+
+| Engine | Main user by default | A new name | Another user as the main one |
+| --- | --- | --- | --- |
+| PostgreSQL | `postgres` | Renamed in place, also the image's first user, then a restart so the health check uses it (it can wait) | Yes. The dialog keeps the old main user; the image's first user can never be dropped. |
+| MySQL, MariaDB | `root` | Root stays; another main user is renamed in place | Yes, from the accounts with host `%`. Root gets the new main user's password. Deleting the old one removes only `root@%` for root, since `root@localhost` stays for the image. |
+| MongoDB | `root` | No rename: use another user | Yes, from the users of the `admin` database. The old one can be deleted. |
+| ClickHouse | `ch_` and 10 letters and digits | A restart with the new name | No |
+| Redis, Valkey, KeyDB, Dragonfly | `default` | No | No |
+
+A new password for the main user restarts ClickHouse, Dragonfly, Redis, Valkey and KeyDB; the others change it in the running database.
 
 ## Tested version changes
 
@@ -142,5 +167,5 @@ While it runs the disk holds both copies. A database that cannot be renamed (one
 
 - Postgres does not upgrade its major version in place, and no Postgres database switches to or from pgvector: create a new database and restore a dump into it. Since 0.2.11 the **Version** card takes a Postgres major as a risk, but it will most likely not start, and the old container comes back.
 - Since 0.2.9 the other engines change version on the **Settings** tab. The changes Seylo makes without a risk are in [Change the version](/guides/databases#change-the-version); since 0.2.11 the others go ahead once you accept [what can go wrong](/guides/databases#what-can-go-wrong). Data files do not go back: an older version may not open them, and going back means restoring a backup into a new database.
-- **Reset password** changes the password inside the running database, except for ClickHouse and Dragonfly, which read it from their environment when they start: a reset restarts them.
+- A new password for the main user changes it inside the running database, except for ClickHouse and Dragonfly, which read it from their environment when they start. Redis, Valkey and KeyDB take it at once but would start with the old one again. Since 0.2.13 those five restart with the new password, which needs the right to deploy the database (see [The main user's password](/guides/databases#reset-a-password)).
 - Exposure on the Redis-like engines, MongoDB and ClickHouse's native port goes through TLS from the node's agent. Postgres, MySQL and MariaDB serve TLS themselves, and need a 0.2.9 agent on the node to be exposed. MariaDB always presents its own self-signed certificate, and MariaDB 10.11 cannot be exposed.

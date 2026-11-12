@@ -1,6 +1,6 @@
 ---
 title: Databases
-description: Postgres, MySQL, MariaDB, MongoDB, Redis, Valkey, KeyDB, Dragonfly and ClickHouse on the project's private network, with web UIs, shells, TLS exposure, version changes and backups.
+description: Postgres, MySQL, MariaDB, MongoDB, Redis, Valkey, KeyDB, Dragonfly and ClickHouse on the project's private network, with web UIs, shells, users, TLS exposure, version changes and backups.
 ---
 
 ## Create a database
@@ -22,13 +22,13 @@ For Postgres, **Include pgvector** picks an image with the vector extension. Val
 
 New in 0.2.11: tick **Use another image** under **Version** to run another tag or digest of the engine's own image instead of the pinned one, such as `mongo:8.2.12`, `postgres:17-alpine` or `redis:latest`. The **Image** field starts from the picked version's image (`pgvector/pgvector` with **Include pgvector**). It is not tested by Seylo, and for a floating tag the form says that what it points at can change on the next deploy. The database is recorded as the version its tag names (`mongo:8.2.12` is MongoDB 8.2); when the tag names none, the page shows the image instead, as in "MongoDB (mongo:latest)". A Postgres image whose tag names no release, such as `postgres:latest` or a digest, also gets `PGDATA=/var/lib/postgresql/docker` in the database's variables, so its data stays on the data volume whatever release the tag pulls (see [Postgres and PGDATA](#postgres-and-pgdata)). An image of another repository is refused: Seylo's settings for a database (its environment, data folder, health check and command) are made for its engine's image.
 
-Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name.
+Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name. New in 0.2.13: the **Users** tab makes more users and changes the main one (see [Users](#users)).
 
 ## Connect from an app
 
 The database's **Connection** tab shows the **Internal connection**: URL, host, port, database, user and password, for services on the same node in this project.
 
-Reference it from the app's environment instead of copying it, so a password reset reaches the app on its next deploy:
+Reference it from the app's environment instead of copying it, so a new password or a new main user reaches the app on its next deploy:
 
 ```bash
 DATABASE_URL=${{db.INTERNAL_URL}}
@@ -58,7 +58,7 @@ Exposing only opens a port on the node to the database, with TLS. Clients sign i
 | Setting | What it does |
 | --- | --- |
 | **Allowed IPs** | Only these IPs or CIDRs may connect. Empty allows anywhere, except for KeyDB, which gets no security fixes and is only exposed to listed addresses. |
-| **TLS host name** | A name that points at the node gets a Let's Encrypt certificate. Empty uses a self-signed certificate. |
+| **TLS host name** | A name that points at the node gets a Let's Encrypt certificate. Empty uses a self-signed certificate (see [Self-signed certificates](#self-signed-certificates)). |
 | **Port** | The public port. Empty keeps the current one or picks a free port. |
 
 Changed in 0.2.12, on nodes with the 0.2.12 agent: a **TLS host name** set or changed while the database runs gets its Let's Encrypt certificate right away. Before, the node asked for it only on the database's next deploy or the agent's next restart, and until then the port kept the self-signed certificate.
@@ -67,19 +67,192 @@ The port only takes TLS. Postgres, MySQL and MariaDB serve TLS themselves, and t
 
 MariaDB 10.11 has no TLS, so since 0.2.9 it cannot be exposed: **Expose** refuses it. MariaDB 11.4 and later can; to expose a 10.11 database, [change its version](#change-the-version) to 11.4 first. A MariaDB version before 11.4 that Seylo does not offer, such as 10.6 or 11.2 run with **Use another image**, cannot be exposed either.
 
-The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. With a self-signed certificate, tell the client to require TLS without checking the certificate (for Postgres, `sslmode=require`).
+The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. Without a Let's Encrypt certificate the port serves a self-signed one, which clients that check certificates refuse: see [Self-signed certificates](#self-signed-certificates) for the settings that connect.
+
+The card's **Certificate** line says what the port serves: **self-signed**, **being issued** (the node has no Let's Encrypt certificate for the **TLS host name** yet), **valid** with its issuer and end date, or, new in 0.2.13, **failed** (the node serves the self-signed one and has an error from Let's Encrypt for the name). Changed in 0.2.13: the line follows what the port serves. Before, an exposed Postgres or MySQL database with a TLS host name stayed on **being issued** after it had its Let's Encrypt certificate, because the node did not report the certificate those databases serve, and a MongoDB, ClickHouse or Redis-like database with a TLS host name whose certificate was never issued said **valid** while it served the self-signed one.
 
 ### Closed until the node updates
 
 Exposed Postgres, MySQL and MariaDB need the node's agent from 0.2.9, which keeps the port TLS only. On an older node **Expose** refuses them ("Update the node first"), and one exposed before the update stays closed: the **Connection** tab says "Closed until `<node>` updates to 0.2.9", with **Exposed** still on, and `${{db.EXPOSED_URL}}` is empty for services deployed meanwhile. The port opens by itself once the node is updated. MongoDB, ClickHouse and the Redis-like engines stay exposed on older nodes.
 
-## Reset a password
+### Self-signed certificates
 
-**Reset password** creates a new password inside the running database. It is one password, inside and through the exposed port. ClickHouse and Dragonfly read the password when they start, so for them a reset restarts the database. Services that reference it get the new value on their next deploy or restart; anything else that uses the old one stops connecting, wherever it connects from. You type the service name to confirm. The new password stays on screen with the number of services that need a restart: copy it then.
+New in 0.2.13. While the exposed port serves a self-signed certificate, the **Exposed connection** card on the **Connection** tab has a **Self-signed certificate** note: "Connections are encrypted, but clients that check certificates refuse this one." It says why:
 
-Changed in 0.2.11: for MySQL and MariaDB, root gets the new password too, also when the database's admin user is not root (a database made by a template or the API with its own user). The database's container gives root the admin's password (`MYSQL_ROOT_PASSWORD`, `MARIADB_ROOT_PASSWORD`), but before, a reset changed the admin's password only, so signing in as root with it failed (ERROR 1045) after the next deploy, and so did the panel's own steps that sign in as root, such as the next reset and the [MySQL 8.4 check](#mysql-84-and-mysql_native_password).
+| Reason | What the note says |
+| --- | --- |
+| No **TLS host name** | "No TLS host name is set, so the node uses a certificate of its own." |
+| No Let's Encrypt certificate for the host name yet | "The node has no Let's Encrypt certificate for `<host>` yet", with "Last attempt:" and the certificate authority's last error when the node has one, for example that it could not reach port 80 on the node. The **Certificate** line says **failed** with an error, **being issued** without one. |
+| MariaDB | "MariaDB always serves the certificate it makes itself, with or without a TLS host name." |
 
-A database an older reset left that way still takes a reset: the admin's password changes, and the **New password** dialog says that root kept an older password, which the panel does not know, and how to set it: sign in as root with that older password and run `ALTER USER 'root'@'%' IDENTIFIED BY '<new password>'`, and the same for `'root'@'localhost'`. Later resets then change both. Through the API, `databases.resetPassword` returns that as `warning`.
+To get a trusted certificate (not for MariaDB):
+
+1. Set a **TLS host name** under **Port and access**.
+2. Give that name an A record to the node's address, set to DNS only (not proxied, for example the grey cloud on Cloudflare).
+3. Let port 80 reach the node: Let's Encrypt checks the name over port 80.
+
+Until then, these client settings connect with the self-signed certificate. They encrypt the connection without checking the certificate:
+
+| Engine | Setting |
+| --- | --- |
+| PostgreSQL | psql and other libpq clients connect with `sslmode=require`, as in the exposed URL. node-postgres (the `pg` package) reads `sslmode=require` as "check the certificate", so it needs `sslmode=no-verify`, or `uselibpqcompat=true&sslmode=require`. |
+| MySQL | `ssl-mode=REQUIRED`, as in the exposed URL. `VERIFY_CA` and `VERIFY_IDENTITY` need the certificate. |
+| MariaDB | `ssl-mode=REQUIRED` (`mariadb --ssl --skip-ssl-verify-server-cert`). |
+| MongoDB | `tlsAllowInvalidCertificates=true`. The exposed URL of a database without a TLS host name already carries it; with a host name, add it while the certificate is self-signed. |
+| ClickHouse | `skip_verify=true`, the same way. |
+| Redis, Valkey, KeyDB, Dragonfly | `redis-cli --tls --insecure`, or `--cacert` with the downloaded certificate. |
+
+For example, an app on another node that connects with node-postgres to an exposed Postgres database without a TLS host name:
+
+```bash
+DATABASE_URL="postgresql://postgres:<password>@<node address>:<port>/<database>?sslmode=no-verify"
+```
+
+#### Trust the certificate file
+
+**Download certificate** in the note saves the certificate the port serves as `<service>.crt`, so a client can trust that file instead of skipping the check. MariaDB has none to download.
+
+- **With a TLS host name**, the file names that host. Any client that checks certificates connects by that name with the file as its CA: `sslrootcert` (Postgres), `ssl-ca` (MySQL), `tlsCAFile` (MongoDB), `--cacert` (redis-cli).
+- **Without one**, the certificate names no host, so a client that checks the host name refuses it. Use the setting that checks the certificate but not the name:
+
+| Engine | Trusting the file without a TLS host name |
+| --- | --- |
+| PostgreSQL | `sslmode=verify-ca` with `sslrootcert=<file>`; node-postgres also needs `uselibpqcompat=true`. `verify-full` refuses it. |
+| MySQL | `ssl-mode=VERIFY_CA` with `ssl-ca`. `VERIFY_IDENTITY` refuses it. |
+| MongoDB | `tlsCAFile` with `tlsAllowInvalidHostnames=true`. `tlsCAFile` alone refuses it. |
+| ClickHouse, Redis-like engines | A client that does not check the host name. |
+
+```bash
+DATABASE_URL="postgresql://postgres:<password>@<node address>:<port>/<database>?uselibpqcompat=true&sslmode=verify-ca&sslrootcert=/app/db.crt"
+```
+
+The certificate only vouches for its own host name and the names under it, and for no IP address (without a TLS host name, for no name at all). So a copy trusted for a whole process (`NODE_EXTRA_CA_CERTS`, the system's certificate store) cannot be used to vouch for any other site. Once the node has a Let's Encrypt certificate for the TLS host name, the port serves that one instead, and a client that trusts only the downloaded file refuses it: let the client use the system's certificate authorities again then.
+
+Changed in 0.2.13: the self-signed certificate is now made as a self-signed certificate. Before, some clients described it wrongly: node-postgres on Bun, and other clients built on BoringSSL or OpenSSL 1.1, said "unable to verify the first certificate" instead of "self-signed certificate", and some, such as LibreSSL, did not accept it even when told to trust that file. A node on 0.2.13 makes the certificate again, once, and again when a TLS host name is set while the database still has no Let's Encrypt certificate, so the file names the host. The database serves the new one by itself, without a restart; open connections keep the old one until they reconnect. A client that pinned the old certificate needs the new one: **Download certificate** again.
+
+The reason for a TLS host name ("no Let's Encrypt certificate yet"), the last error and **Download certificate** need the node on 0.2.13. On an older node the note only shows for a database without a TLS host name and for MariaDB, without the download.
+
+## Users
+
+New in 0.2.13. A database's **Users** tab, next to **Connection**, lists the users that can sign in, read from the database itself each time it opens (Seylo keeps no list of them), with the main user first. The main user is the one Seylo signs in with: the shell, the web UI, backups, the connection URLs and the `${{db.*}}` references all use it. Seylo keeps only the main user's password. The password of any other user shows once, when it is set, and Seylo does not keep it.
+
+PostgreSQL, MySQL, MariaDB, MongoDB and ClickHouse list all their users. Redis, Valkey, KeyDB and Dragonfly have one user, `default`, and the tab shows only that one, with a note on why only its password changes there: users made with `ACL SETUSER` live in memory only, since Seylo starts these engines without an ACL file, so the next restart or deploy would remove them.
+
+Each row shows the user's name (`name@host` on MySQL and MariaDB) and what it may do (see [Access levels](#access-levels)), with these marks:
+
+- **Main**: the main user, "Seylo signs in with this one".
+- **Used inside the container**: MySQL's and MariaDB's root and Postgres's first user (the one the image made), when they are not the main user, and ClickHouse users defined in the server's configuration files.
+- **Locked**: it cannot sign in now (a locked MySQL account, an expired Postgres role).
+- `auth: <database>`: a MongoDB user of another authentication database than `admin`.
+- Postgres rows say how many tables and other objects a user owns ("owns 3 objects", in every database of the server), and MySQL and MariaDB rows how many views, routines, triggers and events run as it (DEFINER).
+
+Each row but the main user's has a **...** menu with **Change password**, **Rename**, **Make this the main user** and **Delete**, which says why when one of them is not offered. The tab lists 500 users at most ("Only the first 500 users are listed. Manage the others from the shell."), and a name with control characters or backslashes is listed but only managed from the shell.
+
+While the database is stopped, is not placed on a node or its node is not connected, the tab lists only the main user, from what Seylo stores, and says why, for example "The database is stopped. Start it to see and change its users." While a deploy of the database runs, new users, other users' passwords, renames, deletes and a switch of the main user are refused until it finishes. The main user's password can still be changed.
+
+### Access levels
+
+| Access | What it may do |
+| --- | --- |
+| **Read only** | Reads every table of the database; cannot change anything. |
+| **Read and write** | Reads, writes and changes tables of the database: what an app needs, migrations included. |
+| **Admin of `<database>`** | Everything in the database, and may give those rights to others. Not on Postgres. |
+| **Full admin** | Everything on the server, like the main user: other databases and users too. |
+| **Custom** | Any other set of rights. The row shows the first grants or roles, and all of them on hover. |
+| **No rights here** | Nothing on this database. |
+
+On Postgres, **Read only** and **Read and write** use `pg_read_all_data` and `pg_write_all_data`, so they cover every database of the server, and **Read and write** also makes tables in the database. A Postgres before 14 (run with **Use another image**) offers **Full admin** only. What each level grants on each engine is in [Database engines](/guides/database-engines#users).
+
+### Make a user
+
+**New user** (PostgreSQL, MySQL, MariaDB, MongoDB and ClickHouse) takes:
+
+- **Name**: letters, digits and `_`, starting with a letter or `_`; 32 characters at most on MySQL and MariaDB. Names the engine or Seylo keeps for itself are refused, such as `root` on MySQL and MariaDB, names that start with `pg_` on Postgres and `default` on ClickHouse.
+- **Access**: one of the [access levels](#access-levels), on the database's own database (the whole server for **Full admin**).
+- The password: **Generate one** (32 characters) or **Set my own** (12 to 128 letters, digits and `. _ ~ -`).
+- MySQL and MariaDB, under **Advanced**: the **Host** it may sign in from. `%`, the default, is anywhere: services of the project and the exposed port both need it.
+
+**Create user** makes it and shows "`<user>` is ready" with its password, its **Connection URL** and, while the database is exposed, its **Exposed connection URL**. Copy them then: Seylo does not keep the password. MongoDB users are made in the `admin` database.
+
+### Change, rename or delete a user
+
+For any user but the main one:
+
+- **Change password** sets a generated or typed password, shown once. Anything signed in with the old one stops connecting.
+- **Rename** gives it a new name (and on MySQL and MariaDB, another **Host**). Anything signed in with the old name stops connecting. A rename keeps the user's rights, and on Postgres the tables it owns. A Postgres user with an md5 password gets a new password with the rename, since Postgres clears an md5 password when it renames the user. MongoDB has no rename: a new user with the same rights and a new password takes its place, and the old one goes.
+- **Delete** removes the user and keeps the data. Anything signed in as it stops connecting.
+
+What runs as the user or belongs to it:
+
+- **Postgres, a user that owns tables or other objects**: **Delete** needs "Give its `<count>` tables and other objects to `<main user>` first (REASSIGN OWNED)" ticked. Seylo first stops the user from signing in and ends its sessions, and waits for them to be gone (5 seconds at most), so nothing it makes meanwhile is lost. Then, in every database, it gives what the user owns to the main user (`REASSIGN OWNED`), drops its remaining grants (`DROP OWNED`) and drops the user. This visits one database after another, so it is not one transaction: if a step fails, the error says the user may no longer sign in and some of what it owned may already belong to the main user. Delete it again, or finish in the shell.
+- **MySQL and MariaDB, views, routines, triggers and events that run as the user** (DEFINER): they stop working once it is renamed or deleted, until they are made again with another definer. **Rename** asks you to tick **Rename it anyway**, **Delete** to tick "... Delete it anyway".
+
+These are not offered, and the row says why: deleting the main user (make another user the main one first), Postgres's first user, which Postgres never lets go, MySQL's `root@localhost`, which the image and Seylo's own steps sign in with, and MongoDB's last user with `root`. ClickHouse users defined in the server's configuration files take no changes. MySQL's and MariaDB's root always has the main user's password, so its password changes with the main user's.
+
+A Postgres backup made before a user was renamed or deleted still names that user. Restoring it fails with nothing changed until a user of that name exists again (see [Restore](/guides/backups#restore)).
+
+### The main user
+
+Unless a template or the API named another one, the main user is `postgres` on PostgreSQL, `root` on MySQL, MariaDB and MongoDB, a generated `ch_` name on ClickHouse and `default` on the Redis-like engines. Its row on the **Users** tab has **Change password** and, except on the Redis-like engines, **Change name**. On the **Connection** tab, a **Change** link next to **User** and next to **Password**, on the internal card and on the exposed one, opens the **Users** tab with that change (the Redis-like engines have only the one next to **Password**). Changed in 0.2.13: these replace **Reset password**, with the same step of typing the service name. People who cannot see the credentials do not get the links, and while the database cannot be changed (stopped, its node away) the **Users** tab says why instead of opening the change.
+
+### The main user's password [#reset-a-password]
+
+**Change password** (or **Change** next to **Password**) opens **Change the main user's password?**: a generated or typed password, and the service name typed to confirm. It is one password, inside and through the exposed port. Postgres, MySQL, MariaDB and MongoDB change it inside the running database, and Seylo stores it once the database took it.
+
+Changed in 0.2.13: ClickHouse, Dragonfly, Redis, Valkey and KeyDB restart with the new password right after the change, a short outage, and the dialog says so. Before, ClickHouse and Dragonfly stored the new password but kept running with the old one until something else redeployed them, so the shell, the web UI, backups and services with the new URL could not sign in, and Redis, Valkey and KeyDB took it at once but went back to the old one on their next restart. That restart needs the right to deploy the database. A stopped database is refused for every engine: start it first, since the restart would start it.
+
+Changed in 0.2.13: a second password change of a MongoDB database before its next deploy no longer fails ("the database refused"). It signed in with the password the database first started with, and now signs in with the one Seylo stores. Postgres changes also sign in as the stored user, and send the new password to Postgres only as its SCRAM hash, so a failed statement in the database's log shows no password.
+
+Changed in 0.2.11: for MySQL and MariaDB, root gets the new password too, also when the database's main user is not root (a database made by a template or the API with its own user). The database's container gives root the main user's password (`MYSQL_ROOT_PASSWORD`, `MARIADB_ROOT_PASSWORD`), but before, a reset changed the main user's password only, so signing in as root with it failed (ERROR 1045) after the next deploy, and so did the panel's own steps that sign in as root, such as the next reset and the [MySQL 8.4 check](#mysql-84-and-mysql_native_password).
+
+A database an older reset left that way still takes a new password: the main user's password changes, and the dialog after the change says that root kept an older password, which the panel does not know, and how to set it: sign in as root with that older password and run `ALTER USER 'root'@'%' IDENTIFIED BY '<new password>'`, and the same for `'root'@'localhost'`. Later changes then change both. Until then the **Users** tab lists only the main user and changes nothing else. Through the API, `databases.resetPassword` and `databases.setUserPassword` return that as `warning`.
+
+When Seylo's stored login no longer signs in (a restored backup, or a change made in the shell), the tab says so and lists only the main user. **Set the password again** sets a new one. On MongoDB it is **Enter the password that works** instead: Seylo signs in with the password you give, stores it only when that works, and changes nothing in the database. For ClickHouse the tab says to deploy the database again, so it takes the stored user and password.
+
+### The main user's name
+
+**Change name** (or **Change** next to **User**) depends on the engine:
+
+| Engine | What happens |
+| --- | --- |
+| PostgreSQL | **Rename the main user?** renames it in place, also when it is the first user the image made. The database then restarts so its health check uses the new name: **Restart the database now, so its health check uses the new name (a short outage)** is ticked. Untick it to restart later; until then the health check's failed sign-ins show in the database's log. |
+| MySQL, MariaDB | A main user other than root is renamed in place. Root stays, since the image, its health check and Seylo's own steps need it: **Change name** opens [Use another user as the main one](#use-another-user-as-the-main-one). |
+| MongoDB | No rename: **Change name** opens [Use another user as the main one](#use-another-user-as-the-main-one). |
+| ClickHouse | It restarts with the new name, since ClickHouse makes this user from its environment at every start. Refused while a SQL user has that name, or while the database is stopped. |
+
+**Rename the main user?** takes the new name, **Also set a new password**, and the service name to confirm. A Postgres main user with an md5 password gets a new password with the rename. On MySQL and MariaDB it asks first when views, routines, triggers or events run as the main user. A rename that restarts the database needs the right to deploy it.
+
+### Use another user as the main one
+
+On PostgreSQL, MySQL, MariaDB and MongoDB, **Use another user as the main one** at the top of the tab, or **Make this the main user** in a row's menu, opens a dialog:
+
+- **A new user**: a name, and Seylo makes it with full rights.
+- **An existing user**, picked from the list. Seylo does not know its password, so it gets a new one. A user without full rights needs **Give it full rights: the main user needs them for backups and the Users tab** ticked. A locked user cannot be picked, nor a MySQL or MariaDB account with another host than `%`, nor a MongoDB user of another authentication database than `admin`.
+- The password, generated or typed.
+- On MySQL, MariaDB and MongoDB, whether to delete the old main user. With MySQL's or MariaDB's root as the main user, it is **Remove root@%: root@localhost stays inside the container**: the image, its health check and Seylo's own steps need root. MySQL and MariaDB ask first when views, routines, triggers or events run as the old main user. On Postgres the old main user stays; delete it from its row later if Postgres lets it go (never its first user).
+
+**Switch**, after the service name, makes the change. Seylo signs in as the user the way its tools do before it gives it full rights or stores anything. When that fails nothing is stored: a user made for the switch is removed again, and an existing one keeps the new password, which the error says. MySQL and MariaDB then give root the new main user's password, since root always has the main user's.
+
+ClickHouse's main user is the one its container is started with, so it takes no switch: rename it instead. Redis-like engines have only `default`.
+
+### After a change to the main user
+
+The dialog after the change shows:
+
+- The new password, when there is one: copy it then ("Copy it now.").
+- "The database restarts with it now." with **See the restart**, when the change restarts the database.
+- The services of the project that reference the database's user, password or URLs, each with **Redeploy**: they get the new values on their next deploy. Anything else signed in with the old name or password stops connecting, wherever it connects from.
+- A warning, when the change happened but a step after it did not, such as root's password on MySQL or removing the old main user.
+
+The shell, the web UI and backups use the new main user at once. If the node stops answering in the middle of a change to the main user, Seylo signs in with the new name or password and stores it only when that works; otherwise the main user stays as it was, and the error says so.
+
+### Permissions, API and MCP
+
+Seeing and changing a database's users needs **See credentials** (`databases.credentials`) on the service, the same action that shows its password on the **Connection** tab. A change that restarts the database also needs **Deploy**.
+
+Through the API and MCP: `databases.users`, `databases.createUser`, `databases.setUserPassword`, `databases.renameUser`, `databases.deleteUser` and `databases.switchMainUser`, all with `databases.credentials`. The four that change or remove a user (`setUserPassword`, `renameUser`, `deleteUser` and `switchMainUser`) wait for a person's approval when an AI tool calls them (see [Approvals](/features/mcp-and-ai#approvals)). `databases.resetPassword` still works, and since 0.2.13 returns `deploymentId` when the database restarts.
+
+In Seylo's test setup, the commands the panel runs for each step of the Users tab ran on the real images of PostgreSQL 18, MySQL 8.4, MariaDB 11.8, MongoDB 9.0 and ClickHouse 26.8: users of each access level checked with the database's own client for what they may and may not do, new passwords, renames and deletes, the main user's password twice before a deploy, its new name in place, by a switch or with a restart, and then, after a redeploy, the shell, a backup and its restore signed in as the new main user. The panel's side of the tab was tested against a stand-in node, not yet through a real panel.
 
 ## Backups
 

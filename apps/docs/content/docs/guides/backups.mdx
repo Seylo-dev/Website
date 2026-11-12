@@ -59,6 +59,14 @@ In **Backups and restores**, pick a backup and click **Restore**. It replaces th
 Without **Back up the current data first**, the data in the service before the restore cannot be recovered.
 </Callout>
 
+### Postgres backups and missing users
+
+Changed in 0.2.13: a PostgreSQL backup made with `pg_dump` restores in one transaction (`pg_restore --single-transaction`). A backup names the users that own its tables and have rights on them. When one of them is gone from the database, renamed or deleted since the backup on the [Users](/guides/databases#users) tab or in the shell, the restore fails with nothing changed, and its error names the user (`role "<user>" does not exist`). Before, it stopped part way, after the tables it replaces had been dropped.
+
+To restore such a backup, make a user with that name on the database's **Users** tab (**New user**, any access), then **Restore** again.
+
+One transaction takes a lock on every table it replaces, so a database with a very large number of tables may need Postgres's `max_locks_per_transaction` raised for the restore to run.
+
 ## Alerts
 
 A failed backup raises the **Backup failed** alert. Pick where it goes in **Settings → Notifications** or on the service's **Alerts** tab; see [Alerts and notifications](/features/notifications).
