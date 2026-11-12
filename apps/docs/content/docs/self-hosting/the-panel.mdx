@@ -56,7 +56,11 @@ In Cloudflare:
 
 1. Point the `A` record at the panel's node, with the proxy on.
 2. Set **SSL/TLS** to **Full (strict)**. Flexible sends plain HTTP to the node, which redirects to HTTPS, which loops.
-3. Turn off **Always Use HTTPS** (**SSL/TLS → Edge Certificates**). The node gets its certificate from Let's Encrypt, which checks `http://<panel domain>/.well-known/acme-challenge/` over plain HTTP, for the first certificate and for every renewal. Always Use HTTPS sends that check to HTTPS, where the node does not answer it, so the certificate is never issued or renewed. The panel redirects plain HTTP to HTTPS itself, so visitors still end up on HTTPS.
+3. **Always Use HTTPS** (**SSL/TLS → Edge Certificates**) can stay on. The node gets its certificate from Let's Encrypt, which checks `http://<panel domain>/.well-known/acme-challenge/` over plain HTTP, for the first certificate and for every renewal. Cloudflare does not redirect that path under Always Use HTTPS, so the check reaches the node on port 80, and **Full (strict)** does not touch it either: that only governs Cloudflare's HTTPS connections to the node. Two other things in Cloudflare can stop the check:
+   - A **Redirect Rule** or **Page Rule** that sends every path to `https://`. It sends Let's Encrypt to the node on port 443. New in 0.2.13, with agent 0.2.13 on the panel's node: the node answers the challenge there too, for the panel's own domain. On **Full (strict)** Cloudflare still refuses the node's temporary certificate until the first one is issued, so with such a rule set SSL/TLS to **Full** until the domain is **Active**, then back to **Full (strict)**; renewals pass on **Full (strict)**. With an older agent, leave `/.well-known/acme-challenge/` out of the rule. See [Redirects to HTTPS in Cloudflare](/guides/domains-and-https#redirects-to-https-in-cloudflare).
+   - Cloudflare's security answering `/.well-known/` with a challenge or a block instead of passing it on: Bot Fight Mode, Under Attack mode, or a WAF or rate limiting rule. Let requests whose path starts with `/.well-known/` through, with a WAF custom rule with the **Skip** action, or turn Bot Fight Mode off. See [Certificate waits for Cloudflare](/guides/domains-and-https#certificate-waits-for-cloudflare).
+
+   The panel redirects plain HTTP to HTTPS itself, so visitors end up on HTTPS with Always Use HTTPS on or off.
 
 Until HTTPS answers, the state is **Getting a certificate** and the message under it says what to set.
 
