@@ -30,6 +30,23 @@ New in 0.2.2. An app built from a repository (a GitHub, GitLab, Gitea, Bitbucket
 
 Changed in 0.2.3: every built app gets it, also apps created before 0.2.2. On 0.2.2 only apps created on 0.2.2 or later did, so an older Next.js app with no port kept listening on 3000 while its domain pointed at 80. Like every environment change, it applies on the next deploy. An app that must listen elsewhere sets its own `PORT` in its `.env`.
 
+## GIT_SHA for builds from git
+
+New in 0.2.14. A build from a repository (a GitHub, GitLab, Gitea, Bitbucket or Git source) gets `GIT_SHA`, the full 40-character commit the node checked out, whether the deploy came from a push, a branch head or a commit you picked:
+
+- **Dockerfile:** `--build-arg GIT_SHA=<sha>`, read with `ARG GIT_SHA`. Easypanel passes the same build argument, so images written for it keep working. A Dockerfile without the `ARG` builds as before.
+- **Railpack and Nixpacks:** `GIT_SHA` in the build environment.
+- **The containers** of that deployment get `GIT_SHA=<sha>` in their environment. A restart keeps it, and a rollback or a move to another project runs with the commit of the image it runs again.
+
+The build log shows `--> GIT_SHA=<sha>` before the build. A `GIT_SHA` of your own wins, at build and at runtime, in the service's `.env` or in the project's shared variables, also an empty one, and the build log says it came from your variables. A commit id there counts as a plain variable, not a secret (see [Secret variables](#secret-variables)), so a Dockerfile build gets it as a build argument; a `# @secret` comment above it makes it a secret, and then a Dockerfile's `ARG GIT_SHA` stays empty. Images, uploads and Dockerfiles typed in the panel have no commit, so they get none.
+
+```dockerfile
+ARG GIT_SHA
+ENV APP_VERSION=$GIT_SHA
+```
+
+A service gets `GIT_SHA` from its next deploy after the update to 0.2.14. The build argument needs the node's agent from 0.2.14; a node on an older agent still gives the containers the environment variable.
+
 ## References
 
 Point at another service's values instead of copying them:
@@ -68,7 +85,7 @@ Its own `.env` keys stay out of reach that way (they are the lines of the same f
 
 ## Secret variables
 
-Every value reaches the container the same way. Whether a variable is a secret matters where a value could be kept: crash reports and troubleshoot uploads strip secret values, Dockerfile builds never pass them as build args, and Nixpacks builds (which write their variables into the image) do not get them at all. A variable is a secret when its name contains `SECRET`, `TOKEN`, `PASS`, `KEY`, `PRIVATE`, `CREDENTIAL` or `DSN`, when its value is a URL with a password or a long random token, or when it references a secret (a database's `PASSWORD`, `INTERNAL_URL`, `INTERNAL_HTTP_URL` or `EXPOSED_URL`, or another service's secret). A comment on the line above, or after the value, overrides the guess:
+Every value reaches the container the same way. Whether a variable is a secret matters where a value could be kept: crash reports and troubleshoot uploads strip secret values, Dockerfile builds never pass them as build args, and Nixpacks builds (which write their variables into the image) do not get them at all. A variable is a secret when its name contains `SECRET`, `TOKEN`, `PASS`, `KEY`, `PRIVATE`, `CREDENTIAL` or `DSN`, when its value is a URL with a password or a long random token, or when it references a secret (a database's `PASSWORD`, `INTERNAL_URL`, `INTERNAL_HTTP_URL` or `EXPOSED_URL`, or another service's secret). New in 0.2.14: the value of `GIT_SHA` is a commit id, so it never makes that variable a secret. A comment on the line above, or after the value, overrides the guess:
 
 ```bash
 # @public

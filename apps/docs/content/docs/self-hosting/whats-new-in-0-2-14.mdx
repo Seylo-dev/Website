@@ -1,0 +1,14 @@
+---
+title: What's new in 0.2.14
+description: Builds from git get GIT_SHA, the full commit they were built from, as a build argument and as an environment variable of their containers, as Easypanel passes it.
+---
+
+0.2.14 updates a 0.2.13 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.14** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## Improved
+
+- **`GIT_SHA` for builds from git.** A build from a GitHub, GitLab, Gitea, Bitbucket or Git source gets `GIT_SHA`, the full 40-character commit the node checked out: a Dockerfile build as `--build-arg GIT_SHA=<sha>`, Railpack and Nixpacks in their build environment. The deployment's containers get `GIT_SHA=<sha>` in their environment too. Easypanel passes the same build argument, so images written for it that read `ARG GIT_SHA` (to bake their version, or Next.js's `deploymentId`) now get it, and a Dockerfile without that `ARG` builds as before. A restart keeps it, and a rollback or a move to another project runs with the commit of the image it runs again. A `GIT_SHA` of your own wins, in the service's `.env` or in the project's shared variables, also an empty one, and the build log says so. A commit id you set there counts as a plain variable, not a secret, so a Dockerfile build gets it as a build argument too (unless a `# @secret` comment above it says otherwise). Images, uploads and Dockerfiles typed in the panel get none. The build log shows `--> GIT_SHA=<sha>`, and the **References** panel on the **Environment** tab mentions it for services built from a repository. See [GIT_SHA for builds from git](/guides/environment-variables#git_sha-for-builds-from-git).
+
+## After the update
+
+- Containers get `GIT_SHA` from each service's next deploy; running services keep the environment they started with until then. The build argument needs the node's agent from 0.2.14, which the update installs; a node on an older agent still gives the containers the environment variable.
