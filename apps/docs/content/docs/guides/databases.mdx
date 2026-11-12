@@ -61,6 +61,8 @@ Exposing only opens a port on the node to the database, with TLS. Clients sign i
 | **TLS host name** | A name that points at the node gets a Let's Encrypt certificate. Empty uses a self-signed certificate. |
 | **Port** | The public port. Empty keeps the current one or picks a free port. |
 
+Changed in 0.2.12, on nodes with the 0.2.12 agent: a **TLS host name** set or changed while the database runs gets its Let's Encrypt certificate right away. Before, the node asked for it only on the database's next deploy or the agent's next restart, and until then the port kept the self-signed certificate.
+
 The port only takes TLS. Postgres, MySQL and MariaDB serve TLS themselves, and the node refuses their clients that do not ask for it with the database's own kind of error: Postgres clients get "this port only accepts TLS connections: connect with sslmode=require", MySQL and MariaDB clients get error 3159. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name.
 
 MariaDB 10.11 has no TLS, so since 0.2.9 it cannot be exposed: **Expose** refuses it. MariaDB 11.4 and later can; to expose a 10.11 database, [change its version](#change-the-version) to 11.4 first. A MariaDB version before 11.4 that Seylo does not offer, such as 10.6 or 11.2 run with **Use another image**, cannot be exposed either.
