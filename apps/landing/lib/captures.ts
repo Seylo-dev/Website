@@ -1,8 +1,10 @@
 // Real crops of the panel, taken at 2x from the panel's demo mode with demo data, once in the light half
 // and once in the dark half of its default theme from the same data: see tools/hero-shot/README.md,
-// "Demo mode". The hero, the theme previews and the crops whose screen changed were taken from the 0.2.13
-// build (its demo data still says v0.2.12, the version it was made as); the others (domain access, crash
-// policy, timed expose, replicas, logs, metrics, uptime) are from v0.1.1 and look the same in 0.2.13.
+// "Demo mode". The hero, the theme previews, the node overview and the logs were taken from v0.2.13 (its demo
+// says v0.2.13), as were the dark files of domain access, crash policy, timed expose and replicas (0.2.13's
+// dark switches and chips). The rest look the same in v0.2.13 and keep older files: templates, env, health
+// check, node health, database, approvals, people and appearance from the 0.2.13 build before the release;
+// the light domain access, crash policy, timed expose and replicas, metrics and uptime from v0.1.1.
 // Width and height are CSS pixels (half the file's); the light and dark files of a crop have the same size.
 
 export interface Capture {
