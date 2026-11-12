@@ -14,7 +14,7 @@ export function GetStarted() {
         <h2 className="text-[clamp(38px,4.5vw,56px)] leading-[1.04] font-semibold tracking-[-0.045em] text-ink">
           Own your platform.
         </h2>
-        <p className="text-[17px] text-ink-soft">Free and open source. Bring a server with Docker.</p>
+        <p className="text-[17px] text-ink-soft">Free and open source. Bring a Linux server; the installer adds Docker if it is missing.</p>
         <div className="mt-2.5 flex flex-wrap justify-center gap-3">
           <a
             href={links.install}

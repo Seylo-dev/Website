@@ -15,7 +15,7 @@ const rows: Row[] = [
   {
     title: "Live graphs for every node",
     body: "CPU, memory, disk and network, live or over 30 days, next to the machine's facts and the services it runs. Nodes dial out to the panel, so they need no open port for it.",
-    chips: ["Live to 30 days", "Machine facts", "Agent logs", "Reboot"],
+    chips: ["Live to 30 days", "Machine facts", "Agent logs", "Reboot", "Host shell", "Cleanup on a schedule"],
     capture: captures.nodeGraphs,
     tall: true,
   },
@@ -36,12 +36,12 @@ const rows: Row[] = [
     title: "A health check with the fix",
     body: (
       <>
-        16 checks per node: kernel, disk, Docker, cgroups, ports, proxy, DNS, firewall, clock, the panel connection and
-        more. Each problem comes with the step that fixes it. Updates roll the panel first, then one node at a time, and
+        20 checks per node: kernel, disk, Docker, cgroups, ports, proxy, DNS on the server and in containers, firewall,
+        clock, the panel connection and more. Each problem comes with the step that fixes it. Updates roll the panel first, then one node at a time, and
         a node that fails to start the new version rolls back by itself.
       </>
     ),
-    chips: ["16 checks", "Auto-update", "Panel first, then node by node", "Rollback"],
+    chips: ["20 checks", "Auto-update", "Panel first, then node by node", "Rollback"],
     capture: captures.nodeHealth,
     tall: true,
   },

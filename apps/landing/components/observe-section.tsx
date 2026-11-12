@@ -2,8 +2,9 @@ import { type Capture, captures } from "@/lib/captures";
 import { Chips, Shot } from "./shot";
 import { SectionHeading } from "./section-heading";
 
-// The notification channel kinds of Settings > Notifications (packages/ops notifications.channelKinds).
-const channels = ["Email", "Discord", "Slack", "Telegram", "ntfy", "Pushover", "Gotify", "Webhooks"];
+// The notification channel kinds of Settings > Notifications (packages/ops notifications.channelKinds), then
+// the installable app's push notifications (packages/ops push), which each person turns on for their devices.
+const channels = ["Email", "Discord", "Slack", "Telegram", "ntfy", "Pushover", "Gotify", "Webhooks", "Push to your phone"];
 
 function Figure({
   capture,
@@ -63,7 +64,7 @@ export function ObserveSection() {
           <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Alerts where you already look</h3>
           <p className="text-[14.5px] leading-[1.6] text-ink-card">
             Choose which events go where: crashes, failed builds and deploys, health checks, uptime, certificates,
-            backups, cron runs, disk space, offline nodes. Panel-wide defaults, changeable per service.
+            backups, cron runs, disk space, offline nodes, approvals waiting. Panel-wide defaults, changeable per service.
           </p>
         </div>
         <Chips items={channels} className="lg:ml-auto lg:justify-end" />

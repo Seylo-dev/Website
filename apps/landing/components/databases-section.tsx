@@ -1,31 +1,34 @@
-import { IconCloudUpload, IconLock, IconTable, IconTerminal2, type Icon } from "@tabler/icons-react";
+import { IconCloudUpload, IconLock, IconTerminal2, IconUsers, type Icon } from "@tabler/icons-react";
 import { captures } from "@/lib/captures";
 import { Shot } from "./shot";
 
-// The engines and their badges as the panel shows them (apps/web service kind badges).
+// The engines New database offers and their badges as the panel shows them (apps/web service kind
+// badges). KeyDB, Dragonfly and ClickHouse still run, from templates and the API, but the form does not
+// offer them for now.
 const engines = [
   { name: "PostgreSQL", badge: "PG", tone: "bg-tone-sky text-tone-sky-fg" },
   { name: "MySQL", badge: "MY", tone: "bg-tone-sky text-tone-sky-fg" },
   { name: "MariaDB", badge: "MDB", tone: "bg-tone-sky text-tone-sky-fg" },
   { name: "MongoDB", badge: "MGO", tone: "bg-tone-green text-tone-green-fg" },
   { name: "Redis", badge: "RDS", tone: "bg-tone-red text-tone-red-fg" },
+  { name: "Valkey", badge: "VK", tone: "bg-tone-red text-tone-red-fg" },
 ];
 
 const facts: { title: string; body: string; icon: Icon }[] = [
   {
     title: "Exposed over TLS only",
-    body: "Exposing one adds a separate user that must use TLS; Redis keeps its default user behind TLS. The internal URL stays the same.",
+    body: "Exposing one opens a port that only takes TLS, for anyone or the IPs you list. Clients sign in with the database's own user; the internal URL stays the same.",
     icon: IconLock,
   },
   {
-    title: "A web UI, signed in",
-    body: "pgweb, phpMyAdmin, mongo-express or Redis Commander, started on click and stopped when idle.",
-    icon: IconTable,
+    title: "A web UI and a shell, signed in",
+    body: "pgweb, phpMyAdmin, mongo-express or Redis Commander, started on click and stopped when idle, and psql, mysql, mongosh or redis-cli in the browser. No password to look up.",
+    icon: IconTerminal2,
   },
   {
-    title: "A shell that's logged in",
-    body: "psql, mysql, mariadb, mongosh or redis-cli in the browser, no password to look up.",
-    icon: IconTerminal2,
+    title: "Users with access levels",
+    body: "The Users tab lists who can sign in and makes more: read only, read and write, or admin, on Postgres, MySQL, MariaDB and MongoDB. Passwords, renames and deletes too.",
+    icon: IconUsers,
   },
   {
     title: "Backups to S3 or R2",
@@ -45,7 +48,7 @@ export function DatabasesSection() {
       <div className="rise mx-auto flex max-w-[760px] flex-col items-center gap-4 text-center">
         <span className="text-[13.5px] font-medium text-accent-bright">Databases</span>
         <h2 className="text-[clamp(32px,4vw,44px)] leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-ink">
-          Five engines, private by default.
+          Six engines, private by default.
         </h2>
         <p className="text-[17px] leading-[1.55] text-ink-soft">
           Each project has its own network. Services on the same node reach a database by name; nothing else can until

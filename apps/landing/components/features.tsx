@@ -35,7 +35,7 @@ const features: Feature[] = [
   {
     key: "data",
     title: "Databases that stay private",
-    body: "Postgres, MySQL, MariaDB, Mongo and Redis on a private network, reachable by name. Expose one with SSL when you need to.",
+    body: "Postgres, MySQL, MariaDB, Mongo, Redis and Valkey on a private network, reachable by name. Expose one with TLS when you need to.",
     icon: IconDatabase,
   },
   {
