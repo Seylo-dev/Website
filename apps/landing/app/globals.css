@@ -63,9 +63,8 @@
   --color-success-fg: #86efac;
   --color-chip: #21293c;
 
-  /* Washes of the accent behind the hero, the Wings block and the closing call to action. */
+  /* Washes of the accent behind the hero and the closing call to action. */
   --color-hero-wash: rgb(37 99 235 / 0.22);
-  --color-block-wash: rgb(37 99 235 / 0.14);
   --color-cta-wash: rgb(37 99 235 / 0.18);
 
   /* The floating nav, its menus and the quiet (non-accent) buttons. */
@@ -115,7 +114,6 @@
   color-scheme: dark;
   --edge: inset 0 0 0 1px rgb(148 163 184 / 0.08);
   --edge-strong: inset 0 0 0 1px rgb(148 163 184 / 0.16);
-  --edge-block: inset 0 0 0 1px rgb(148 163 184 / 0.08);
   --lift: none;
   --shadow-nav: 0 10px 30px rgba(2, 6, 23, 0.35);
   --shadow-menu: 0 20px 40px rgba(2, 6, 23, 0.5);
@@ -164,7 +162,6 @@
     --color-chip: #e8ecf3;
 
     --color-hero-wash: rgb(59 130 246 / 0.13);
-    --color-block-wash: rgb(59 130 246 / 0.07);
     --color-cta-wash: rgb(59 130 246 / 0.12);
 
     --color-nav: rgb(255 255 255 / 0.78);
@@ -203,7 +200,6 @@
 
     --edge: none;
     --edge-strong: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px rgb(15 23 42 / 0.04);
-    --edge-block: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.05);
     --lift: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.05);
     --shadow-nav: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 28px rgb(15 23 42 / 0.07);
     --shadow-menu: 0 1px 2px rgb(15 23 42 / 0.06), 0 12px 32px rgb(15 23 42 / 0.12);
@@ -245,11 +241,6 @@
 /* Quiet buttons and menus: a stronger rim in dark, a small control shadow in light. */
 @utility hairline-strong {
   box-shadow: var(--edge-strong);
-}
-
-/* A block that stands on the page: a rim in dark, a card shadow in light. */
-@utility edge-block {
-  box-shadow: var(--edge-block);
 }
 
 /* Cards on the page: flat in dark, lifted by a soft shadow in light. */

@@ -27,7 +27,7 @@ const rows = [
 export function NextToWings() {
   return (
     <section aria-label="Next to game servers" className="mx-auto max-w-[1200px] px-6 pb-24">
-      <div className="edge-block flex flex-wrap items-center gap-10 rounded-2xl bg-[radial-gradient(620px_320px_at_0%_0%,var(--color-block-wash),transparent_70%),var(--color-surface)] p-[clamp(24px,4vw,44px)]">
+      <div className="lift flex flex-wrap items-center gap-10 rounded-2xl bg-surface p-[clamp(24px,4vw,44px)]">
         <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-3.5">
           <span className="text-[13.5px] font-medium text-accent-bright">Already running Pterodactyl or Pelican?</span>
           <h2 className="text-[clamp(28px,3vw,36px)] leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
