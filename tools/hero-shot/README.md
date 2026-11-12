@@ -25,11 +25,13 @@ The hero and the seven sections (templates, settings, nodes, databases, logs and
 come from the panel's demo mode rather than a fleet: the panel runs from source on an empty data dir, the web
 app's Vite server sits in front of it, and Playwright answers the panel's API calls with the demo data of the
 panel's own browser tests (`test/playwright/demo` in the panel repo), patched here with generic data for these
-captures (`sections-demo.patch`: the released version 0.1.1, the 16 real node checks, an uptime history, a
-load-balanced service, access rules, varied log lines, the worker's env with its `${{api.URL}}` reference on the
-last line so the editor's hover opens over plain lines, no person's name). The template catalog is not mocked:
-the panel serves its real 23 templates and their generated logos. Never commit the demo changes to the panel
-repo; they live in this patch.
+captures (`sections-demo.patch`: the released version 0.2.12, the 20 real node checks, an uptime history, a
+load-balanced service, access rules, an exposed Postgres with a Let's Encrypt certificate, varied log lines,
+the worker's env with its `${{api.URL}}` reference on the last line so the editor's hover opens over plain
+lines, no person's name). The template catalog is not mocked: the panel serves its real 23 templates and their
+logos. Never commit the demo changes to the panel repo; they live in this patch. When the panel's demo moved on
+and the patch no longer applies, apply it with rejects to a copy, redo the rejected hunks by hand and write the
+patch again with `diff -ru a/demo b/demo`.
 
 ```bash
 SEYLO=/tmp/seylo-shots               # the scratch copy of the panel's checkout
@@ -44,7 +46,8 @@ bun run sections.ts --both           # everything, light and dark; or name some:
 SEYLO_DIR=$SEYLO bun run catalog.ts  # apps/landing/lib/templates.ts from the panel's templates/
 ```
 
-`sections.ts` signs in as the owner, opens each screen at 2x, narrows a card where a crop reads better smaller,
+`sections.ts` signs in as the owner (the session cookie plus its key, which the web app keeps in localStorage),
+opens each screen at 2x, narrows a card where a crop reads better smaller,
 hides the other cards around it and writes `out/sections/<name>.png` and `apps/landing/public/product/<name>.webp`
 (each under 200 KB; the run lists any file over that). Look at every PNG before committing. When a crop's pixel
 size changes, update it in `apps/landing/lib/captures.ts`.
@@ -57,21 +60,23 @@ size changes, update it in `apps/landing/lib/captures.ts`.
 | `--dark` | the dark theme only: `<name>-dark.png` / `<name>-dark.webp`        |
 | `--both` | both, light then dark for each capture, so a pair is seconds apart |
 
-Dark is what a user gets with the default theme in dark mode: the browser asks for dark mode and the demo boot
-data says `seylo-night`. Both themes use the same demo data, and every page's clock is frozen at the moment the
+Every shot runs with color mode "system", so the browser's light or dark mode picks the preset's half: dark is
+what a user gets with the default theme on a dark system. Both themes use the same demo data, and every page's clock is frozen at the moment the
 run started (`page.clock.setFixedTime`), so "5 minutes ago", countdowns and the like read the same in the light
 and the dark file. The env editor is the exception (`runningClock`): its syntax highlighting needs a running clock,
-and it shows no times. The light and dark files of a capture have the same pixel size. The four `theme-*` shots
-(the White label section's preset previews) show one preset each and have no dark twin; the dark pass skips
-them.
+and it shows no times. The light and dark files of a capture have the same pixel size. The ten `theme-*` shots
+(the White label section's preset previews) show the dashboard in one preset each, at 1440x900 and 1x,
+written at 720x450, in its light and its dark half like the other shots.
 
 ### The hero
 
 The `dashboard` shot is the hero: the whole dashboard at 1600x1000 CSS pixels at 1.5x (2400x1500). It
-overrides two demo answers: `metrics.nodes` gets livelier lines (the demo's three nodes at their own levels,
+shows the Nodes card on 1h (`seylo.dashboard.nodesRange` in localStorage: Live, the default, would draw the
+demo's live samples, which the frozen clock stacks on one moment) and overrides two demo answers:
+`metrics.nodes` gets livelier lines (the demo's three nodes at their own levels,
 faster swings and a little deterministic jitter, each line ending on the node's current usage so the numbers
 under the graphs match; the points are laid out from the run's frozen clock, so the light and the dark pass
-get the same lines), and `updates.status` has no rollout running and every node on 0.1.1, so the sidebar
+get the same lines), and `updates.status` has no rollout running and every node on 0.2.12, so the sidebar
 says "up to date". It refuses to save when the visible page shows `e2e`, `test`, `colima`, `failed`, an error
 or an empty state, and prints the sidebar's share of the width (`sidebarRatio`, 0.155 for the 248px sidebar at
 1600px) for `heroShot` in `apps/landing/lib/captures.ts`.
@@ -93,7 +98,9 @@ the `--shot-*` variables).
 `capture.ts` takes the same dashboard from a running panel with real nodes instead of the demo (the 2026-11-05
 and 2026-11-06 heroes came this way). It takes the same theme flags: `--dark` writes `out/dashboard-dark.png`
 and `dashboard-dark.webp`, `--both` takes light and then dark. On the dark pass the browser asks for dark mode,
-so a panel on the default theme with color mode "system" paints `seylo-night`.
+so a panel on color mode "system" paints its theme's dark half (a 0.1 panel's default theme painted
+`seylo-night`). It signs in with the session cookie only: a panel from 0.2 also wants the session key that
+`sections.ts` sets, so update it the same way before taking a hero from a real panel again.
 
 - A panel with three joined nodes, signed-in access as the owner and an API key. Those shots used the e2e panel
   from `seylo/test/e2e-colima` (`make e2e KEEP=1`), whose state lives in `~/.cache/seylo-e2e/state`: `api-key`,

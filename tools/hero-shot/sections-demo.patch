@@ -1,6 +1,6 @@
 diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
---- a/demo/fixtures.ts
-+++ b/demo/fixtures.ts
+--- a/demo/fixtures.ts	2026-11-12 05:48:55
++++ b/demo/fixtures.ts	2026-11-12 05:51:13
 @@ -16,7 +16,7 @@
    us: "nodeusash1000002",
    il: "nodeiltlv1000003",
@@ -15,38 +15,38 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
      publicIpv4: "203.0.113.10",
      wildcardDomain: "de1.example.com",
 -    agentVersion: "0.9.4",
-+    agentVersion: "0.1.1",
++    agentVersion: "0.2.12",
      updateAvailable: false,
      canBuild: true,
      wings: { detected: false, version: null, sharedProxy: false },
-@@ -99,7 +99,7 @@
+@@ -101,7 +101,7 @@
      isPanelNode: false,
      publicIpv4: "198.51.100.7",
      wildcardDomain: "us1.example.com",
 -    agentVersion: "0.9.4",
-+    agentVersion: "0.1.1",
++    agentVersion: "0.2.12",
      updateAvailable: false,
      canBuild: false,
      canBuildWarning: "too small",
-@@ -119,7 +119,7 @@
+@@ -123,7 +123,7 @@
      isPanelNode: false,
      publicIpv4: "192.0.2.44",
      wildcardDomain: "il1.example.com",
 -    agentVersion: "0.9.3",
-+    agentVersion: "0.1.0",
++    agentVersion: "0.2.11",
      updateAvailable: true,
      canBuild: true,
      gamesFirstCpu: true,
-@@ -144,7 +144,7 @@
-   const step = range === "1h" ? 60 : range === "24h" ? 1440 : 10080;
-   const start = Math.floor(now / 60_000) * 60_000 - count * step * 1000;
-   const shapes: Record<string, [number, number, number, number, number]> = {
--    [ids.de]: [1, 23, 3, 6.2 * gb, 4.1 * mb],
-+    [ids.de]: [1, 23, 9, 6.2 * gb, 4.1 * mb],
-     [ids.us]: [2, 12, 2, 2.4 * gb, 0.8 * mb],
-     [ids.il]: [3, 61, 4, 47 * gb, 12.6 * mb],
-   };
-@@ -154,7 +154,7 @@
+@@ -145,7 +145,7 @@
+ 
+ /** Per node: wave seed, CPU %, CPU swing, memory in use, network bytes per second. */
+ const shapes: Record<string, [number, number, number, number, number]> = {
+-  [ids.de]: [1, 23, 3, 6.2 * gb, 4.1 * mb],
++  [ids.de]: [1, 23, 9, 6.2 * gb, 4.1 * mb],
+   [ids.us]: [2, 12, 2, 2.4 * gb, 0.8 * mb],
+   [ids.il]: [3, 61, 4, 47 * gb, 12.6 * mb],
+ };
+@@ -198,7 +198,7 @@
      nodes: nodes.map((node) => {
        const [seed, cpu, cpuSwing, mem, net] = shapes[node.id] as [number, number, number, number, number];
        const cpuValues = wave(seed, cpu, cpuSwing, count);
@@ -55,41 +55,45 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
        const netValues = wave(seed + 2, net, net * 0.35, count);
        return {
          nodeId: node.id,
-@@ -268,8 +268,8 @@
+@@ -313,8 +313,8 @@
      }, { templateSlug: "uptime-kuma" }),
    ],
    [ids.panel]: [
 -    service(ids.panelSvc, ids.panel, "panel", "app", "running", img("seylo/panel:0.9.4"), "panel.example.com", ids.de, 2, 118 * mb, {
 -      label: "0.9.4",
-+    service(ids.panelSvc, ids.panel, "panel", "app", "running", img("seylo/panel:0.1.1"), "panel.example.com", ids.de, 2, 118 * mb, {
-+      label: "0.1.1",
++    service(ids.panelSvc, ids.panel, "panel", "app", "running", img("seylo/panel:0.2.12"), "panel.example.com", ids.de, 2, 118 * mb, {
++      label: "0.2.12",
        ago: 3 * day,
      }, { protected: true }),
      service(ids.registry, ids.panel, "registry", "app", "running", img("distribution 3.0"), null, ids.de, 0.2, 21 * mb, {
-@@ -378,13 +378,13 @@
- 
- export const updateStatus = {
-   autoUpdate: true,
--  panel: { currentVersion: "0.9.4", latestVersion: "0.9.4", updateAvailable: false, changelogUrl: "https://seylo.dev/changelog" },
-+  panel: { currentVersion: "0.1.1", latestVersion: "0.1.1", updateAvailable: false, changelogUrl: "https://seylo.dev/changelog" },
-   lastCheckedAt: iso(hour),
-   checkError: null,
+@@ -427,8 +427,8 @@
+   channel: "stable",
+   canChangeChannel: true,
+   panel: {
+-    currentVersion: "0.9.4",
+-    latestVersion: "0.9.4",
++    currentVersion: "0.2.12",
++    latestVersion: "0.2.12",
+     updateAvailable: false,
+     offeredVersion: null,
+     latestIsPrerelease: false,
+@@ -439,7 +439,7 @@
    nodes: nodes.map((node) => ({ nodeId: node.id, name: node.name, online: true, version: node.agentVersion, updateAvailable: node.updateAvailable })),
    activeRun: {
      id: "run0000000000001",
 -    targetVersion: "0.9.4",
-+    targetVersion: "0.1.1",
++    targetVersion: "0.2.12",
      trigger: "auto",
      status: "running",
      startedBy: null,
-@@ -471,15 +471,25 @@
+@@ -526,15 +526,29 @@
  
  export const healthReport = {
    nodeId: ids.us,
 -  checkedAt: iso(3 * hour),
 -  summary: { pass: 7, warn: 1, fail: 1, skipped: 1 },
 +  checkedAt: iso(12 * min),
-+  summary: { pass: 15, warn: 1, fail: 0, skipped: 0 },
++  summary: { pass: 18, warn: 1, fail: 0, skipped: 1 },
    results: [
 -    { id: "docker.reachable", title: "Docker is reachable", status: "pass", detail: "Docker 29.0.1, cgroup v2", fixHint: "" },
 -    { id: "disk.free", title: "Free disk space", status: "warn", detail: "12% free on /var/lib/seylo", fixHint: "Run a cleanup in Settings > Cleanup or grow the disk." },
@@ -102,30 +106,74 @@ diff -ru a/demo/fixtures.ts b/demo/fixtures.ts
 +    { id: "system.memory", title: "Memory", status: "pass", detail: "7.8 GiB total, 5.2 GiB available", fixHint: "" },
 +    { id: "disk.space", title: "Disk space", status: "warn", detail: "8.9 GiB free of 78.6 GiB on /var/lib/seylo", fixHint: "Free space: remove unused images and build cache from Settings > Cleanup, or grow the disk." },
 +    { id: "disk.inodes", title: "Free inodes", status: "pass", detail: "91% of inodes free on /var/lib/seylo", fixHint: "" },
++    { id: "disk.permissions", title: "Service folders", status: "pass", detail: "3 service folders, open to root only", fixHint: "" },
 +    { id: "docker.engine", title: "Docker Engine", status: "pass", detail: "Docker 29.0.1, overlay2", fixHint: "" },
 +    { id: "docker.cgroup", title: "Control groups", status: "pass", detail: "cgroup v2, Docker cgroup driver cgroupfs", fixHint: "" },
 +    { id: "docker.live-restore", title: "Docker live-restore", status: "pass", detail: "on: containers keep running while Docker restarts", fixHint: "" },
++    { id: "docker.buildx", title: "Docker buildx", status: "skipped", detail: "builds are off on this node", fixHint: "" },
 +    { id: "network.ports", title: "Ports 80 and 443", status: "pass", detail: "80 held by seylo-traefik, 443 held by seylo-traefik", fixHint: "" },
 +    { id: "proxy.running", title: "Proxy", status: "pass", detail: "seylo-traefik is up 12 days", fixHint: "" },
 +    { id: "proxy.routes", title: "Route files", status: "pass", detail: "3 route files parse", fixHint: "" },
 +    { id: "network.dns", title: "DNS resolution", status: "pass", detail: "resolved ghcr.io, registry-1.docker.io, panel.acme.dev", fixHint: "" },
++    { id: "docker.dns", title: "Container DNS", status: "pass", detail: "a test container on Docker's default bridge (busybox:1.37) gets 1.1.1.1, 8.8.8.8, the host's from /run/systemd/resolve/resolv.conf", fixHint: "" },
 +    { id: "network.firewall", title: "Firewall", status: "pass", detail: "ufw is active and allows ports 80 and 443", fixHint: "" },
 +    { id: "time.sync", title: "Clock", status: "pass", detail: "synchronized with NTP, 0s off the panel's clock", fixHint: "" },
 +    { id: "panel.reachable", title: "Panel connection", status: "pass", detail: "reachable in 84ms", fixHint: "" },
 +    { id: "wings.detected", title: "Pelican Wings", status: "pass", detail: "not installed", fixHint: "" },
++    { id: "panel.files", title: "Panel files", status: "pass", detail: "no panel on this node", fixHint: "" },
    ],
  };
  
-@@ -518,4 +528,4 @@
+@@ -578,13 +592,13 @@
+  */
+ export const avatars = {
+   owner: "/api/avatars/notionists/acme-owner.svg",
+-  lee: "/api/avatars/lorelei/lee-park.svg",
++  lee: "/api/avatars/lorelei/acme-ops.svg",
+   intern: "/api/avatars/notionists/former-intern.svg",
+ };
  
- export const viewer = { id: "user000000000001", email: "you@example.com", name: "", role: "owner" };
+ export const viewer = { id: "user000000000001", email: "you@example.com", name: "", role: "owner", avatarUrl: avatars.owner };
  
 -export const systemInfo = { name: "Seylo", version: "0.9.4", panelId: "demo", startedAt: iso(3 * day), nodes: { total: 3, online: 3 } };
-+export const systemInfo = { name: "Seylo", version: "0.1.1", panelId: "demo", startedAt: iso(3 * day), nodes: { total: 3, online: 3 } };
++export const systemInfo = { name: "Seylo", version: "0.2.12", panelId: "demo", startedAt: iso(3 * day), nodes: { total: 3, online: 3 } };
+ 
+ /** The node sheet's Cleanup view: a daily schedule with a disk line, and a few runs. */
+ export function cleanupSchedule(nodeId: string) {
+diff -ru a/demo/repos.ts b/demo/repos.ts
+--- a/demo/repos.ts	2026-11-12 05:48:55
++++ b/demo/repos.ts	2026-11-12 05:51:13
+@@ -30,7 +30,7 @@
+ const personal = {
+   id: "i000000000000002",
+   installationId: 55502,
+-  accountLogin: "lee-park",
++  accountLogin: "acme-ops-bot",
+   accountType: "User",
+   repositorySelection: "all",
+   suspended: false,
+@@ -75,7 +75,7 @@
+     { fullName: "acme/storefront", private: false, defaultBranch: "trunk", pushedAt: ago(3 * day) },
+     { fullName: "acme/docs", private: false, defaultBranch: "main", pushedAt: ago(9 * day) },
+   ],
+-  [personal.id]: [{ fullName: "lee-park/blog", private: false, defaultBranch: "main", pushedAt: ago(6 * day) }],
++  [personal.id]: [{ fullName: "acme-ops-bot/blog", private: false, defaultBranch: "main", pushedAt: ago(6 * day) }],
+ };
+ 
+ export const gitlabRepos = [
+@@ -88,7 +88,7 @@
+   "acme/shop-worker": ["main", "dev"],
+   "acme/storefront": ["trunk", "next", "release/2.0"],
+   "acme/docs": ["main"],
+-  "lee-park/blog": ["main", "drafts"],
++  "acme-ops-bot/blog": ["main", "drafts"],
+   "acme/platform/shop": ["main", "feat/checkout"],
+   "acme/site": ["trunk", "next"],
+   "dana/notes": ["main", "drafts"],
 diff -ru a/demo/routes.ts b/demo/routes.ts
---- a/demo/routes.ts
-+++ b/demo/routes.ts
-@@ -39,16 +39,6 @@
+--- a/demo/routes.ts	2026-11-12 05:48:55
++++ b/demo/routes.ts	2026-11-12 05:48:55
+@@ -113,16 +113,6 @@
    "alerts.list": () => world.alerts,
    "deployments.recent": () => world.recentDeployments,
    "updates.status": () => world.updateStatus,
@@ -143,12 +191,12 @@ diff -ru a/demo/routes.ts b/demo/routes.ts
      request: {
        userCode: input.userCode,
 diff -ru a/demo/service.ts b/demo/service.ts
---- a/demo/service.ts
-+++ b/demo/service.ts
-@@ -109,7 +109,19 @@
-     liveDeployment: null,
+--- a/demo/service.ts	2026-11-12 05:48:55
++++ b/demo/service.ts	2026-11-12 06:06:18
+@@ -138,7 +138,19 @@
+     lastDeployedAt: null,
+     generation: 1,
    }),
-   [ids.redis]: baseService({ id: ids.redis, name: "redis", kind: "redis", address: "redis:6379" }),
 -  [ids.web]: baseService({ id: ids.web, name: "web", kind: "app", address: "shop.example.com" }),
 +  [ids.web]: baseService({
 +    id: ids.web,
@@ -166,7 +214,7 @@ diff -ru a/demo/service.ts b/demo/service.ts
    [ids.box]: baseService({ id: ids.box, name: "box", kind: "box", ports: [], liveDeployment: null }),
    [ids.cron]: baseService({
      id: ids.cron,
-@@ -220,9 +232,9 @@
+@@ -297,9 +309,9 @@
    Array.from({ length: n }, (_, i) => ({
      t: now - (n - i) * step,
      cpuPercent: Math.max(0, base + Math.sin(i / 4) * amp + Math.sin(i / 1.7) * 1.5),
@@ -178,7 +226,7 @@ diff -ru a/demo/service.ts b/demo/service.ts
      networkRxBytesPerSec: 600_000 + Math.sin(i / 3) * 200_000,
      networkTxBytesPerSec: 400_000 + Math.cos(i / 5) * 150_000,
    }));
-@@ -231,12 +243,13 @@
+@@ -308,12 +320,13 @@
  NODE_ENV=production
  QUEUE_CONCURRENCY=8
  DATABASE_URL=postgres://app:s3cr3tpass@db:5432/shop?sslmode=disable
@@ -193,10 +241,10 @@ diff -ru a/demo/service.ts b/demo/service.ts
  `;
  
  const refs = {
-@@ -330,20 +343,48 @@
-     dnsStatus: "missing",
+@@ -411,7 +424,12 @@
      liveAt: null,
-     certificate: { status: "pending", expiresAt: null, issuer: null, error: null },
+     // Nothing asks Let's Encrypt until the record is there (the certificate waits for DNS).
+     certificate: { status: "pending", expiresAt: null, issuer: null, error: null, waitingForDns: true },
 -    middlewares: { basicAuth: { usernames: ["ops"] }, ipAllowList: ["198.51.100.24", "10.0.0.0/8"], rateLimit: null, redirects: [] },
 +    middlewares: {
 +      basicAuth: { usernames: ["ops", "support"] },
@@ -205,7 +253,11 @@ diff -ru a/demo/service.ts b/demo/service.ts
 +      redirects: [{ from: "^https://admin\\.example\\.com/old/(.*)", to: "https://admin.example.com/admin/$1", permanent: true }],
 +    },
    }),
- ];
+   // Proxied too, but its record in Cloudflare still points at the old host: the origin check reached another server.
+   domain({
+@@ -446,16 +464,39 @@
+   };
+ }
  
 +const requests = [
 +  "GET /v1/products?page=2 200 41ms",
@@ -245,7 +297,7 @@ diff -ru a/demo/service.ts b/demo/service.ts
  const fileEntry = (name: string, isDir: boolean, size: number) => ({
    name,
    path: name,
-@@ -590,6 +631,15 @@
+@@ -661,6 +702,15 @@
    "uptime.list": () => ({
      checks: [{ id: "k000000000000001", serviceId: ids.web, projectId: ids.project, name: "Home page", url: "https://shop.example.com", method: "GET", expectedStatus: 0, intervalSeconds: 60, timeoutMs: 10000, failureThreshold: 3, enabled: true, status: "up", statusSince: ago(2 * day), lastCheckedAt: ago(20_000), lastStatusCode: 200, lastLatencyMs: 84, lastError: null, uptime24h: 99.93, createdAt: ago(9 * day), updatedAt: ago(day) }],
    }),
@@ -261,50 +313,70 @@ diff -ru a/demo/service.ts b/demo/service.ts
    "maintenance.getGlobal": () => ({ enabled: false, message: "", html: null, updatedAt: null }),
    "boxes.get": (input: Input) => ({ serviceId: input.serviceId, projectId: ids.project, name: "box", nodeId: de.id, nodeName: de.name, state: "sleeping", repository: "https://github.com/acme/shop-api", idleMinutes: 30, lastUsedAt: ago(5 * hour), createdAt: ago(5 * day) }),
    "compose.get": () => ({ stack: servicesById[ids.stack], source: { type: "inline", yaml: "services:\n  grafana:\n    image: grafana/grafana:11\n  prometheus:\n    image: prom/prometheus:v3\n" }, members: [] }),
+@@ -818,6 +868,17 @@
+     engine: "postgres",
+     version: "17.6",
+     internal: { host: "db", port: 5432, database: "shop", user: "postgres", httpPort: null },
++    // A TLS host name with its Let's Encrypt certificate, so the card has no self-signed note.
++    exposure: {
++      ...exposure,
++      host: "db.de1.example.com",
++      tlsHostname: "db.de1.example.com",
++      certificate: "valid",
++      certificateIssuer: "Let's Encrypt (R12)",
++      certificateExpiresAt: new Date(now + 74 * day).toISOString(),
++      selfSignedReason: null,
++      certificatePem: null,
++    },
+     shellClient: "psql",
+   };
+ }
+@@ -860,8 +921,8 @@
+       password: "Zq8vN3pXr7Lm2Kd9",
+     },
+     exposed: {
+-      url: "postgres://postgres:Zq8vN3pXr7Lm2Kd9@203.0.113.10:15432/shop?sslmode=require",
+-      host: "203.0.113.10",
++      url: "postgres://postgres:Zq8vN3pXr7Lm2Kd9@db.de1.example.com:15432/shop?sslmode=require",
++      host: "db.de1.example.com",
+       port: 15432,
+       database: "shop",
+       user: "postgres",
 diff -ru a/demo/settings.ts b/demo/settings.ts
---- a/demo/settings.ts
-+++ b/demo/settings.ts
-@@ -29,7 +29,7 @@
+--- a/demo/settings.ts	2026-11-12 05:48:55
++++ b/demo/settings.ts	2026-11-12 05:51:13
+@@ -44,7 +44,7 @@
      runs: [
        {
          id: "run0000000000001",
 -        targetVersion: "0.9.3",
-+        targetVersion: "0.1.1",
++        targetVersion: "0.2.12",
          trigger: "auto",
          status: "succeeded",
          startedBy: null,
-@@ -39,9 +39,9 @@
+@@ -54,9 +54,9 @@
          doneSteps: 3,
          totalSteps: 3,
          steps: [
--          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.9.2", toVersion: "0.9.3", status: "succeeded", error: null, startedAt: null, finishedAt: null },
--          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.9.2", toVersion: "0.9.3", status: "succeeded", error: null, startedAt: null, finishedAt: null },
--          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.9.2", toVersion: "0.9.3", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null },
-+          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.1.0", toVersion: "0.1.1", status: "succeeded", error: null, startedAt: null, finishedAt: null },
-+          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.1.0", toVersion: "0.1.1", status: "succeeded", error: null, startedAt: null, finishedAt: null },
-+          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.1.0", toVersion: "0.1.1", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null },
+-          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.9.2", toVersion: "0.9.3", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
+-          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.9.2", toVersion: "0.9.3", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
+-          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.9.2", toVersion: "0.9.3", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
++          { id: "s1", position: 0, target: "panel", nodeId: null, nodeName: null, fromVersion: "0.2.11", toVersion: "0.2.12", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
++          { id: "s2", position: 1, target: "agent", nodeId: "a", nodeName: "de-fsn-1", fromVersion: "0.2.11", toVersion: "0.2.12", status: "succeeded", error: null, startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
++          { id: "s3", position: 2, target: "agent", nodeId: "b", nodeName: "us-ash-1", fromVersion: "0.2.11", toVersion: "0.2.12", status: "rolledBack", error: "health check failed", startedAt: null, finishedAt: null, retry: null, retryRunId: null, retryAt: null },
          ],
        },
      ],
-@@ -50,7 +50,7 @@
-   "users.list": {
-     users: [
-       { id: "user000000000001", email: "owner@example.com", name: "Owner", role: "owner", status: "active", twoFactor: true, passkeyCount: 2, githubLogin: "acme-ops", grantCount: 0, lastLoginAt: ago(3), createdAt: ago(60 * 24 * 90) },
--      { id: "user000000000002", email: "lee@acme.dev", name: "Lee Park", role: "admin", status: "active", twoFactor: true, passkeyCount: 0, githubLogin: null, grantCount: 0, lastLoginAt: ago(60 * 5), createdAt: ago(60 * 24 * 40) },
-+      { id: "user000000000002", email: "ops@acme.dev", name: "Ops", role: "admin", status: "active", twoFactor: true, passkeyCount: 0, githubLogin: null, grantCount: 0, lastLoginAt: ago(60 * 5), createdAt: ago(60 * 24 * 40) },
+@@ -66,7 +66,7 @@
+   "users.list": (input: Input) => {
+     const users = [
+       { id: "user000000000001", email: "owner@example.com", name: "Owner", avatarUrl: avatars.owner, role: "owner", status: "active", twoFactor: true, passkeyCount: 2, githubLogin: "acme-ops", grantCount: 0, lastLoginAt: ago(3), createdAt: ago(60 * 24 * 90) },
+-      { id: "user000000000002", email: "lee@acme.dev", name: "Lee Park", avatarUrl: avatars.lee, role: "admin", status: "active", twoFactor: true, passkeyCount: 0, githubLogin: null, grantCount: 0, lastLoginAt: ago(60 * 5), createdAt: ago(60 * 24 * 40) },
++      { id: "user000000000002", email: "ops@acme.dev", name: "Ops", avatarUrl: avatars.lee, role: "admin", status: "active", twoFactor: true, passkeyCount: 0, githubLogin: null, grantCount: 0, lastLoginAt: ago(60 * 5), createdAt: ago(60 * 24 * 40) },
        { id: "user000000000003", email: "contractor@studio.io", name: "", role: "member", status: "active", twoFactor: false, passkeyCount: 0, githubLogin: null, grantCount: 2, lastLoginAt: ago(60 * 24 * 2), createdAt: ago(60 * 24 * 10) },
-       { id: "user000000000004", email: "old@acme.dev", name: "Former intern", role: "member", status: "disabled", twoFactor: false, passkeyCount: 0, githubLogin: null, grantCount: 1, lastLoginAt: null, createdAt: ago(60 * 24 * 200) },
-     ],
-@@ -113,7 +113,7 @@
-   "github.installations": {
-     installations: [
-       { id: "inst000000000001", installationId: 55501, accountLogin: "acme", accountType: "Organization", repositorySelection: "selected", suspended: false, manageUrl: "https://github.com/organizations/acme/settings/installations/55501", createdAt: ago(60 * 24 * 59) },
--      { id: "inst000000000002", installationId: 55502, accountLogin: "lee-park", accountType: "User", repositorySelection: "all", suspended: false, manageUrl: "https://github.com/settings/installations/55502", createdAt: ago(60 * 24 * 20) },
-+      { id: "inst000000000002", installationId: 55502, accountLogin: "acme-ops-bot", accountType: "User", repositorySelection: "all", suspended: false, manageUrl: "https://github.com/settings/installations/55502", createdAt: ago(60 * 24 * 20) },
-     ],
-     installUrl: "https://github.com/apps/acme-seylo/installations/new",
-   },
-@@ -168,7 +168,7 @@
+       { id: "user000000000004", email: "old@acme.dev", name: "Former intern", avatarUrl: avatars.intern, role: "member", status: "disabled", twoFactor: false, passkeyCount: 0, githubLogin: null, grantCount: 1, lastLoginAt: null, createdAt: ago(60 * 24 * 200) },
+     ];
+@@ -207,7 +207,7 @@
        byDay,
        byUser: [
          { userId: "user000000000001", name: "Owner", costUsd: 3.9 },
@@ -313,30 +385,30 @@ diff -ru a/demo/settings.ts b/demo/settings.ts
        ],
      };
    },
-@@ -178,7 +178,7 @@
+@@ -217,7 +217,7 @@
      endpoint: "https://seylo.dev/api/telemetry",
      intervalHours: 24,
      nextSendAt: null,
 -    payload: { installId: "7f3c2a9e-1b44-4f0a-9c1e-5d2b8a6f0c11", panelVersion: "0.9.3", agentVersions: { "0.9.3": 3 }, nodes: 3, projects: 2, services: { app: 4, postgres: 1 }, users: 4, features: ["mcp", "ai"], platforms: { "linux/amd64": 2, "linux/arm64": 1 }, wingsNodes: 1 },
-+    payload: { installId: "7f3c2a9e-1b44-4f0a-9c1e-5d2b8a6f0c11", panelVersion: "0.1.0", agentVersions: { "0.1.0": 3 }, nodes: 3, projects: 2, services: { app: 4, postgres: 1 }, users: 4, features: ["mcp", "ai"], platforms: { "linux/amd64": 2, "linux/arm64": 1 }, wingsNodes: 1 },
++    payload: { installId: "7f3c2a9e-1b44-4f0a-9c1e-5d2b8a6f0c11", panelVersion: "0.2.12", agentVersions: { "0.2.12": 3 }, nodes: 3, projects: 2, services: { app: 4, postgres: 1 }, users: 4, features: ["mcp", "ai"], platforms: { "linux/amd64": 2, "linux/arm64": 1 }, wingsNodes: 1 },
    },
-   "auth.security": {
-     passwordSet: true,
-@@ -203,7 +203,7 @@
-       { id: "1042", at: ago(2), actor: { type: "user", id: "user000000000001", label: "owner@example.com", credentialId: "sess000000000001" }, opId: "services.deploy", target: { type: "service", id: "svc0000000000001", label: "web" }, input: { serviceId: "svc0000000000001" }, outcome: "ok", errorCode: null, durationMs: 42, ip: "203.0.113.7", userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0", approvalId: null },
-       { id: "1041", at: ago(15), actor: { type: "mcp", id: "user000000000001", label: "owner@example.com via Claude Code on laptop", credentialId: "key0000000000003" }, opId: "projects.delete", target: { type: "project", id: world.personal, label: "docs" }, input: { projectId: world.personal }, outcome: "error", errorCode: "APPROVAL_REQUIRED", durationMs: 3, ip: "203.0.113.7", userAgent: null, approvalId: null },
-       { id: "1040", at: ago(60), actor: { type: "apiKey", id: "user000000000001", label: "owner@example.com via key github-actions", credentialId: "key0000000000001" }, opId: "services.deploy", target: { type: "service", id: "svc0000000000002", label: "api" }, input: { serviceId: "svc0000000000002" }, outcome: "ok", errorCode: null, durationMs: 51, ip: "140.82.112.4", userAgent: "curl/8.4.0", approvalId: null },
--      { id: "1039", at: ago(60 * 3), actor: { type: "user", id: "user000000000002", label: "lee@acme.dev", credentialId: "sess0000000000x2" }, opId: "notifications.createChannel", target: null, input: { name: "#alerts", config: { kind: "discord", webhookUrl: "[redacted]" } }, outcome: "ok", errorCode: null, durationMs: 220, ip: "198.51.100.23", userAgent: "Mozilla/5.0 Firefox/132.0", approvalId: null },
-+      { id: "1039", at: ago(60 * 3), actor: { type: "user", id: "user000000000002", label: "ops@acme.dev", credentialId: "sess0000000000x2" }, opId: "notifications.createChannel", target: null, input: { name: "#alerts", config: { kind: "discord", webhookUrl: "[redacted]" } }, outcome: "ok", errorCode: null, durationMs: 220, ip: "198.51.100.23", userAgent: "Mozilla/5.0 Firefox/132.0", approvalId: null },
+   // Settings > Personal details: the viewer's generated face (fixtures.ts avatars.owner).
+   "avatars.mine": {
+@@ -246,7 +246,7 @@
+       { id: "1042", at: ago(2), actor: { type: "user", id: "user000000000001", label: "owner@example.com", avatarUrl: avatars.owner, credentialId: "sess000000000001" }, opId: "deployments.deploy", target: { type: "service", id: "svc0000000000001", label: "web" }, input: { serviceId: "svc0000000000001" }, outcome: "ok", errorCode: null, durationMs: 42, ip: "203.0.113.7", userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0", approvalId: null },
+       { id: "1041", at: ago(15), actor: { type: "mcp", id: "user000000000001", label: "owner@example.com via Claude Code on laptop", avatarUrl: avatars.owner, credentialId: "key0000000000003" }, opId: "projects.delete", target: { type: "project", id: world.personal, label: "docs" }, input: { projectId: world.personal }, outcome: "error", errorCode: "APPROVAL_REQUIRED", durationMs: 3, ip: "203.0.113.7", userAgent: null, approvalId: null },
+       { id: "1040", at: ago(60), actor: { type: "apiKey", id: "user000000000001", label: "owner@example.com via key github-actions", avatarUrl: avatars.owner, credentialId: "key0000000000001" }, opId: "deployments.deploy", target: { type: "service", id: "svc0000000000002", label: "api" }, input: { serviceId: "svc0000000000002" }, outcome: "ok", errorCode: null, durationMs: 51, ip: "140.82.112.4", userAgent: "curl/8.4.0", approvalId: null },
+-      { id: "1039", at: ago(60 * 3), actor: { type: "user", id: "user000000000002", label: "lee@acme.dev", avatarUrl: avatars.lee, credentialId: "sess0000000000x2" }, opId: "notifications.createChannel", target: null, input: { name: "#alerts", config: { kind: "discord", webhookUrl: "[redacted]" } }, outcome: "ok", errorCode: null, durationMs: 220, ip: "198.51.100.23", userAgent: "Mozilla/5.0 Firefox/132.0", approvalId: null },
++      { id: "1039", at: ago(60 * 3), actor: { type: "user", id: "user000000000002", label: "ops@acme.dev", avatarUrl: avatars.lee, credentialId: "sess0000000000x2" }, opId: "notifications.createChannel", target: null, input: { name: "#alerts", config: { kind: "discord", webhookUrl: "[redacted]" } }, outcome: "ok", errorCode: null, durationMs: 220, ip: "198.51.100.23", userAgent: "Mozilla/5.0 Firefox/132.0", approvalId: null },
        { id: "1038", at: ago(60 * 26), actor: { type: "anonymous", id: null, label: "anonymous", credentialId: null }, opId: "auth.login", target: null, input: { email: "admin@acme.dev", password: "[redacted]" }, outcome: "error", errorCode: "UNAUTHENTICATED", durationMs: 310, ip: "45.33.12.9", userAgent: "python-requests/2.32", approvalId: null },
      ],
      nextCursor: "1038",
-@@ -211,7 +211,7 @@
+@@ -254,7 +254,7 @@
    "approvals.list": {
      approvals: [
-       { id: "appr000000000001", opId: "projects.delete", opSummary: "Delete a project", opKind: "destructive", inputPreview: { projectId: world.personal }, via: "mcp", requestedBy: { userId: "user000000000001", userName: "Owner", clientName: "Claude Code on laptop" }, reason: "You asked me to clean up the unused docs project; it has no deploys in 90 days.", target: { type: "project", id: world.personal, name: "docs" }, status: "pending", decidedBy: null, decidedAt: null, error: null, expiresAt: ahead(60 * 23), createdAt: ago(15) },
--      { id: "appr000000000002", opId: "services.restart", opSummary: "Restart a service", opKind: "mutation", inputPreview: { serviceId: "svc0000000000002" }, via: "ai", requestedBy: { userId: "user000000000002", userName: "Lee Park", clientName: "AI assistant" }, reason: "The api service is answering 502 and its memory is at the limit.", target: { type: "service", id: "svc0000000000002", name: "api" }, status: "pending", decidedBy: null, decidedAt: null, error: null, expiresAt: ahead(60 * 20), createdAt: ago(40) },
-+      { id: "appr000000000002", opId: "services.restart", opSummary: "Restart a service", opKind: "mutation", inputPreview: { serviceId: "svc0000000000002" }, via: "ai", requestedBy: { userId: "user000000000002", userName: "Ops", clientName: "AI assistant" }, reason: "The api service is answering 502 and its memory is at the limit.", target: { type: "service", id: "svc0000000000002", name: "api" }, status: "pending", decidedBy: null, decidedAt: null, error: null, expiresAt: ahead(60 * 20), createdAt: ago(40) },
+       { id: "appr000000000001", opId: "projects.delete", opSummary: "Delete a project", opKind: "destructive", inputPreview: { projectId: world.personal }, via: "mcp", source: { kind: "mcp", keyId: "key0000000000003", clientName: "Claude Code on laptop" }, requestedBy: { userId: "user000000000001", userName: "Owner", avatarUrl: avatars.owner, clientName: "Claude Code on laptop" }, reason: "You asked me to clean up the unused docs project; it has no deploys in 90 days.", target: { type: "project", id: world.personal, name: "docs" }, status: "pending", decidedBy: null, decidedAt: null, error: null, expiresAt: ahead(60 * 23), createdAt: ago(15) },
+-      { id: "appr000000000002", opId: "services.restart", opSummary: "Restart a service", opKind: "mutation", inputPreview: { serviceId: "svc0000000000002" }, via: "ai", source: { kind: "assistant", conversationId: "c7k2m9q4w1x8z3b5", title: "", mine: false }, requestedBy: { userId: "user000000000002", userName: "Lee Park", avatarUrl: avatars.lee, clientName: "AI assistant" }, reason: "The api service is answering 502 and its memory is at the limit.", target: { type: "service", id: "svc0000000000002", name: "api" }, status: "pending", decidedBy: null, decidedAt: null, error: null, expiresAt: ahead(60 * 20), createdAt: ago(40) },
++      { id: "appr000000000002", opId: "services.restart", opSummary: "Restart a service", opKind: "mutation", inputPreview: { serviceId: "svc0000000000002" }, via: "ai", source: { kind: "assistant", conversationId: "c7k2m9q4w1x8z3b5", title: "", mine: false }, requestedBy: { userId: "user000000000002", userName: "Ops", avatarUrl: avatars.lee, clientName: "AI assistant" }, reason: "The api service is answering 502 and its memory is at the limit.", target: { type: "service", id: "svc0000000000002", name: "api" }, status: "pending", decidedBy: null, decidedAt: null, error: null, expiresAt: ahead(60 * 20), createdAt: ago(40) },
      ],
      nextCursor: null,
      pendingCount: 2,

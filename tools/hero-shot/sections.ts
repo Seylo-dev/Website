@@ -5,9 +5,9 @@
 //   bun run sections.ts [--dark | --both] [name ...]     all captures, or only the named ones
 //
 // Light is the default theme. --dark takes the dark pass only, --both takes light and then dark: the
-// panel's default theme in dark mode (the seylo-night preset) from the same demo data, written next to
-// the light file with a -dark suffix. The theme-* preset shots have one theme of their own and are
-// skipped in the dark pass.
+// browser asks for dark mode and the panel, on color mode "system", paints its theme's dark half, from the
+// same demo data, written next to the light file with a -dark suffix. The theme-* shots take the dashboard
+// in one of the ten presets, in its light half and in its dark half.
 //
 // Env: WEB (default http://127.0.0.1:3952, the Vite server), OWNER_FILE (two lines: email, password of
 // the panel's owner; default out/owner). Writes out/sections/<name>[-dark].png and
@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { type Browser, chromium, type Locator, type Page } from "playwright";
 import sharp from "sharp";
 import { ids, metricsNodes, nodes, updateStatus } from "./out/demo/fixtures";
-import { type Handler, installDemo, type Preset } from "./out/demo/routes";
+import { type Handler, installDemo, type Preset, presets } from "./out/demo/routes";
 import { handlers as serviceHandlers, ids as svc } from "./out/demo/service";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -62,6 +62,8 @@ interface Shot {
    */
   runningClock?: boolean;
   quality?: number;
+  /** localStorage entries of the web app's origin, such as a remembered choice of the screen. */
+  storage?: Record<string, string>;
   /** Prepares the page and returns the region to keep. */
   run: (page: Page) => Promise<Box | null>;
 }
@@ -226,6 +228,9 @@ const shots: Shot[] = [
     // The landing hero (components/product-shot.tsx): the whole dashboard, 1600x1000 CSS pixels at 1.5x.
     name: "dashboard",
     path: "/",
+    // The Nodes card on 1h, as a person who picked it last: Live (the default) draws the demo's 2-second
+    // samples, which a frozen clock stacks on one moment.
+    storage: { "seylo.dashboard.nodesRange": "1h" },
     viewport: { width: 1600, height: 1000 },
     scale: 1.5,
     quality: 86,
@@ -235,11 +240,12 @@ const shots: Shot[] = [
       "updates.status": () => ({
         ...updateStatus,
         activeRun: null,
-        nodes: updateStatus.nodes.map((node) => ({ ...node, version: "0.1.1", updateAvailable: false })),
+        nodes: updateStatus.nodes.map((node) => ({ ...node, version: "0.2.12", updateAvailable: false })),
       }),
     },
     run: async (page) => {
-      await page.getByRole("heading", { level: 1, name: "Dashboard" }).waitFor();
+      // The dashboard's heading is a greeting ("Good morning"), so wait for the node graphs instead.
+      await page.getByRole("heading", { level: 1 }).first().waitFor();
       await page.waitForFunction(() => document.querySelectorAll("main svg path").length >= 6, null, {
         timeout: 20000,
       });
@@ -320,7 +326,8 @@ const shots: Shot[] = [
       }),
     },
     run: async (page) => {
-      const c = await card(page, "Crash policy");
+      // "Crash policy" also labels a summary tile above the tabs: find the card by its field.
+      const c = await card(page, "Stop after crashes in a row");
       await width(c, 540);
       await isolate(page, [c]);
       return union([c], 22);
@@ -404,7 +411,8 @@ const shots: Shot[] = [
       const m = (await main.boundingBox()) as Box;
       const backups = await card(page, "Backups");
       const b = (await backups.boundingBox()) as Box;
-      return { x: m.x, y: 0, width: m.width, height: b.y + b.height + 28 };
+      // The console card starts right under the Backups card: stop above it.
+      return { x: m.x, y: 0, width: m.width, height: b.y + b.height + 12 };
     },
   },
   {
@@ -485,18 +493,18 @@ const shots: Shot[] = [
       await page.locator(".monaco-editor .view-line").first().waitFor();
       await page.waitForTimeout(1000);
       const theme = await card(page, "Theme");
-      const css = page.getByText("Custom CSS", { exact: true }).first();
-      const handle = await css.evaluateHandle((el) => {
-        let node: HTMLElement | null = el as HTMLElement;
-        while (node && node.getBoundingClientRect().height < 200) node = node.parentElement;
-        return node;
-      });
+      const branding = await card(page, "Branding");
+      // The crop ends where the CSS editor ends, above the guide under it ("How it works"), so the
+      // Branding card shows whole and the CSS card runs off the bottom edge.
+      const guide = (await page.getByText("How it works", { exact: true }).first().boundingBox()) as Box;
       const t = (await theme.boundingBox()) as Box;
-      const c = (await handle.asElement()?.boundingBox()) as Box;
-      return { x: t.x - 22, y: t.y - 14, width: t.width + 44, height: c.y + c.height + 22 - (t.y - 14) };
+      const b = (await branding.boundingBox()) as Box;
+      const bottom = Math.max(guide.y - 14, b.y + b.height + 22);
+      return { x: t.x - 22, y: t.y - 14, width: t.width + 44, height: bottom - (t.y - 14) };
     },
   },
-  ...(["seylo", "seylo-night", "classic", "midnight"] as Preset[]).map((preset): Shot => ({
+  // The White label section's previews: the dashboard in each preset of Settings > Appearance.
+  ...presets.map((preset: Preset): Shot => ({
     name: `theme-${preset}`,
     path: "/",
     preset,
@@ -517,7 +525,20 @@ const browser: Browser = await chromium.launch();
 const auth = await browser.newContext();
 const login = await auth.request.post(`${base}/api/v1/auth.login`, { data: { email, password } });
 if (!login.ok()) throw new Error(`login ${login.status()}`);
+// A session cookie works only with its key, which the web app keeps in its origin's localStorage
+// (packages/ops sessionKeyHeader and sessionKeyStorage).
+const sessionKey = login.headers()["x-seylo-session-key"] ?? "";
+if (!sessionKey) throw new Error("login answered without a session key");
 const state = await auth.storageState();
+const stateWith = (storage: Record<string, string> = {}) => ({
+  ...state,
+  origins: [
+    {
+      origin: new URL(base).origin,
+      localStorage: Object.entries({ "seylo.sessionKey": sessionKey, ...storage }).map(([name, value]) => ({ name, value })),
+    },
+  ],
+});
 await auth.close();
 
 const errors: string[] = [];
@@ -525,8 +546,6 @@ const large: string[] = [];
 for (const shot of shots) {
   if (only.length && !only.includes(shot.name)) continue;
   for (const theme of themes) {
-    // A preset shot shows that preset's own colors; it has no dark twin.
-    if (theme === "dark" && shot.preset) continue;
     const name = theme === "dark" ? `${shot.name}-dark` : shot.name;
     const viewport = shot.viewport ?? { width: 1440, height: 1200 };
     const context = await browser.newContext({
@@ -534,14 +553,16 @@ for (const shot of shots) {
       deviceScaleFactor: shot.scale ?? 2,
       colorScheme: theme,
       reducedMotion: "reduce",
-      storageState: state,
+      storageState: stateWith(shot.storage),
     });
     const page = await context.newPage();
     if (!shot.runningClock) await page.clock.setFixedTime(frozenAt);
     page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
-    // Dark is the default theme in dark mode: the preset a user gets when the panel follows a dark system.
+    // Color mode "system": the page's emulated color scheme picks the preset's light or dark half, as for a
+    // user whose panel follows the system.
     await installDemo(page, {
-      preset: shot.preset ?? (theme === "dark" ? "seylo-night" : "seylo"),
+      preset: shot.preset ?? "seylo",
+      mode: "system",
       overrides: shot.overrides,
     });
     await page.goto(base + shot.path);
@@ -562,3 +583,6 @@ for (const shot of shots) {
 console.log("errors", errors);
 if (large.length > 0) console.log("over 200 KB, lower the shot's quality:", large.join(", "));
 await browser.close();
+// The demo's live sockets leave interval timers behind (they stop only on a socket close the closed
+// contexts never send), which would keep the run from exiting.
+process.exit(0);
