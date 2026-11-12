@@ -42,7 +42,7 @@ STRIPE_KEY=${{project.STRIPE_KEY}}
 
 A reference is `${{<service>.<VARIABLE>}}`, where `<service>` is a service name in the same project and `<VARIABLE>` is one of its built-in variables or a key from its own `.env`. References are resolved on every deploy, so when a database password is reset or a domain changes, the next deploy picks it up. `${{project.<NAME>}}` reads the project's shared variables.
 
-Hover a reference to see the value it becomes. The **References** panel lists everything this service can reference; click an entry to insert it.
+Hover a reference to see the value it becomes. The **References** panel lists everything this service can reference; click an entry to insert it. Internal addresses of services on other nodes are struck through there (see [In the References panel](#in-the-references-panel)).
 
 A reference hands its value to your container, so you can only save one whose value you may see yourself: a member with access to one service can't read a sibling's API key or a database password by referencing it. The same rule applies to compose files and templates; a stack's or template's own services count as yours. A push to a compose stack's repository has no person behind it, so outside the stack it can only add references to other services' addresses, never to their secrets.
 
@@ -87,3 +87,9 @@ A project's private network exists on each node separately. An `INTERNAL_*` addr
 - **Use** the exposed address instead (`${{db.EXPOSED_URL}}`), when the target is exposed,
 - **Expose** the target, for databases with TLS (see [Databases](/guides/databases)),
 - **Move** this service to the target's node (see [Moving services](/guides/moving-services)).
+
+### In the References panel
+
+The **References** panel marks the same addresses. Its header names the nodes this service runs on ("Click to insert. Internal addresses only work for services on `<this service's nodes>`."). For a service on another node, its internal variables (`INTERNAL_URL`, `INTERNAL_HOST`, and ClickHouse's `INTERNAL_HTTP_URL`) are struck through, clicking one inserts nothing, and its tip names the nodes that other service runs on: "Only for services on `<its nodes>`". Its other variables, such as `INTERNAL_PORT`, `USER` or its own `.env` keys, insert as usual.
+
+Changed in 0.2.12: that includes services with a way in from other nodes, an exposed database or an app with a domain, and their tip names the variable to use instead: `EXPOSED_URL` (`EXPOSED_HOST` for `INTERNAL_HOST`) for a database, `URL` for an app. For example: "Only for services on de-fsn-1. worker runs on us-ash-1, so use EXPOSED_URL." Before, the panel left the internal variables of such a service out, so they looked missing. Listed or not, they do not connect from another node: the project network does not reach across nodes. Use the exposed address, or move one of the two services to the other's node.

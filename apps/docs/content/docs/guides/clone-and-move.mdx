@@ -29,7 +29,34 @@ The dialog lists what comes along before anything is created.
 - **A domain**: **Add the automatic domain** (ticked by default) gives the clone the target node's automatic domain (`<name>.<wildcard>`), with the main domain's access rules (basic auth, IP allowlist, rate limit, redirects) when it has any. It is offered when the service has a main port and is not a database, the target node has a wildcard domain and that host is still free. An app clone without it gets an IP:port address, like a new app.
 - **Not copied**: domains, deploy history, cron jobs, backups, alerts, uptime checks, deploy triggers, tunnels, exposed ports, maintenance pages and sharing.
 
-**Deploy on push** and previews are off on the clone, so a push does not deploy two services. Turn them on in the clone's **Source** and **Previews** tabs when you want them.
+Previews are off on the clone. Turn them on in its **Previews** tab when you want them.
+
+### Deploy on push
+
+Changed in 0.2.12: a clone of an app built from a repository (a **GitHub**, **Git**, **GitLab**, **Gitea** or **Bitbucket** source) keeps the source's **Deploy on push**. Before, it was always off on the clone. For these sources the dialog has a **Deploy on push** switch, on when the source deploys on push, and the note under it says what a push to the branch does:
+
+- On, and the source deploys on push too: "Each push to `<branch>` deploys both `<name>` and the clone."
+- On, and the source does not: "Each push to `<branch>` deploys the clone. `<name>` does not deploy on push."
+- On, for a **Git** source: "A git URL deploys on push through a deploy trigger URL, which the clone does not copy: make one on its Source tab." See the table below.
+- Off: "Pushes to `<branch>` do not deploy the clone." You can turn it on later in the clone's **Source** tab.
+
+Clones of other sources (an image, a Dockerfile typed in the panel, an upload), databases and Boxes have no switch.
+
+The clone is created stopped, but a push does not wait for **Start**: with the switch on, the next push to the branch deploys and starts the clone. When it needs changes first, such as variables that [point somewhere else](#references-in-the-copied-variables) in another project, clone it with the switch off and turn it on once the clone is ready.
+
+How the pushes reach the clone depends on how the repository is read:
+
+| Source | How a push reaches the clone |
+| --- | --- |
+| **GitHub** through the GitHub App | The App's webhook, as for the source: every service that follows the branch with **Deploy on push** on gets the push |
+| **GitHub** through the connected account, **GitLab**, **Gitea** or **Bitbucket** | A repository webhook of its own, with its own secret, created with the clone. Each of these webhooks delivers to one service, so the source's never reaches the clone |
+| **Git** (a repository URL) | Its own [deploy trigger URL](/guides/github-and-git#deploy-trigger-url), which a clone never gets: click **Create URL** under **Deploy trigger** on the clone's **Source** tab and point the git host or CI at the new URL. The source's URL keeps deploying the source only |
+
+The clone's webhook is made by the same rules as when you connect the repository on the **Source** tab (see [Push to deploy](/guides/github-and-git#the-connected-github-account) and [The webhook](/guides/git-providers#the-webhook)): the token must be allowed to create webhooks on the repository, and the webhook needs an address the git host can reach. That is the panel domain. Without one, the connected account makes no webhook, and a GitLab, Gitea or Bitbucket webhook points at the address you opened the panel at only when you may manage connections (the **Manage GitLab, Gitea and Bitbucket connections** action). While the webhook cannot be made, the panel reads the clone's branch every minute instead, as for any other service, and the clone's **Source** tab says why. A clone made with the switch off gets no webhook, and its branch is not polled.
+
+Export and import are unchanged: an imported service still arrives with **Deploy on every push** off unless you turn it on in the import (see [Export and import](/guides/export-and-import#source)).
+
+In the API and MCP, `services.clone` takes `deployOnPush`. Left out, the clone keeps the source's setting; other sources ignore it.
 
 ### References in the copied variables
 
@@ -44,6 +71,7 @@ Under **Volumes**, pick **Start empty** (the default) or **Copy data**. A copy r
 - **Stop `<name>` while its data is copied** is ticked by default, for a consistent copy. The source starts again when the copy ends. Files copied from a running service may be inconsistent.
 - A database always stops for its copy and starts again afterwards, because a running database's files are not a usable copy.
 - While it runs, the clone's header shows **Copying the data of ...** with the size so far. Until it is done, neither the clone nor a source the copy stopped can deploy or start, and neither the clone nor its source can move to another node. A second copy from the same source is refused until the first ends.
+- New in 0.2.12: a push to the clone's branch while its data is copied waits for the copy. **Recent deliveries** on the clone's **Source** tab lists it as **Failed**: "Its data is still being copied from `<source>`: this push deploys once the copy is done." When the copy is done, the clone deploys the head of its branch once, however many pushes waited, and those deliveries turn **Deployed**. A copy that failed deploys nothing into what arrived ("The data copy from `<source>` failed, so this push was not deployed."), and neither does a clone whose **Deploy on push** was turned off meanwhile. A push to a source the copy stopped is still refused while the copy runs, as before.
 - A failed copy says why under the header. The clone keeps what arrived and can still start.
 - Deleting the clone or the source ends its copy as failed, and starts a source the copy stopped.
 
@@ -51,7 +79,7 @@ A database clone that starts empty gets new passwords. One with a copy of the da
 
 ### Start the clone
 
-The clone is created stopped and is not deployed. Check its settings, then click **Start**: the first start deploys it (that needs permission to deploy).
+The clone is created stopped and is not deployed. Check its settings, then click **Start**: the first start deploys it (that needs permission to deploy). A clone with **Deploy on push** on also deploys on the next push to its branch, started or not (see [Deploy on push](#deploy-on-push)).
 
 ### What can be cloned
 
