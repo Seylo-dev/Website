@@ -1,12 +1,14 @@
-// Real crops of the panel (v0.1.1), taken at 2x from the panel's demo mode with demo data, once in its
-// light theme and once in its default dark theme (seylo-night) from the same data: see
-// tools/hero-shot/README.md, "Section captures". Width and height are CSS pixels (half the file's); the
-// light and dark files of a crop have the same size.
+// Real crops of the panel, taken at 2x from the panel's demo mode with demo data, once in the light half
+// and once in the dark half of its default theme from the same data: see tools/hero-shot/README.md,
+// "Demo mode". The hero, the theme previews and the crops whose screen changed were taken from the 0.2.13
+// build (its demo data still says v0.2.12, the version it was made as); the others (domain access, crash
+// policy, timed expose, replicas, logs, metrics, uptime) are from v0.1.1 and look the same in 0.2.13.
+// Width and height are CSS pixels (half the file's); the light and dark files of a crop have the same size.
 
 export interface Capture {
   /** The light theme's file. */
   src: string;
-  /** The dark theme's file, when the crop has one (the theme preset previews do not). */
+  /** The dark theme's file. */
   srcDark?: string;
   width: number;
   height: number;
@@ -34,23 +36,15 @@ const capture = (name: string, px: [number, number], alt: string): Capture => ({
   alt,
 });
 
-/** A crop with one theme of its own: the theme preset previews show each preset as it is. */
-const single = (name: string, px: [number, number], alt: string): Capture => ({
-  src: `/product/${name}.webp`,
-  width: px[0] / 2,
-  height: px[1] / 2,
-  alt,
-});
-
 export const captures = {
   templates: capture(
     "templates",
-    [1784, 1046],
-    "The Templates page: a search for 23 templates, category filters and cards for Appsmith, code-server, Directus, Excalidraw, File Browser and Ghost",
+    [1784, 1086],
+    "The Templates page: a search for 23 templates, Templates and Docker Hub tabs, category filters and cards for Appsmith, code-server, Directus, Excalidraw, File Browser and Ghost",
   ),
   env: capture(
     "env",
-    [1288, 1286],
+    [1288, 1308],
     "The environment editor: two lines underlined in red with one-click fixes below them such as Expose redis, and the hover on ${{api.URL}}: api's public URL becomes https://api.de1.example.com and updates if the domain changes",
   ),
   domainAccess: capture(
@@ -60,7 +54,7 @@ export const captures = {
   ),
   healthCheck: capture(
     "health-check",
-    [1248, 1260],
+    [1248, 1278],
     "Health check settings: an HTTP request to /health on port 3000, interval, timeout, grace period and the zero-downtime deploy strategy",
   ),
   crashPolicy: capture(
@@ -75,7 +69,7 @@ export const captures = {
   ),
   nodeGraphs: capture(
     "node-graphs",
-    [1280, 1660],
+    [1280, 1648],
     "A node's overview: CPU, memory, disk and network graphs, and the machine's OS, kernel, Docker and agent versions",
   ),
   replicas: capture(
@@ -85,13 +79,13 @@ export const captures = {
   ),
   nodeHealth: capture(
     "node-health",
-    [1280, 1502],
-    "A node's health check: one warning about disk space with its fix, and passed checks for the kernel, OS, memory, inodes, Docker and cgroups",
+    [1280, 1648],
+    "A node's health check: one warning about disk space with its fix, and passed checks for the kernel, OS, memory, inodes, service folders, Docker and cgroups",
   ),
   database: capture(
     "database",
-    [2384, 1522],
-    "A Postgres service: the internal connection, an exposed connection that requires SSL, pgweb and psql under Tools, and the daily backups",
+    [2384, 1682],
+    "A Postgres service: its Connection, Users and Backups tabs, the internal connection, an exposed connection that requires SSL with a Let's Encrypt certificate, pgweb and psql under Tools, and the daily backups",
   ),
   logs: capture(
     "logs",
@@ -106,7 +100,7 @@ export const captures = {
   ),
   approvals: capture(
     "approvals",
-    [1488, 850],
+    [1488, 870],
     "An approval waiting: an MCP client asks to delete a project, with its reason and exact input, and Deny or Approve and run",
   ),
   people: capture(
@@ -116,30 +110,65 @@ export const captures = {
   ),
   appearance: capture(
     "appearance",
-    [1916, 1502],
-    "Appearance settings: four theme presets, accent colors, branding with the panel name, logos, favicon and sign-in message, and custom CSS",
+    [1916, 1898],
+    "Appearance settings: ten theme presets, accent colors, branding with the panel name, logos, favicon and sign-in message, and custom CSS",
   ),
 } satisfies Record<string, Capture>;
 
+/**
+ * The dashboard in each theme preset of Settings > Appearance, in the panel's order, with the panel's own
+ * description of each (apps/web settingsAppearance.presets). Each has a light and a dark file, shown by
+ * the page's theme like the other crops. The 720x450 files are the 1440x900 dashboard at 1x.
+ */
 export const themeShots = [
   {
     preset: "Default",
-    note: "Light and dark",
-    capture: single("theme-seylo", [720, 450], "The dashboard in the Default theme"),
-  },
-  {
-    preset: "Night",
-    note: "Dark with ink blues",
-    capture: single("theme-seylo-night", [720, 450], "The dashboard in the Night theme"),
+    note: "Airy blue-gray, soft shadows",
+    capture: capture("theme-seylo", [720, 450], "The dashboard in the Default theme"),
   },
   {
     preset: "Classic",
-    note: "Soft gray cards, green accent",
-    capture: single("theme-classic", [720, 450], "The dashboard in the Classic theme"),
+    note: "Flat grays, hairlines, green",
+    capture: capture("theme-classic", [720, 450], "The dashboard in the Classic theme"),
   },
   {
     preset: "Midnight",
-    note: "Dense, purple accent",
-    capture: single("theme-midnight", [720, 450], "The dashboard in the Midnight theme"),
+    note: "Square corners, violet, dense",
+    capture: capture("theme-midnight", [720, 450], "The dashboard in the Midnight theme"),
+  },
+  {
+    preset: "Graphite",
+    note: "Pure grays, ink accent, flat",
+    capture: capture("theme-graphite", [720, 450], "The dashboard in the Graphite theme"),
+  },
+  {
+    preset: "Clay",
+    note: "Warm sand, terracotta, round",
+    capture: capture("theme-clay", [720, 450], "The dashboard in the Clay theme"),
+  },
+  {
+    preset: "Harbor",
+    note: "Sea grays, teal, tinted sidebar",
+    capture: capture("theme-harbor", [720, 450], "The dashboard in the Harbor theme"),
+  },
+  {
+    preset: "Orchid",
+    note: "Rose tints, magenta, pill chips",
+    capture: capture("theme-orchid", [720, 450], "The dashboard in the Orchid theme"),
+  },
+  {
+    preset: "Steel",
+    note: "Blue-gray metal, sharp edges",
+    capture: capture("theme-steel", [720, 450], "The dashboard in the Steel theme"),
+  },
+  {
+    preset: "Marigold",
+    note: "Cream paper, golden accent",
+    capture: capture("theme-marigold", [720, 450], "The dashboard in the Marigold theme"),
+  },
+  {
+    preset: "Meadow",
+    note: "Sage greens, the roundest",
+    capture: capture("theme-meadow", [720, 450], "The dashboard in the Meadow theme"),
   },
 ];

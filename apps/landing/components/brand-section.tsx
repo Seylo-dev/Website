@@ -11,7 +11,11 @@ const whiteLabel = [
   "Custom CSS",
 ];
 
-/** White label: the Appearance screen, then the dashboard in each of the four theme presets. */
+/**
+ * White label: the Appearance screen, then the dashboard in each of the ten theme presets, five to a row
+ * on large screens and two on smaller ones. Each preview shows the preset's light or dark half, by the
+ * page's theme.
+ */
 export function BrandSection() {
   return (
     <section
@@ -26,15 +30,15 @@ export function BrandSection() {
             Make it yours.
           </h2>
           <p className="text-[17px] leading-[1.55] text-ink-soft">
-            Hand the panel to a team or to clients under your own name. Four theme presets, the default one following
-            light or dark mode, then your accent color and your own CSS on top.
+            Hand the panel to a team or to clients under your own name. Ten theme presets, each in light and dark:
+            the panel follows the system, or you fix it to one. Then your accent color and your own CSS on top.
           </p>
           <Chips items={whiteLabel} className="mt-1" />
         </div>
         <Shot capture={captures.appearance} phoneCut className="rise lg:order-1" />
       </div>
 
-      <ul aria-label="Theme presets" className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-4">
+      <ul aria-label="Theme presets" className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-5">
         {themeShots.map(({ preset, note, capture }) => (
           <li key={preset} className="rise flex min-w-0 flex-col gap-3">
             <div className="shot overflow-hidden rounded-lg">
