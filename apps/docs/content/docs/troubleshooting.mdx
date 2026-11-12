@@ -48,7 +48,23 @@ The link from the installer is valid for one hour and works once. On the panel's
 </Accordion>
 
 <Accordion title="A node shows as offline">
-Run `seylo status` on the node. If the agent runs but is not connected, the error line says why. Check that the node can reach the panel's address (`curl -I https://panel.example.com/api/health`). The address the node uses is `panel_url` in `/var/lib/seylo/config.yml`. Services on an offline node keep running; only changes wait.
+Run `seylo status` on the node. If the agent runs but is not connected, the error line says why. Check that the node can reach the panel's address (`curl -I https://panel.example.com/api/health`). The address the node uses is `panel_url` in `/var/lib/seylo/config.yml`. Services on an offline node keep running; only changes wait. When the error says the certificate comes from an issuer this server does not trust, see the next entry.
+</Accordion>
+
+<Accordion title='The agent refuses the certificate: "an issuer this server does not trust"'>
+`seylo status` on the node (also `seylo logs`, and the end of a join) shows an error like this, while the panel only shows the node offline:
+
+```text
+Error:   dial panel: ... x509: certificate signed by unknown authority. The certificate for panel.example.com says it was issued by "Fortinet, FG800D5818800524", an issuer this server does not trust. If that is not who issued the panel's certificate, a firewall or proxy on this server's network decrypts HTTPS (TLS inspection): exempt panel.example.com from it, join with the panel's IP address and --pin, or point this node at the panel's IP with `seylo set-panel` (the panel's Add node dialog shows the command)
+```
+
+The issuer is the name the certificate claims. When that is not who issued the panel's certificate (a browser on another network shows who did), a firewall or proxy on the node's network decrypts HTTPS and re-signs every site with its own CA, and the agent refuses that on purpose. Do one of these:
+
+- Exempt the panel's domain from the inspection in that firewall. The agent keeps retrying and connects by itself.
+- New in 0.2.13, on a node that already joined: point it at the panel's IP with `seylo set-panel`, which keeps the node and needs no token. In **Add node**, click **Create join command** and **Network decrypts HTTPS? Join over the panel's IP instead**: the command is under **Already joined? Point it here**. It needs agent 0.2.13: on an older agent, set `panel_url` and `panel_pin` in `/var/lib/seylo/config.yml` by hand to that address and pin, and run `sudo seylo restart`. See [Point a joined node at another address](/guides/adding-nodes#point-a-joined-node-at-another-address).
+- On a server that has not joined yet: run the join command over the panel's IP from the same link.
+
+When the issuer is your own CA, the one that issued the panel's certificate, add it to the node's trust store and run `sudo seylo restart`: the agent reads the trust store when it starts. "answers with Traefik's own certificate" instead means the panel's server has no certificate for that name yet: look at the panel domain's status in **Settings → General**. On a node that connects over the panel's IP, "did not present the panel's pinned key" means the firewall decrypts that connection too, or the address leads to another server: `set-panel` does not help then, so exempt the panel's address from the inspection, or check the address.
 </Accordion>
 
 <Accordion title="The certificate for a domain is not issued">
@@ -72,7 +88,7 @@ The agent refuses to join a panel at `http://` on another server, because its tr
 </Accordion>
 
 <Accordion title="A node did not move to the panel domain">
-Look at the node's **Connects to** on **Nodes** and at its alerts. A node that joined over plain HTTP (`--insecure`) never moves by itself: run a new join command from **Add node** on it with `--force`. A node that could not move raises **Node health check failed** with the reason and tries again after an hour. When the reason is the certificate, the node does not trust the domain's certificate authority: use a public certificate (Let's Encrypt), or add the authority to the node's trust store and run `systemctl restart seylo`. See [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain).
+Look at the node's **Connects to** on **Nodes** and at its alerts. A node that joined over plain HTTP (`--insecure`) never moves by itself: run a new join command from **Add node** on it with `--force`. A node that could not move raises **Node health check failed** with the reason and tries again after an hour. When the reason is the certificate, the node does not trust the domain's certificate authority: use a public certificate (Let's Encrypt), or add the authority to the node's trust store and run `systemctl restart seylo`. A node at the panel's IP and pin whose network decrypts HTTPS (TLS inspection) cannot use the domain at all: the alert says so, and the node stays on the pinned address and tries the domain again after 24 hours or an agent restart. See [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain).
 </Accordion>
 
 <Accordion title="An IP:port address does not answer">

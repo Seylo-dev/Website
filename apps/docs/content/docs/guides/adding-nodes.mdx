@@ -25,6 +25,8 @@ New in 0.2.1: the installer then waits up to a minute for the agent's first conn
 
 New in 0.2.8: when the agent refuses the panel's certificate, the block says so instead of pointing at ports, and the error names who issued the certificate it got. A certificate from a CA the server does not trust (for example "Fortinet, FG800D...") means a firewall or proxy on the server's network decrypts HTTPS (TLS inspection) and re-signs every site with its own CA. The agent refuses that on purpose. Either exempt the panel's domain from the inspection in that firewall, or join over the panel's IP instead: **Add node** shows **Network decrypts HTTPS? Join over the panel's IP instead** next to a domain command, the same token over `https://<panel IP>:3443` with `--pin`. Use one of the two commands: the token works once.
 
+New in 0.2.13: a node that already joined over the domain and went offline this way does not need to join again. Under the same link, **Already joined? Point it here** has a `seylo set-panel` command that moves it to the panel's IP and pin and keeps the node; see [Point a joined node at another address](#point-a-joined-node-at-another-address).
+
 Also new in 0.2.8: running a join command on a node that is already joined to the same address joins again when the earlier join is dead for that address: another panel answers there (a new panel that took over an old panel's domain), the node was removed from it, or the command's `--pin` names another key. Before, the installer said "Already joined" and kept the old panel's identity. A disabled node, the same pin, a used token or an unreachable panel keep the earlier join, and the installer says what to do (enable the node, or re-run with `--force`). A node joined over the panel's IP and pin that cannot use the panel domain tries it again once a day instead of every hour, and stays connected meanwhile.
 
 A node only needs outbound access to the panel, plus inbound ports 80 and 443 for the sites it serves. The panel never connects to a node, so a node behind NAT works. Load balancing between nodes adds port 5757, and the IP:port addresses the panel hands out need their own ports; see [Firewalls](/installation#firewalls).
@@ -65,9 +67,77 @@ A move that fails (for example because the node does not trust the domain's cert
 Two kinds of node do not move by themselves:
 
 - Nodes that joined over plain HTTP (`--insecure`) never move: nothing on a plain connection proves the new address comes from your panel. Run a new join command from **Add node** on them with `--force` added. The node keeps its key, so the panel keeps the same node and its services.
-- Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too. New in 0.2.1: while nodes connect over the domain, **Settings → General** asks before it removes or changes it, and names them.
+- Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too, or, new in 0.2.13, point them at the panel's IP with `seylo set-panel`, which needs no token (see [Point a joined node at another address](#point-a-joined-node-at-another-address)). New in 0.2.1: while nodes connect over the domain, **Settings → General** asks before it removes or changes it, and names them.
 
 While the agents' port is closed (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)), nodes have no fallback either, and the panel makes no join command until the port is open again or the domain is active.
+
+## Point a joined node at another address
+
+New in 0.2.13. `seylo set-panel` changes the address a joined node connects to and keeps the node: its id, its services and its own settings in `/var/lib/seylo/config.yml` stay (only the panel address settings change, see [What it does](#what-it-does)), and it needs no join token. Use it on a node that joined over the panel's domain and went offline because:
+
+- its network began decrypting HTTPS. A firewall doing TLS inspection, such as a FortiGate, re-signs the domain's certificate, and the agent refuses it. `seylo status` on the node names the certificate's issuer and this command (see [Troubleshooting](/troubleshooting)).
+- the panel's address changed under it: you removed or changed the panel domain while the node connected over it.
+
+A node that joined over the panel's IP and moved to the domain later does not need it: it keeps the pinned address as a fallback and connects through it once the domain failed for 5 minutes (see [When the panel gets a domain](#when-the-panel-gets-a-domain)).
+
+### Get the command
+
+On **Nodes**, click **Add node**, then **Create join command**, then **Network decrypts HTTPS? Join over the panel's IP instead**. Under the join command over the panel's IP, **Already joined? Point it here** has the command, filled in with the panel's IP address, agents' port and pin:
+
+```bash
+sudo seylo set-panel 'https://203.0.113.10:3443' --pin 'sha256:<key>'
+```
+
+It carries no token, so the join command above it stays unused and expires after an hour. The dialog shows it while the join command uses the panel domain and the **Agents' port** switch on the **Panel domain** card (**Settings → General**) is on. Without a panel domain, the join command itself uses `https://<panel IP>:3443` with `--pin`, and the dialog has no **Already joined?** line: take the address and pin from that command.
+
+### What it does
+
+Run it as root on the node. Before it writes anything, it connects to the address with the pin, resumes there as this node with the node's own key, and checks that the panel answering is the one this node belongs to, by the panel id and identity key the node recorded (see [The panel's identity](#the-panels-identity)). That is the same check the agent makes on every connect. The panel shows the node online for a moment and keeps what it knows about it (its addresses and machine details) as it was. When the check passes, the command:
+
+1. copies `config.yml` to `config.yml.bak` (a second run replaces that copy),
+2. writes the new `panel_url` and `panel_pin` to `config.yml`, keeps the old address under `fallback` until the agent has connected at the new one, and drops `insecure_transport` (set again only for a plain `http://` address with `--insecure`) and `trust_on_first_use`. Everything else stays, the node's id and the panel's identity included,
+3. restarts the agent,
+4. waits up to 30 seconds for the agent to connect and prints its `Panel:` line, as `seylo status` does:
+
+```text
+Checking https://203.0.113.10:3443...
+https://203.0.113.10:3443 is the panel this node belongs to (panel id <panel id>, version 0.2.13).
+Wrote /var/lib/seylo/config.yml (panel_url https://203.0.113.10:3443, panel_pin sha256:<key>); the previous file is /var/lib/seylo/config.yml.bak.
+Restarted the agent.
+Panel:   https://203.0.113.10:3443 (connected)
+```
+
+When the agent has not connected by then, it also prints the `Error:` line and how to go back: `sudo cp /var/lib/seylo/config.yml.bak /var/lib/seylo/config.yml && sudo seylo restart`.
+
+Nothing changes, and the command ends with "config.yml was not changed", when:
+
+- another panel answers at the address ("answers as another panel"). To move a node to another panel, join it there with a join command from that panel's **Add node**.
+- the address does not present the key `--pin` names ("did not present the key --pin names"). Copy the pin from **Add node** again. When the error names the issuer of a firewall, the network decrypts the connection to the panel's IP too, and only an exemption in that firewall helps.
+- nothing answers there ("could not connect to").
+- the panel refuses the node, for example because it was removed from **Nodes**. The command prints the panel's reason.
+
+Three refusals still change the address, since the panel signs them with its identity key: the agent is connected through the old address right now (it connects through the new one after the restart), the panel needs a newer agent (the agent updates itself once it connects), or the node is disabled (it connects once it is enabled again on **Nodes**). The command says which. When `config.yml` already has that address and pin, nothing changes either. A node that never finished joining (`config.yml` has no `node_id`) or has no `agent.key` is refused: join it again with a new join command and `--force`.
+
+`--pin` needs an `https://` address. Without `--pin`, the address's certificate must come from a CA the server trusts, for example a new panel domain with a Let's Encrypt certificate: `sudo seylo set-panel 'https://panel.example.org'`. A plain `http://` address on another server needs `--insecure`, as for `join`, and the agent's traffic can then be read on the way.
+
+### After the move
+
+The panel still names its domain each time the node connects, so the agent tries it. Behind TLS inspection the domain's certificate is refused again: the node stays on the panel's IP, raises a **Node health check failed** alert that says its network may decrypt HTTPS, and tries the domain again after 24 hours or an agent restart. Once the firewall exempts the panel's domain, the next try moves the node back to the domain, and the pinned IP stays as its fallback.
+
+### Agents before 0.2.13
+
+`set-panel` comes with agent 0.2.13. A node that went offline before it updated can't get the update, since agents update from the panel. On that node, keep a copy of `/var/lib/seylo/config.yml` and edit it as root: set these two lines to the address and pin of the dialog's join command over the panel's IP (a node that joined over the domain has no `panel_pin` line yet, so add it),
+
+```yaml
+panel_url: https://<panel IP>:<agents' port>
+panel_pin: sha256:<key>
+```
+
+then run `sudo seylo restart`. Nothing checks the address before the restart, but the agent refuses any other panel when it connects, as always.
+
+### Or join again
+
+A new join command with `--force` added keeps the node too: the panel knows the node by its key, and `--force` keeps the rest of `config.yml` (see [The panel's identity](#the-panels-identity)). It needs a new token, and it forgets the panel identity the node recorded and writes down the one of the panel that takes the token, where `set-panel` only accepts the panel the node already belongs to.
 
 ## The panel's identity
 
