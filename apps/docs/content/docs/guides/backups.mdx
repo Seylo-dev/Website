@@ -28,7 +28,7 @@ Changed in 0.2.15. The panel's own requests to the bucket (the **Test**, the cle
 
 Before, with **Use path-style URLs** off, the panel's own requests left the bucket out of the address. On Cloudflare R2 the **Test** then failed at the write step with MalformedXML, since R2 read the test write as "create a bucket", and **Keep newest** never deleted old backups there. Node uploads were not affected. After the update, the first cleanup on such a destination deletes every backup past its **Keep newest** number at once.
 
-When the endpoint is already a bucket's own host, nodes before 0.2.15 put the bucket's name in front of each file again, so older backups there sit in a `<bucket>/` folder inside the bucket. Restores, downloads, deletes and the cleanup find them there.
+When the endpoint is already a bucket's own host, backups made before the panel was on 0.2.15 were uploaded with the bucket's name in front of each file again, so they sit in a `<bucket>/` folder inside the bucket. Restores, downloads, deletes and the cleanup find them there. The nodes upload to links the panel signs, so new backups use the new address as soon as the panel is on 0.2.15, also from a node whose agent is older.
 
 ## Schedule backups
 
