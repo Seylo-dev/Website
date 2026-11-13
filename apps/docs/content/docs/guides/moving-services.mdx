@@ -3,7 +3,7 @@ title: Moving services
 description: Move a service to another node, with or without volumes, and what happens to its traffic and data.
 ---
 
-**Advanced → Move to another node** moves a service that runs on one node to another node. Since 0.2.16 it is also in the service's menus (its **...** and its right-click menu), and databases have it on their own **Advanced** tab (see [Databases](#databases)). Follow the move on the **Deployments** tab, where it shows as a deployment started by **move**; a database, which has no **Deployments** tab, shows the move on the card with its log.
+**Advanced → Move to another node** moves a service that runs on one node to another node. Since 0.2.16 it is also in the service's menus (its **...** and its right-click menu), and databases have it on their own **Advanced** tab (see [Databases](#databases)). Follow the move on the **Deployments** tab, where it shows as a deployment started by **move**; a database, which has no **Deployments** tab, shows the move on the card with its log. Since 0.2.16 the header says where it is moving, with **Cancel move** while the panel can still take a cancel (see [While it moves](#while-it-moves)).
 
 To move a service to another project instead, or to make a copy of it, see [Clone and move between projects](/guides/clone-and-move) (new in 0.2). To take it to another panel, see [Export and import](/guides/export-and-import) (new in 0.2.10).
 
@@ -29,6 +29,20 @@ New in 0.2.16. Once you pick a node, the **Move to another node** card says what
 - the backup schedules, which keep their times and run on the new node, and the last backup, with **Back up now** to take a fresh one first.
 
 A node that cannot take the service is disabled in the picker with the reason: offline, an agent too old to copy volumes or to run the database's engine, or, for an exposed database, one that would close its port or refuse the clients without TLS it accepts now. A deploy or a backup that runs shows above the picker and keeps **Move** off. The confirm dialog repeats the downtime and what it asks of you. The panel's checks are the same when the move starts, so the card and the move agree.
+
+### While it moves
+
+New in 0.2.16. While an app or a database moves, its header says **Moving to `<node>`...** in place of its run buttons; hover it for what happens now. **Deploy** waits until the move ends ("It is moving to another node. Deploy once the move ends."), and the header and the service's menus offer no **Cancel deploy**, **Restart**, **Stop** or **Start** meanwhile.
+
+**Cancel move**, in the header, in the service's menus and on the move's row on the **Deployments** tab, asks first; **Keep moving** leaves the move running. It is there only while a cancel loses nothing:
+
+- **Without volumes**, until the move ends. The old copy kept serving the whole time, and the new copy on the other node is removed.
+- **With volumes**, and for a database, only while the data is copied. The copy stops, the service starts again on the old node with its data, and the new node removes what was copied so far.
+- Once the data is copied and the service starts on the new node, **Cancel move** is gone, since a cancel then could lose what the new copy wrote. The move ends on its own: on the new node once it is healthy, or back on the old node if it fails.
+
+Fixed in 0.2.16: cancelling a move with volumes ended the move while its copy went on, so the old copy started again while its volumes were still being read, the new node kept receiving data for a service it no longer had, and a late copy failure could turn the cancelled move into a failed one. Now the copy stops first.
+
+In the API and MCP, a move's deployment has `move` with `from`, `to`, `copying` and `canCancel`, and `deployments.cancel` of a move that is starting on the new node returns CONFLICT with reason `moveStarting`.
 
 ### IP:port access moves with the service [#ip-port-access]
 
