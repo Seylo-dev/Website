@@ -176,7 +176,8 @@ describe("docs match the app", () => {
     }
   });
 
-  // apps/web/src/components/service-tabs.ts: the tab set of each kind.
+  // apps/web/src/components/service-tabs.ts: the tab set of each kind. Since 0.2.16 databases have an
+  // Advanced tab (databaseTabs) with the Move card, resource limits and the crash policy.
   test("concepts: what each service kind gets", async () => {
     const text = await page("concepts.mdx");
     expect(text).not.toContain("Every service gets");
@@ -184,7 +185,9 @@ describe("docs match the app", () => {
     expect(line).toContain("a console, a shell");
     const databases = /Databases get ([^;.]*)/.exec(line)?.[1] ?? "";
     expect(databases).toContain("a database shell");
-    expect(databases).not.toMatch(/console|crash policy/);
+    expect(databases).toContain("the crash policy");
+    expect(databases).toContain("**Move to another node**");
+    expect(databases).not.toMatch(/console/);
     const boxes = /Boxes get ([^;.]*)/.exec(line)?.[1] ?? "";
     expect(boxes).toBeTruthy();
     expect(boxes).not.toMatch(/console|shell|alert|crash/);
