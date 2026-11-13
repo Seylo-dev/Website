@@ -22,6 +22,8 @@ New in 0.2: port 5757 only serves with that mutual TLS. The node's Traefik liste
 
 Each node has a certificate of its own, valid for 30 days instead of a year, so load balancing keeps working through at least 20 days of panel downtime; a longer one from before is replaced at once. A node checks that the node it forwards to answers with that node's own certificate, and every node gets the list of current nodes from the panel: when you remove a node, or its certificate is replaced, the others stop accepting its certificate as soon as they hear from the panel, instead of when it expires. Until every node runs the 0.2 agent, nodes still accept any certificate the panel's CA issued, as before the update.
 
+New in 0.2.15: an app behind such a forward sees the visitor's address and scheme in `X-Forwarded-For`, `X-Real-Ip` and `X-Forwarded-Proto`, not the forwarding node's, once the node that serves the copy runs agent 0.2.15 (see [Through another node](/guides/domains-and-https#through-another-node)).
+
 Port 5757 is published by Docker, so ufw does not filter it (see [Firewalls](/installation#firewalls)); mutual TLS already turns away anything that is not one of your nodes. To also keep everyone else from reaching it, allow it from your other nodes only in your provider's firewall.
 
 ## When a replica dies

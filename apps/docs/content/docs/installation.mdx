@@ -247,7 +247,7 @@ Everything Seylo keeps on a node is in one folder:
 
 | Path | What it is |
 | --- | --- |
-| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell`, `git_proxy_resolves` and, since 0.2.1, `no_tailnet` |
+| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell`, `git_proxy_resolves` and, since 0.2.1, `no_tailnet`. Since 0.2.15, `stay_on_address` until the panel has the node's request to stay on its address (see [Panel address](/guides/adding-nodes#panel-address)) |
 | `agent.key` | The node's private key; it signs every connection to the panel |
 | `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)), and since 0.2.1 `tailnet.sock`, where Tailscale Serve sends the panel's tailnet requests (see [The panel on Tailscale](/self-hosting/tailscale#how-it-works)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
 | `services/<id>/volumes/<name>` | Service volumes. New in 0.2: `services/` and each `services/<id>/` are mode 0700, so only root reaches the volumes and file mounts under them; the agent closes older folders when it starts. |
@@ -257,7 +257,7 @@ Everything Seylo keeps on a node is in one folder:
 | `registry/` | Image registry storage (panel node only) |
 | `network/` | Ports the agent picked for IP:port addresses, kept across restarts, and the key that signs tool session cookies on the node's edge listener |
 | `run/` | The agent's local socket (`agent.sock`), which the node commands such as `seylo status` talk to |
-| `state/` | The last desired state from the panel and reports waiting to be sent |
+| `state/` | The last desired state from the panel and reports waiting to be sent. Since 0.2.15 also `panel.json`: the node's name in the panel, moves to a panel address that failed on its certificate and wait for their retry, and the last connect error while the node was away |
 | `traefik/` | Traefik's config, route files and certificates |
 | `tools/` | Pinned helper binaries (Railpack, Nixpacks) |
 | `update/` | The previous agent binary (`agent.prev`) and, on the panel's node, the copies of `panel.db` and `metrics.db` taken before each panel update (`panel-snapshots/`); see [Updates](/self-hosting/updates) |

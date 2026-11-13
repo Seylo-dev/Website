@@ -130,6 +130,29 @@ A hostname belongs to the service that routes it. Adding it, or a path under it,
 
 **Upload certificate** in a domain's menu takes a PEM certificate chain and its private key; the domain switches to it. Use it for a certificate from your own CA, or a wildcard certificate you already have. It may only name hosts of this service or hosts no other service uses.
 
+## The visitor's address
+
+The node's Traefik passes the visitor's address to the app in `X-Forwarded-For` (as its last hop) and `X-Real-Ip`, and the scheme the visitor used in `X-Forwarded-Proto`. What a visitor sends in these headers is dropped where the request comes in, and Traefik sets its own from the connection. Behind Cloudflare's proxy that connection is Cloudflare's; the visitor's address is in Cloudflare's own `CF-Connecting-IP` header.
+
+### Through another node
+
+Changed in 0.2.15. With a service's copies on several nodes (see [Load balancing and replicas](/guides/load-balancing)), a request that came in on one node and was served by a copy on another reached the app with the forwarding node's address in `X-Forwarded-For` and `X-Real-Ip`, and `X-Forwarded-Proto: https` even when the visitor used plain http. An app that rate limits or logs by the last `X-Forwarded-For` hop saw every visitor through that node as one.
+
+Now the node that serves the copy keeps the headers the forwarding node set from the visitor's connection, without adding the forwarding node: the app sees the visitor's address as the last `X-Forwarded-For` hop and as `X-Real-Ip`, and the scheme the visitor used. Only another node with a certificate the panel issued to it reaches that entry point (port 5757), so nobody else can set these headers there. The node that serves the copy needs agent 0.2.15 for this; until it updates, it works as before.
+
+### Visitors over IPv6
+
+Changed in 0.2.15. On a node with a public IPv6 address, a visitor over IPv6 reached the app as the gateway of Docker's bridge (`172.x.0.1` in `X-Forwarded-For` and `X-Real-Ip`), the same address for every IPv6 visitor: Docker's userland proxy took IPv6 connections to ports 80 and 443 and opened its own to Traefik.
+
+Now the node's Traefik also joins `seylo-edge6`, an IPv6-only Docker network, so Docker forwards IPv6 visitors to it with their own address, as it does for IPv4. This needs agent 0.2.15 and Docker 28 or later. An IPv6 Docker network turns on IPv6 forwarding on the server, and with forwarding on the kernel ignores router advertisements on interfaces with `accept_ra=1`. So the node joins the network only when that would not stop the server taking its own IPv6 address or route from router advertisements. Where it would, the agent logs which interfaces to set `accept_ra=2` on and leaves IPv6 as it was:
+
+```bash
+sudo sysctl -w net.ipv6.conf.<interface>.accept_ra=2
+sudo seylo restart
+```
+
+Make the setting permanent in `/etc/sysctl.d/` too. Nodes next to Wings serve visitors through Wings' Traefik on Wings' network, which already keeps their address when that network has IPv6 on (Wings' default).
+
 ## Access rules
 
 **Access rules** in a domain's menu add, per domain:

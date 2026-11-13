@@ -108,12 +108,28 @@ The check's fix says what to do on this node:
 3. Restart the containers that kept the old servers. A container that runs through the restart keeps the servers it started with, and the check names Seylo's that still have none:
    - a service such as an app, and the panel itself (its container is `seylo-panel00000000000-<n>`): **Restart** on its page in the panel, which restarts its containers in place, without a deploy.
    - Traefik and Seylo's other containers that are not services: `docker restart <name>`.
-   - a build worker: `docker restart buildx_buildkit_<builder>0`, which keeps the build cache, or `DOCKER_CONFIG=/var/lib/seylo/builds/docker docker buildx rm <builder>`, and the next build makes a new one. With no build worker running, the next build starts one with the new servers.
+   - a build worker: since 0.2.15 the agent restarts it itself once new containers get servers they can use (see [Build workers restart themselves](#build-workers-restart-themselves)). By hand: `docker restart buildx_buildkit_<builder>0`, which keeps the build cache, or `DOCKER_CONFIG=/var/lib/seylo/builds/docker docker buildx rm <builder>`, and the next build makes a new one. With no build worker running, the next build starts one with the new servers.
    - a Wings game server, which the check does not look at: restart it from Wings' panel.
 
 When new containers are fine again and only some of Seylo's containers still have no server (Docker was restarted since the reload), the fix lists only those containers: Docker holds its setting again and needs no restart. From then on, restart Docker instead of reloading it. Updating Docker to 29.3.0 or later makes reloads safe.
 
 The check never edits `daemon.json` or restarts Docker. A restart can stop every container on the server, Wings' game servers too, so the check says how and leaves the restart to you.
+
+### Build workers restart themselves
+
+New in 0.2.15, on nodes with agent 0.2.15. A container keeps the DNS servers it started with. On Docker 29.0 to 29.2 a `systemctl reload docker` empties the `dns` setting until Docker restarts (moby#52060), so a project's build worker made in between had no server it could use, and every build there failed to pull images, also after Docker gave new containers servers again. The **Container DNS** check named the worker and said to run `docker restart` on it.
+
+Now the agent restarts such a worker itself, and the build cache stays:
+
+- before a build uses it, with one line in the build log:
+
+  ```text
+  --> The build worker had no DNS server it could use (it started while Docker's DNS setting was lost or broken); restarted it, which keeps the build cache
+  ```
+
+- when the agent's own run of the **Container DNS** check (hourly, and **Run checks now**) finds it. The check's result then says it restarted the worker, and passes when nothing else is wrong. `seylo health` on the node only reports the worker, with the hint that the agent restarts it.
+
+It never restarts a worker a build runs on, and only Seylo's own build workers. While Docker still gives new containers no DNS server it restarts nothing, and the check's fail and fix stay as above: fix Docker first. A restart that did not help is not tried again for 10 minutes.
 
 ### Reloads on Docker 29.0 to 29.2
 

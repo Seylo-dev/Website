@@ -60,9 +60,9 @@ In 0.2, a new node never built until an owner or admin turned it on. On 0.1, `--
 
 ## When the panel gets a domain
 
-Nodes that joined over `https://<panel IP>:3443` move to the [panel domain](/self-hosting/the-panel#give-the-panel-a-domain) by themselves once it is active. The panel asks each of them to reconnect; the agent connects to `https://<panel domain>`, checks the certificate against the server's trusted certificate authorities and that the same panel answers there, and only then saves the new address in `/var/lib/seylo/config.yml`. The old pinned address stays as a fallback: if the domain stops answering for 5 minutes (removed, or its DNS changed), the node reconnects through it and moves on to the next domain by itself. The node's sheet on **Nodes** shows the address it uses under **Connects to**. The panel's own node keeps connecting over the server's loopback.
+Nodes that joined over `https://<panel IP>:3443` move to the [panel domain](/self-hosting/the-panel#give-the-panel-a-domain) by themselves once it is active. The panel asks each of them to reconnect; the agent connects to `https://<panel domain>`, checks the certificate against the server's trusted certificate authorities and that the same panel answers there, and only then saves the new address in `/var/lib/seylo/config.yml`. The old pinned address stays as a fallback: if the domain stops answering for 5 minutes (removed, or its DNS changed), the node reconnects through it and moves on to the next domain by itself. Changed in 0.2.15: a connect that fails on a certificate the node will never trust (an issuer it does not trust, or a key that is not the pinned one, as when the node's network starts decrypting HTTPS) goes to the fallback on the next attempt, not after 5 minutes. The agent then makes the IP and pin its address again, raises one alert and stays there (see [Panel address](#panel-address)). A timeout or a refused connection still waits the 5 minutes, so a short panel restart does not move a node off its address, and so does Traefik's own default certificate, which the panel's server answers with while it has no certificate for the name (its proxy just restarted, or a certificate is being issued again). The node's sheet on **Nodes** shows the address it uses under **Connects to**. The panel's own node keeps connecting over the server's loopback.
 
-A move that fails (for example because the node does not trust the domain's certificate) keeps the old address, raises a **Node health check failed** alert with the reason, and is tried again after an hour or when the agent restarts. After adding a certificate authority to a node's trust store, run `systemctl restart seylo` there: the agent reads the trust store when it starts.
+A move that fails (for example because the node does not trust the domain's certificate) keeps the old address, raises a **Node health check failed** alert with the reason, and is tried again after an hour or when the agent restarts. Changed in 0.2.15: a move that failed because the domain's certificate came from an issuer the node does not trust, or did not match the pin, is remembered on the node, in `/var/lib/seylo/state/panel.json`. Before, the wait lived only in memory, so every agent restart, an update included, tried the move again, dropped the first session the panel accepted and raised the same alert again. The wait ends when the panel stops naming that address or names another, or when the move works. After adding a certificate authority to a node's trust store, move the node by hand with `sudo seylo set-panel '<panel URL>'` (see [Point a joined node at another address](#point-a-joined-node-at-another-address)); for other failures, `systemctl restart seylo` reloads the trust store and tries again.
 
 Two kinds of node do not move by themselves:
 
@@ -70,6 +70,37 @@ Two kinds of node do not move by themselves:
 - Nodes that joined with a panel domain have no pinned address to fall back on. If you remove or change the domain, run a new join command with `--force` on them too, or, new in 0.2.13, point them at the panel's IP with `seylo set-panel`, which needs no token (see [Point a joined node at another address](#point-a-joined-node-at-another-address)). New in 0.2.1: while nodes connect over the domain, **Settings → General** asks before it removes or changes it, and names them.
 
 While the agents' port is closed (see [Serve on IP address](/self-hosting/the-panel#serve-on-ip-address)), nodes have no fallback either, and the panel makes no join command until the port is open again or the domain is active.
+
+## Panel address
+
+New in 0.2.15. A node's **Settings** has a **Panel address** choice:
+
+- **Follow the panel's domain**, the default and how every node worked before: the node moves to the panel's domain once it is live (see [When the panel gets a domain](#when-the-panel-gets-a-domain)), so it finds the panel if its IP address changes.
+- **Stay on this address**: the node keeps the address it connects to now, usually the panel's IP and pin, and the panel never names its domain to it.
+
+**Stay** is for a server whose network decrypts HTTPS: a firewall doing TLS inspection re-signs the domain's certificate, the agent refuses it, and moving to the domain only cuts the node off. The choice saves at once. Choosing **Follow** on a connected node reconnects it, so it moves at once. The panel's own node has no choice: it reaches the panel on its own server.
+
+Besides your own choice, three things put a node on **Stay**, and **Settings** then says which:
+
+- `sudo seylo set-panel` on the node sets it (see [Point a joined node at another address](#point-a-joined-node-at-another-address)), also when `config.yml` already points at that address because someone edited it by hand.
+- A join with `--pin` at the panel's IP address while the panel has a domain sets it: that is the second command of the **Add node** dialog, **Network decrypts HTTPS? Join over the panel's IP instead**. The request goes with the join only, so a node that joined a panel before 0.2.15 that way follows a domain added later.
+- While a node has an open "could not move to the panel address" alert because its network re-signed the domain's certificate, the panel keeps it on **Stay** until you choose. **Settings** says why: "Kept here because the node's network re-signed the panel domain's certificate (TLS inspection), see the node's alert. Choose Follow to try the domain again." An alert about Traefik's own default certificate does not count: the panel's server answers with it while it has no certificate for the name, which passes on its own.
+
+The setting works for every node. `set-panel` and the join ask for **Stay** from agent 0.2.15: the agent writes `stay_on_address: true` to `config.yml`, sends it on its next connect, and removes it once a panel answered.
+
+In the API and MCP, `nodes.updateSettings` takes `panelAddressChoice` (`follow` or `stay`, in the activity log), and `nodes.get` returns `panelAddressChoice`, `panelAddressChoiceBy` (`owner`, `node`, `join`, `inspectedCertificate` or `default`) and `panelAddressChoiceAt`. The panel's own node has none of them.
+
+## Why a node is offline
+
+New in 0.2.15. An offline node's row on **Nodes** says why when the panel knows: the connect it refused since the node was last seen, for example "Refused 4 min ago: This agent (0.2.1) is too old for this panel..." or a signature that does not match the node's key, else when it was last seen ("Last seen ...").
+
+Once a node is back, its agent tells the panel the last connect error it had while away, which the panel could not see: a certificate it refused, a name it could not look up, a connection that timed out. The node's page shows it for a week:
+
+```text
+Was offline from 17:39 to 17:46: dial panel: x509: certificate signed by unknown authority ...
+```
+
+The agent keeps that error across a restart while it is away, in `/var/lib/seylo/state/panel.json`. The report comes from nodes on agent 0.2.15. In the API, `nodes.list` and `nodes.get` have `rejectedHello` for an offline node, and `nodes.get` has `lastOffline` (`from`, `to`, `reason`, `failedAttempts`).
 
 ## Point a joined node at another address
 
@@ -95,7 +126,7 @@ It carries no token, so the join command above it stays unused and expires after
 Run it as root on the node. Before it writes anything, it connects to the address with the pin, resumes there as this node with the node's own key, and checks that the panel answering is the one this node belongs to, by the panel id and identity key the node recorded (see [The panel's identity](#the-panels-identity)). That is the same check the agent makes on every connect. The panel shows the node online for a moment and keeps what it knows about it (its addresses and machine details) as it was. When the check passes, the command:
 
 1. copies `config.yml` to `config.yml.bak` (a second run replaces that copy),
-2. writes the new `panel_url` and `panel_pin` to `config.yml`, keeps the old address under `fallback` until the agent has connected at the new one, and drops `insecure_transport` (set again only for a plain `http://` address with `--insecure`) and `trust_on_first_use`. Everything else stays, the node's id and the panel's identity included,
+2. writes the new `panel_url` and `panel_pin` to `config.yml`, keeps the old address under `fallback` until the agent has connected at the new one, and drops `insecure_transport` (set again only for a plain `http://` address with `--insecure`) and `trust_on_first_use`. New in 0.2.15, it also writes `stay_on_address: true`, so the agent asks the panel to keep the node on the new address ([Panel address](#panel-address) **Stay**). Everything else stays, the node's id and the panel's identity included,
 3. restarts the agent,
 4. waits up to 30 seconds for the agent to connect and prints its `Panel:` line, as `seylo status` does:
 
@@ -116,13 +147,15 @@ Nothing changes, and the command ends with "config.yml was not changed", when:
 - nothing answers there ("could not connect to").
 - the panel refuses the node, for example because it was removed from **Nodes**. The command prints the panel's reason.
 
-Three refusals still change the address, since the panel signs them with its identity key: the agent is connected through the old address right now (it connects through the new one after the restart), the panel needs a newer agent (the agent updates itself once it connects), or the node is disabled (it connects once it is enabled again on **Nodes**). The command says which. When `config.yml` already has that address and pin, nothing changes either. A node that never finished joining (`config.yml` has no `node_id`) or has no `agent.key` is refused: join it again with a new join command and `--force`.
+Three refusals still change the address, since the panel signs them with its identity key: the agent is connected through the old address right now (it connects through the new one after the restart), the panel needs a newer agent (the agent updates itself once it connects), or the node is disabled (it connects once it is enabled again on **Nodes**). The command says which. When `config.yml` already has that address and pin, nothing changes either. Changed in 0.2.15: if it does not have `stay_on_address` yet, for example because the address was edited in by hand, the command writes only that, restarts the agent and says "Wrote stay_on_address to it: the agent asks the panel to keep this node on that address." A node that never finished joining (`config.yml` has no `node_id`) or has no `agent.key` is refused: join it again with a new join command and `--force`.
 
 `--pin` needs an `https://` address. Without `--pin`, the address's certificate must come from a CA the server trusts, for example a new panel domain with a Let's Encrypt certificate: `sudo seylo set-panel 'https://panel.example.org'`. A plain `http://` address on another server needs `--insecure`, as for `join`, and the agent's traffic can then be read on the way.
 
 ### After the move
 
-The panel still names its domain each time the node connects, so the agent tries it. Behind TLS inspection the domain's certificate is refused again: the node stays on the panel's IP, raises a **Node health check failed** alert that says its network may decrypt HTTPS, and tries the domain again after 24 hours or an agent restart. Once the firewall exempts the panel's domain, the next try moves the node back to the domain, and the pinned IP stays as its fallback.
+Changed in 0.2.15: with agent 0.2.15 on the node, `set-panel` puts the node's [Panel address](#panel-address) on **Stay**, so the panel no longer names its domain to it and the node stays on the panel's IP. Once the firewall exempts the panel's domain, choose **Follow the panel's domain** in the node's **Settings**: the node reconnects, moves to the domain, and the pinned IP stays as its fallback.
+
+On a node that follows the domain, the panel names it each time the node connects, so the agent tries it. Behind TLS inspection the domain's certificate is refused again: the node stays on the panel's IP, raises a **Node health check failed** alert that says its network may decrypt HTTPS, and tries the domain again after 24 hours or when the panel names another address. Before 0.2.15 an agent restart tried it again too.
 
 ### Agents before 0.2.13
 
@@ -133,7 +166,7 @@ panel_url: https://<panel IP>:<agents' port>
 panel_pin: sha256:<key>
 ```
 
-then run `sudo seylo restart`. Nothing checks the address before the restart, but the agent refuses any other panel when it connects, as always.
+then run `sudo seylo restart`. Nothing checks the address before the restart, but the agent refuses any other panel when it connects, as always. Once it is back and updated, choose **Stay on this address** in its **Settings** (see [Panel address](#panel-address)), or run the `set-panel` command with the same address and pin, which since 0.2.15 writes only `stay_on_address` then.
 
 ### Or join again
 
@@ -181,8 +214,9 @@ The **Settings** action on a node:
 | **Public address** | Where people and other nodes reach this server, when it is not the detected address: for example the public IP of a cloud server (AWS, Google Cloud, Azure, Oracle) whose network interface only has a private one. Used for IP:port links, exposed databases, load balancing and join commands. Uptime checks may also target it when it is a private address (see [Uptime checks](/features/uptime-checks#where-checks-run-from)). A git server on it, as on any of the node's addresses, needs an owner or admin to allow it per project (see [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses)). The panel server's is filled in from the address you opened the setup link at, when it knows no public address of its own. The node health check warns while no public address is known. |
 | **Wildcard domain** | New services on this node get `<name>.<this domain>`. Point the wildcard `A` record at the node first. |
 | **Build images on this node** | Allow builds here. The node then gets the source, git credentials and build-time variables of everything it builds, from any project, and the images it builds run on every node, so keep it on only for nodes you trust like the panel. Small nodes usually leave this off. A new node starts with what its join command chose in **Add node** (on by default since 0.2.1; see [Build nodes](#build-nodes)). |
-| **Builds at once** | How many builds run in parallel; the rest wait in a queue |
+| **Builds at once** | How many builds run in parallel; the rest wait in a queue (see [Builds waiting for a slot](/guides/github-and-git#builds-waiting-for-a-slot)). New in 0.2.15: **Auto** or a fixed number from 1 to 16. **Auto** runs one build per 4 cores and per 4 GB of memory, whichever allows fewer, at least 1 and at most 16: a node with 28 cores and 157 GB runs 7, one with 32 cores and 121 GB runs 8, one with 4 cores and 8 GB runs 1. The field shows what **Auto** runs on the node now ("Auto - 7 now"), and it follows the machine: a node that comes back on other hardware gets the new number. New nodes start on **Auto**; nodes from before 0.2.15 keep their number until you pick **Auto**. It needs no agent update. In the API and MCP, `nodes.list` and `nodes.get` have `parallelBuildsAuto`, with `maxParallelBuilds` the number that applies now; `nodes.updateSettings` takes `parallelBuildsAuto` (`true` for Auto, `false` to keep the number that applies now as a fixed one), and `maxParallelBuilds` alone still sets a fixed number and turns Auto off. |
 | **Logs per service (MB)**, **Keep logs (days)** | How much service log history the node keeps |
+| **Panel address** | New in 0.2.15: **Follow the panel's domain** or **Stay on this address**. Not on the panel's own node. See [Panel address](#panel-address). |
 | **Game servers first** | Only on nodes with Wings, see [Running next to Wings](/guides/running-next-to-wings) |
 
 Builds and where they run are described in [Deploy from GitHub or Git](/guides/github-and-git#where-builds-run).
@@ -198,6 +232,8 @@ Click a node's name on **Nodes** to open it. Its **Overview** has the machine ac
 - **Agent logs** shows what the agent wrote: connects, deploys and errors.
 
 On the node itself, `seylo status`, `seylo health` and `seylo logs` show the same from the command line; see the [CLI reference](/reference/cli).
+
+Changed in 0.2.15: `seylo status` names the node as the panel does. It printed the server's hostname, or the name given when it joined, so a node renamed in the panel showed under another name on the server. Once the agent has connected it shows the panel's name, a rename made while it is connected included, also after a restart while the panel is away. Before the first connect it is the name given when it joined, else the hostname, as before.
 
 ## Disk cleanup
 
