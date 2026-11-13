@@ -22,7 +22,7 @@ For Postgres, **Include pgvector** picks an image with the vector extension. Val
 
 New in 0.2.11: tick **Use another image** under **Version** to run another tag or digest of the engine's own image instead of the pinned one, such as `mongo:8.2.12`, `postgres:17-alpine` or `redis:latest`. The **Image** field starts from the picked version's image (`pgvector/pgvector` with **Include pgvector**). It is not tested by Seylo, and for a floating tag the form says that what it points at can change on the next deploy. The database is recorded as the version its tag names (`mongo:8.2.12` is MongoDB 8.2); when the tag names none, the page shows the image instead, as in "MongoDB (mongo:latest)". A Postgres image whose tag names no release, such as `postgres:latest` or a digest, also gets `PGDATA=/var/lib/postgresql/docker` in the database's variables, so its data stays on the data volume whatever release the tag pulls (see [Postgres and PGDATA](#postgres-and-pgdata)). An image of another repository is refused: Seylo's settings for a database (its environment, data folder, health check and command) are made for its engine's image.
 
-Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name. New in 0.2.13: the **Users** tab makes more users and changes the main one (see [Users](#users)).
+Seylo generates the credentials and keeps them encrypted. The database is only reachable from services of the same project on the same node, by its service name, until you [expose it](#expose-with-tls) or open a [timed expose](#timed-expose). New in 0.2.13: the **Users** tab makes more users and changes the main one (see [Users](#users)).
 
 ## Connect from an app
 
@@ -63,13 +63,25 @@ Exposing only opens a port on the node to the database, with TLS. Clients sign i
 
 Changed in 0.2.12, on nodes with the 0.2.12 agent: a **TLS host name** set or changed while the database runs gets its Let's Encrypt certificate right away. Before, the node asked for it only on the database's next deploy or the agent's next restart, and until then the port kept the self-signed certificate.
 
-The port only takes TLS. Postgres, MySQL and MariaDB serve TLS themselves, and the node refuses their clients that do not ask for it with the database's own kind of error: Postgres clients get "this port only accepts TLS connections: connect with sslmode=require", MySQL and MariaDB clients get error 3159. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name.
+The port only takes TLS. Postgres, MySQL and MariaDB serve TLS themselves, and the node refuses their clients that do not ask for it with the database's own kind of error: Postgres clients get "this port only accepts TLS connections: connect with sslmode=require", MySQL and MariaDB clients get error 3159. For MongoDB, the Redis-like engines and ClickHouse's native port the agent terminates TLS on the exposed port; ClickHouse's HTTP port is never exposed. MariaDB always uses its own self-signed certificate, even with a TLS host name. Since 0.2.16 the port can also let clients without TLS through, when you allow it (see [Connections without TLS](#connections-without-tls)).
 
 MariaDB 10.11 has no TLS, so since 0.2.9 it cannot be exposed: **Expose** refuses it. MariaDB 11.4 and later can; to expose a 10.11 database, [change its version](#change-the-version) to 11.4 first. A MariaDB version before 11.4 that Seylo does not offer, such as 10.6 or 11.2 run with **Use another image**, cannot be exposed either.
 
 The **Exposed connection URL** (`${{db.EXPOSED_URL}}`) is what services on other nodes use. Without a Let's Encrypt certificate the port serves a self-signed one, which clients that check certificates refuse: see [Self-signed certificates](#self-signed-certificates) for the settings that connect.
 
 The card's **Certificate** line says what the port serves: **self-signed**, **being issued** (the node has no Let's Encrypt certificate for the **TLS host name** yet), **valid** with its issuer and end date, or, new in 0.2.13, **failed** (the node serves the self-signed one and has an error from Let's Encrypt for the name). Changed in 0.2.13: the line follows what the port serves. Before, an exposed Postgres or MySQL database with a TLS host name stayed on **being issued** after it had its Let's Encrypt certificate, because the node did not report the certificate those databases serve, and a MongoDB, ClickHouse or Redis-like database with a TLS host name whose certificate was never issued said **valid** while it served the self-signed one.
+
+### Connections without TLS
+
+New in 0.2.16, on nodes with agent 0.2.16. **Allow connections without TLS** on the **Exposed connection** card lets clients that do not ask for TLS through to the database, instead of refusing them. It works for every engine that can be exposed: Postgres, MySQL, MariaDB, MongoDB, Redis, Valkey, KeyDB, Dragonfly and ClickHouse's native port. It is off by default, also on every database exposed before 0.2.16. TLS clients connect as before, the **Allowed IPs** still apply, and the exposed URL and `${{db.EXPOSED_URL}}` keep asking for TLS. While it is on, the card's chip says **TLS optional**.
+
+Turning it on asks you to confirm. Clients without TLS send their queries, get their data back and, with some sign-in methods, send the password unencrypted; the Redis-like engines and ClickHouse send the password itself unencrypted. With no **Allowed IPs** the warning says, in stronger words, that the port is open to every IP address, and while it is on, saving an empty allow list under **Port and access** asks again. Prefer TLS, or a [timed expose](#timed-expose) for a one-off connection.
+
+Turning it off asks nothing: the node refuses new clients without TLS at once and closes the ones connected without TLS, and TLS sessions stay. Turning **Exposed** off turns it off too, so exposing again starts TLS only. Each change is in the activity log, and it takes the same permission as the rest of the exposure.
+
+MySQL clients without TLS need the server's public key to send the password, as the card says: `--get-server-public-key` (for example `mysql --ssl-mode=DISABLED --get-server-public-key`), or `allowPublicKeyRetrieval=true` in JDBC.
+
+On a node with an older agent the switch says it needs the node's agent 0.2.16, and the port stays TLS only. In the API and MCP, `databases.setExposure` takes `allowPlain` (it needs exposure on, and turning it on is refused with `agentTooOld` on an older node); `databases.get` returns `exposure.allowPlain` and `exposure.plainNeedsNodeUpdate`, and `databases.connection` returns `exposed.allowPlain`, true only while clients without TLS get through. An AI tool waits for a person's approval before it turns it on, or, while it is on, empties the allowed IPs or adds addresses they did not cover (see [Approvals](/features/mcp-and-ai#approvals)).
 
 ### Closed until the node updates
 
@@ -131,6 +143,23 @@ The certificate only vouches for its own host name and the names under it, and f
 Changed in 0.2.13: the self-signed certificate is now made as a self-signed certificate. Before, some clients described it wrongly: node-postgres on Bun, and other clients built on BoringSSL or OpenSSL 1.1, said "unable to verify the first certificate" instead of "self-signed certificate", and some, such as LibreSSL, did not accept it even when told to trust that file. A node on 0.2.13 makes the certificate again, once, and again when a TLS host name is set while the database still has no Let's Encrypt certificate, so the file names the host. The database serves the new one by itself, without a restart; open connections keep the old one until they reconnect. A client that pinned the old certificate needs the new one: **Download certificate** again.
 
 The reason for a TLS host name ("no Let's Encrypt certificate yet"), the last error and **Download certificate** need the node on 0.2.13. On an older node the note only shows for a database without a TLS host name and for MariaDB, without the download.
+
+## Timed expose
+
+New in 0.2.16. The **Timed expose** card on the **Connection** tab, under the exposed connection, opens the database's port to your IP for a while, for a desktop client or a one-off script, without exposing it for good. Pick how long (**For**: 15 minutes, 1 hour, which is the default, 2, 8 or 24 hours) and who may connect (**Only from**: IPs or CIDRs; empty uses your own address), then **Open for 1 hour from my IP**. For ClickHouse, **Port** picks the native port 9000 or the HTTP port 8123 (for JDBC and DBeaver). Before, timed exposes were only offered on the **Domains** tab, which databases do not have.
+
+Each open expose shows:
+
+- the address (`<node IP>:<port>`) once the node has opened the port, and the IPs it is open to,
+- the connection URL: with the password for people who may see the database's credentials, without it for everyone else,
+- a command for the engine's own client: `psql`, `mysql`, `mariadb`, `mongosh`, `redis-cli` (also for Valkey, KeyDB and Dragonfly), `clickhouse-client`, or `curl` for ClickHouse's HTTP port. Each asks for the password at its prompt, so the password never lands in your shell history,
+- whether the connection is encrypted, when it closes and who opened it, with **+1 hour**, which adds an hour to the time left, and **Close now**. **Open another** opens one more.
+
+A timed expose relays the database's own port and adds no TLS. MySQL and MariaDB 11.4 and later serve TLS themselves, so the URL and command ask for it (`ssl-mode=REQUIRED`, `mariadb --ssl`), and so does a Postgres while it is also exposed, since TLS is on inside it then: its URL and command use `sslmode=require` once the node reports TLS on. MongoDB, ClickHouse, the Redis-like engines and a Postgres that is not exposed are reached without encryption, and the card says so: the connection crosses the network in the clear, only the allowed IPs can connect, and the port closes on time. For TLS on those, use the [exposed connection](#expose-with-tls).
+
+The node closes the port on time even while the panel is down. Idle connections stay open for 2 hours, like on the exposed port, on nodes with agent 0.2.16; older agents cut them after 15 idle minutes, which drops a SQL client's pooled connections. A timed expose and the exposed connection never share a port on the node. Opening, extending and closing take the same permission as on the **Domains** tab and are in the activity log; the card is hidden from people who may not see the service's exposures.
+
+From a terminal, `seylo tunnel expose acme-shop/db --port 5432 --for 2h` opens one too (see [Dev access and tunnels](/features/dev-access-and-tunnels#timed-expose)). In the API and MCP, `exposures.openTimed`'s `targetPort` is optional and defaults to the database's port, which is the only one a database takes (ClickHouse: 9000 or 8123); `exposures.get` returns each timed expose of a database with `database` (its client command and URL, without the password), and `databases.connection` returns `timed`, the URL of each with the password.
 
 ## Users
 
@@ -257,6 +286,16 @@ In Seylo's test setup, the commands the panel runs for each step of the Users ta
 ## Backups
 
 On the database's **Backups** tab, schedule dumps to an S3-compatible bucket. Each run uses the engine's own dump tool. See [Backups](/guides/backups), and [Database engines](/guides/database-engines#backups-and-restores) for what each engine's backup and restore do.
+
+New in 0.2.16: a PostgreSQL, MySQL, MariaDB or MongoDB schedule can back up chosen databases, or some tables or collections of one, and each backup shows what it holds (see [Choose what a database backup holds](/guides/backups#choose-what-a-database-backup-holds)).
+
+## Advanced tab
+
+New in 0.2.16. A database's **Advanced** tab, between **Alerts** and **Notes**, has the parts of an app's **Advanced** tab that a database takes. Its engine sets the rest (health check, nodes and replicas, container settings and ports).
+
+- **Move to another node** copies the database to another node while it is stopped and starts it there with the same data, users and passwords. Before you click **Move**, the card says what happens on the node you pick, and while the move runs it shows the move with its log. **Move to another node** is in the database's menus too. See [Moving a database](/guides/moving-services#databases).
+- **Resource limits**: memory limit and reservation, CPU weight and process limit. A database has no **Deploy** button, so **Save and restart** saves them and, after a confirm, restarts the database with them. It is offline for a few seconds and its data stays. A memory limit below what it uses stops it, so leave room for its caches.
+- **Restart after a crash**, the crash policy (see [Crash policy and alerts](/features/crash-policy-and-alerts)).
 
 ## Change the version
 

@@ -3,7 +3,7 @@ title: Moving services
 description: Move a service to another node, with or without volumes, and what happens to its traffic and data.
 ---
 
-**Advanced → Move to another node** moves a service that runs on one node to another node. Follow the move on the **Deployments** tab, where it shows as a deployment started by **move**.
+**Advanced → Move to another node** moves a service that runs on one node to another node. Since 0.2.16 it is also in the service's menus (its **...** and its right-click menu), and databases have it on their own **Advanced** tab (see [Databases](#databases)). Follow the move on the **Deployments** tab, where it shows as a deployment started by **move**; a database, which has no **Deployments** tab, shows the move on the card with its log.
 
 To move a service to another project instead, or to make a copy of it, see [Clone and move between projects](/guides/clone-and-move) (new in 0.2). To take it to another panel, see [Export and import](/guides/export-and-import) (new in 0.2.10).
 
@@ -15,6 +15,34 @@ To move a service to another project instead, or to make a copy of it, see [Clon
 If anything fails, the service stays on the old node. With volumes, the old node keeps its stopped copy and its data until the new node is live, so a failed move loses nothing.
 
 Both nodes must be online, and the service must have been deployed at least once.
+
+New in 0.2.16: a move waits for what runs on the service. It is refused while a deploy of the service is queued, building or deploying, since a deploy rolls out on the nodes it started with (the error names the deploy to wait for or cancel), and while one of its backups or restores runs. While the move runs, **Back up now** and **Restore** are refused, and a backup schedule that comes due runs in the first minute after the move ends, on the new node.
+
+### Before you move
+
+New in 0.2.16. Once you pick a node, the **Move to another node** card says what happens there, from what the panel knows of the service (`services.moveImpact` in the API and MCP):
+
+- the downtime: none without volumes; with volumes, that the service stops while they copy, and for a database its size at its last full backup,
+- the internal address, which stays the same, and the services on other nodes that use it and lose it, since nodes share no private network,
+- the IP:port access that moves (below), and for a database with a **TLS host name**, that its DNS must point at the new node,
+- the services that read a database's `EXPOSED_URL`, `EXPOSED_HOST` or `EXPOSED_PORT`, which get the new address on their next deploy, so deploy them after the move,
+- the backup schedules, which keep their times and run on the new node, and the last backup, with **Back up now** to take a fresh one first.
+
+A node that cannot take the service is disabled in the picker with the reason: offline, an agent too old to copy volumes or to run the database's engine, or, for an exposed database, one that would close its port or refuse the clients without TLS it accepts now. A deploy or a backup that runs shows above the picker and keeps **Move** off. The confirm dialog repeats the downtime and what it asks of you. The panel's checks are the same when the move starts, so the card and the move agree.
+
+### IP:port access moves with the service [#ip-port-access]
+
+Fixed in 0.2.16. When the service is live on the new node, its IP:port access moves there: a database's exposed port, open timed exposes and the first-run IP:port address, each on the same port unless another service has that port on the new node (then the new node picks one), with its allowed IPs, its TLS settings, connections without TLS as they were, and a timed expose's end. A failed move leaves them on the old node. Before, they stayed on the old node and stopped working; services moved by an older version are fixed when the panel starts on 0.2.16.
+
+## Databases
+
+New in 0.2.16. A database moves the same way as a service with volumes: it stops, its data is copied to the new node, and it starts there with the same data, users and passwords, so the credentials the panel keeps still sign in. The bigger the data, the longer it is offline. If the move fails, it starts again on the old node.
+
+- Services on the new node reach it at its internal address as before, and reconnect once it is up. Services left on the old node lose it: move them too, or point them at its exposed connection.
+- Its exposed port and timed exposes move to the new node's address with the same allowed IPs and TLS settings. Clients connect to the new node's address; a **TLS host name** stays the same once its DNS points at the new node, and its certificate renews there.
+- Services that read its `EXPOSED_*` variables get the new address on their next deploy.
+
+A database needs a target whose agent runs its engine, and while it is exposed, one that keeps the port TLS only (agent 0.2.9) and, with **Allow connections without TLS** on, one that takes such clients (agent 0.2.16).
 
 ## After the move
 

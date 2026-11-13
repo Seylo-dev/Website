@@ -153,6 +153,16 @@ Backups run in a helper container from the database's own image and go straight 
 | Dragonfly | `SAVE RDB` into its data folder, then streamed out | The RDB file is swapped in |
 | ClickHouse | `BACKUP` of every database except the system ones, as a zip in its data folder, then streamed out | `RESTORE`, see below |
 
+New in 0.2.16, on nodes with agent 0.2.16: PostgreSQL, MySQL, MariaDB and MongoDB schedules can back up chosen databases instead of the whole server, or some tables or collections of one database (see [Choose what a database backup holds](/guides/backups#choose-what-a-database-backup-holds)). The backup and restore of a choice:
+
+| Engine | Chosen databases | Some tables or collections | Restore |
+| --- | --- | --- | --- |
+| PostgreSQL | One `pg_dump` per database; several go into one `.bundle` | `pg_dump` with each table (and its partitions) | `pg_restore --clean --if-exists --single-transaction` per database, which creates a missing database first |
+| MySQL, MariaDB | `mysqldump --databases` or `mariadb-dump --databases` | The dump of those tables, which creates the database if it is missing | `mysql` |
+| MongoDB | One `mongodump --db` per database; several go into one `.bundle` | `mongodump` without the other collections | `mongorestore --drop` of only those namespaces |
+
+A backup of chosen databases holds no users or roles, so a restore leaves them as they are. Redis, Valkey, KeyDB, Dragonfly and ClickHouse always back up everything. Before each dump the node lists the server with the dump's own helper and sign-in, which also measures what every database backup holds (size and approximate rows per database and table); the MySQL listing works on MySQL 5.7 images too.
+
 A restore of the Redis-like engines also replaces the append-only files. The ones it replaced stay next to them as `<name>.before-restore-<time>`, as one undo; the next restore deletes them.
 
 A ClickHouse restore replaces the databases the backup holds, like `pg_dumpall --clean`:

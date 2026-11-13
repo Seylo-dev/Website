@@ -148,6 +148,8 @@ An app imported without any domain gets IP:port access, like a new app, only whe
 | Backup schedules | **Use destinations of the same name** (same name, provider and bucket), **Switched off** or **Leave them out** (the default from another panel) |
 | Database listeners | **Add** or **Skip** for each port. One open to anyone is skipped by default; one on a port in use is always skipped. |
 
+New in 0.2.16: a database's backup schedule of chosen databases keeps its choice in the file (see [Choose what a database backup holds](/guides/backups#choose-what-a-database-backup-holds)); a schedule of everything is written as before, and a panel before 0.2.16 imports a choice as a schedule of everything. A database listener arrives TLS only, also when **Allow connections without TLS** was on: turn it on again on the new panel if you need it.
+
 From another panel, cron jobs and uptime checks arrive **As in the file** by default, so the ones that were on are on. When the old service still runs, its cron jobs then run on both panels until one side is switched off. Pick **Switched off** then, and switch them on once the old service is stopped. Imported on the same panel, the defaults differ (see [Imported on the same panel](#imported-on-the-same-panel)).
 
 The Cloudflare tunnel arrives switched off, since two connectors on one token would split the traffic between the panels: turn it on once the old one is off. The maintenance page comes along. A service with a deploy trigger gets a new URL, shown once after the import.

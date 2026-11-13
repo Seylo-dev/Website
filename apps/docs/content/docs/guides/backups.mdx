@@ -36,7 +36,7 @@ On a service's **Backups** tab, **Add schedule**:
 
 | Setting | What it does |
 | --- | --- |
-| **What** | **Database** (a dump) for databases, or **Volume** for one of the service's volumes |
+| **What** | **Database** (a dump) for databases, or **Volume** for one of the service's volumes. New in 0.2.16: for a PostgreSQL, MySQL, MariaDB or MongoDB database, **Everything on this server** or **Chosen databases** (see [Choose what a database backup holds](#choose-what-a-database-backup-holds)) |
 | **Destination** | One of the buckets from Settings |
 | **When** | A preset, or **Custom (cron expression)**. Times are UTC. |
 | **Keep newest** | How many backups this schedule keeps. The panel deletes older ones from the bucket after each successful backup and when you change the number. |
@@ -47,6 +47,10 @@ Changed in 0.2.15: **Back up now** on a service's **Backups** tab starts every s
 **Back up now** on a database's **Connection** tab does the same as on the **Backups** tab. A database without a schedule gets a one-off dump to the first destination instead, from either tab, which is kept until you delete it. In the API and MCP: `backups.runAll` for every schedule, `backups.runNow` with a `policyId` for one.
 
 New in 0.2.15: when a schedule comes due while its previous backup, or one started with **Back up now**, is still running, the scheduler skips that time, notes it in the panel's log, and runs the schedule at its next time. Before, it started another backup of the same schedule.
+
+Fixed in 0.2.16: a schedule's own **Back up now** is refused while that schedule's backup still runs, and the toast says "This schedule is still backing up."; before, it started a second backup of it. One-off backups are not checked. In the API and MCP, `backups.runNow` with a `policyId` returns CONFLICT with reason `running` and the `runId` of the backup that runs.
+
+New in 0.2.16: while a service moves to another node, **Back up now** and **Restore** are refused ("`<service>` is moving to another node. Back it up once the move ends."). A schedule that comes due during the move stays due and runs in the first minute after the move ends, on the new node (see [Moving services](/guides/moving-services#databases)).
 
 ### What a backup contains
 
@@ -63,6 +67,23 @@ New in 0.2.15: when a schedule comes due while its previous backup, or one start
 
 Dumps run in a helper container from the database's own image, so the dump tool always matches the server version. Dragonfly and ClickHouse write their backup into their own data folder first; the helper streams it to the bucket and deletes it, so the node needs room for one backup there. How each engine restores, including ClickHouse's rename-aside restore, is in [Database engines](/guides/database-engines#backups-and-restores).
 
+### Choose what a database backup holds
+
+New in 0.2.16, on nodes with agent 0.2.16. A PostgreSQL, MySQL, MariaDB or MongoDB schedule backs up one of:
+
+| Choice | What it holds |
+| --- | --- |
+| **Everything on this server** (the default, as before) | Every database, with the users and roles for PostgreSQL, the users and privileges for MySQL and MariaDB, the users for MongoDB. The dialog shows how many databases the server has and their size now. |
+| **Chosen databases** | The databases you pick from the server's live list, with their sizes. With one database picked, **Only these tables** (MongoDB: **Only these collections**) takes some of its tables; empty is **The whole database**. Users and roles are not in such a backup. |
+
+A schedule takes 1 to 50 databases, or one database with up to 200 tables; system databases cannot be picked. The list needs the database running and its node connected: while it cannot answer (the database is stopped, the node is away, its agent is older than 0.2.16 and the dialog says "Update `<node>` to choose databases", or Seylo's sign-in is refused), **Everything on this server** still works, and names saved before stay as chips you can remove. Names that are gone from the server are marked **missing**. Redis, Valkey, KeyDB, Dragonfly and ClickHouse always back up everything.
+
+The node lists the server right before each backup. A chosen database or table that no longer exists is skipped, and the run shows how many were skipped and which; when none of them is left, the backup fails and says so. A schedule of chosen databases on a node whose agent is older than 0.2.16 fails with "Update `<node>` to back up chosen databases".
+
+Each database backup in **Backups and restores** shows what it holds: its databases as chips with their size inside the database, the size of the compressed file and how long it took. The arrow opens its tables or collections with their size and approximate rows (the biggest 500 per database). A backup of everything that could not be measured says **Contents not measured**; it is still a whole backup. Backups made before 0.2.16, or by older nodes, show **Everything on this server**. Several PostgreSQL or MongoDB databases in one backup are one object in the bucket (`.bundle`), so **Keep newest**, **Download** and **Delete** work as for any other backup.
+
+**Back up now** on the **Connection** tab or the **Backups** tab of a database without a schedule makes a one-off backup of everything. A service export keeps a schedule's chosen databases; a panel before 0.2.16 backs up everything with such a schedule. In the API and MCP, `backups.listDatabases` lists the server (with `database`, that database's tables), `backups.createPolicy` and `backups.updatePolicy` take `selection`, runs carry `scope`, `contents` and `warnings`, and `backups.runContents` returns one backup's tables. Listing the databases needs the permission to see the database's credentials, like the **Users** tab.
+
 ## Restore
 
 In **Backups and restores**, pick a backup and click **Restore**. It replaces the service's current data: databases are restored with their engine's own tool, volumes are unpacked into a fresh folder and swapped in. Tick **Back up the current data first** to keep a copy of what is there now. You type the service name to confirm. Changed in 0.2.15: a failed **Restore** or **Delete** keeps its dialog open with the reason; before, the message showed under the last row and stayed after the dialog closed. New in 0.2: a volume restore, like a volume copied by a move or a clone, keeps the sticky and setgid bits of folders; setuid and setgid on files are dropped, like on uploads. Before, folders came back without them.
@@ -72,6 +93,14 @@ Without **Back up the current data first**, the data in the service before the r
 </Callout>
 
 New in 0.2.15: each row of **Backups and restores** names what it holds next to its date: **Database**, the volume (such as **Volume data**), **Deleted volume** for a volume removed since, and for a restore "Restore of the Nov 12 03:00 backup of Volume data". In the API and MCP, runs have `volumeName`, and restores `sourceStartedAt`.
+
+### Restore chosen databases
+
+New in 0.2.16. A backup of chosen databases, tables or collections restores only what it holds and leaves everything else on the server, users included, as it is. The restore dialog names it, for example "This replaces the database shop on db with its state from ...", or "This replaces 2 tables in shop: public.orders, public.items". PostgreSQL restores each database in one transaction (creating it when it is missing), MySQL and MariaDB run the dump, and MongoDB replaces only those namespaces.
+
+**Back up the current data first** backs up the same selection. When none of it is on the server any more (a dropped database or table you want back), the restore goes on without that backup and its row says so; when the backup first fails, the restore's error says why and to untick the box.
+
+A PostgreSQL table that another table references cannot be restored alone: the restore fails and changes nothing, and the schedule dialog says so when you choose tables. Choose both tables, or the whole database. Restoring a backup of chosen databases, or any `.bundle`, needs the node's agent 0.2.16, and fails at once on an older node. Backups of everything, and every backup made before 0.2.16, restore exactly as before.
 
 ### Download a backup
 

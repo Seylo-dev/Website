@@ -64,6 +64,8 @@ The tool gets an approval id back and can check later whether it ran (`approvals
 
 New in 0.2.15: a backup download link (`backups_downloadUrl`) waits for approval too, since the file leaves the panel, though it deletes nothing. With **Ask before destructive actions** off, it runs right away like the rest. See [Download a backup](/guides/backups#download-a-backup).
 
+New in 0.2.16: some calls of a tool wait for approval and others of the same tool do not. `databases_setExposure` waits when it would let clients connect to an exposed database without TLS (see [Connections without TLS](/guides/databases#connections-without-tls)): turning **Allow connections without TLS** on, also by exposing the database again with it, and, while it is on, emptying the allowed IPs or adding addresses the stored list did not cover, such as `0.0.0.0/0`, `::/0`, two ranges that add up to every address, or the tool's own IP in place of yours. Its other calls run right away: ports, the TLS host name, a narrower allow list, turning it off and turning exposure off. A person's own calls, in the panel or with an `api` key, never wait. With **Ask before destructive actions** off, MCP tokens run these calls right away like the rest; the assistant asks before every change anyway.
+
 New in 0.2.2: only MCP tools and the assistant ask for approvals, so **Approvals** shows in the sidebar and the command palette only once the MCP server or the assistant is on. It also shows while a request waits for you, and when you open the page from a link.
 
 ## The AI assistant

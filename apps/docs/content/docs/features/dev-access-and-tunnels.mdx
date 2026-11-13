@@ -9,7 +9,9 @@ description: Open a port to your IP for a limited time, give a service a Cloudfl
 
 **Timed expose → Open a port**: pick the container port, how long (**For**, 5 minutes to 24 hours) and who may connect (**Only from**: IPs or CIDRs; empty uses your own address). The agent opens a port on the node that only accepts those addresses and closes it by itself when the time is up, even while the panel is unreachable.
 
-The list shows each open port with who opened it (a person, an API key, an MCP client or the assistant) and when it closes. **+1 hour** extends it; **Close now** ends it.
+The list shows each open port with who opened it (a person, an API key, an MCP client or the assistant) and when it closes. **+1 hour** extends it; **Close now** ends it. Fixed in 0.2.16: **+1 hour** adds an hour to the time left. Before, it set the end to one hour from now, which shortened an expose with more than an hour left. An expose that ended now leaves the list within a minute, without a reload, and two exposes of the same port opened in the same second no longer swap ports.
+
+New in 0.2.16: databases, which have no **Domains** tab, have a **Timed expose** card on their **Connection** tab, with a ready client command and the connection URL (see [Timed expose](/guides/databases#timed-expose)). A database's timed exposes keep idle connections for 2 hours, on nodes with agent 0.2.16; an app's are cut after 15 idle minutes.
 
 This is the safe way to point a desktop database client or a debugger at a production service for an hour. From a terminal:
 
