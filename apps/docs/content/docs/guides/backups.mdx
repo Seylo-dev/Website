@@ -18,9 +18,17 @@ New in 0.2: nodes never get the bucket's keys. For each upload, download or dele
 | Bucket | The bucket name |
 | Folder | Optional folder inside the bucket |
 | Access key ID, Secret access key | Keys that can list, write, read and delete in the bucket. Stored encrypted, and used only by the panel. |
-| Use path-style URLs | MinIO and some other providers need this |
+| Use path-style URLs | MinIO and some other providers need this. On, every request puts the bucket in the path (see [How the bucket is addressed](#how-the-bucket-is-addressed)) |
 
-**Test** writes, reads and deletes a small object, and says which step failed if one does. Add destinations once; every service can use them.
+**Test** writes, reads and deletes a small object, and says which step failed if one does. Since 0.2.15 a failed **Test** also names the request it made, whether the bucket was in the host or the path, and the provider's error, never the keys. Add destinations once; every service can use them.
+
+### How the bucket is addressed
+
+Changed in 0.2.15. The panel's own requests to the bucket (the **Test**, the cleanup of old backups and its listing) address the bucket exactly as the nodes' upload links do: path-style (`<endpoint>/<bucket>/<file>`), unless the endpoint is AWS, Google or Aliyun, which get the bucket in the host, or the endpoint is already the bucket's own host at a known provider (Cloudflare R2, DigitalOcean Spaces, Backblaze, Wasabi and others), which is used as it is instead of getting the bucket twice. With **Use path-style URLs** on, every request is path-style.
+
+Before, with **Use path-style URLs** off, the panel's own requests left the bucket out of the address. On Cloudflare R2 the **Test** then failed at the write step with MalformedXML, since R2 read the test write as "create a bucket", and **Keep newest** never deleted old backups there. Node uploads were not affected. After the update, the first cleanup on such a destination deletes every backup past its **Keep newest** number at once.
+
+When the endpoint is already a bucket's own host, nodes before 0.2.15 put the bucket's name in front of each file again, so older backups there sit in a `<bucket>/` folder inside the bucket. Restores, downloads, deletes and the cleanup find them there.
 
 ## Schedule backups
 
@@ -34,7 +42,11 @@ On a service's **Backups** tab, **Add schedule**:
 | **Keep newest** | How many backups this schedule keeps. The panel deletes older ones from the bucket after each successful backup and when you change the number. |
 | **Stop the service while copying** | For files that change while being copied, like SQLite databases. The service is down for the length of the backup. |
 
-**Back up now** runs the service's first schedule at once, and each schedule's menu has a **Back up now** of its own. Such a run counts toward that schedule's **Keep newest**, so it can push the schedule's oldest backup out. On a database without a schedule, **Back up now** on the **Backups** tab makes a one-off dump to the first destination instead, which is kept until you delete it. The **Back up now** on a database's **Connection** tab needs a schedule.
+Changed in 0.2.15: **Back up now** on a service's **Backups** tab starts every schedule that is on at once. Each backup goes to its own destination and counts toward its own **Keep newest**, and the toast says how many started. Schedules that are off, and one whose backup is still running, are skipped. Before, it ran only the first schedule, so a service with a schedule per volume got one backup. Each schedule's menu still has a **Back up now** of its own that backs up just that schedule. Such a run counts toward that schedule's **Keep newest**, so it can push the schedule's oldest backup out.
+
+**Back up now** on a database's **Connection** tab does the same as on the **Backups** tab. A database without a schedule gets a one-off dump to the first destination instead, from either tab, which is kept until you delete it. In the API and MCP: `backups.runAll` for every schedule, `backups.runNow` with a `policyId` for one.
+
+New in 0.2.15: when a schedule comes due while its previous backup, or one started with **Back up now**, is still running, the scheduler skips that time, notes it in the panel's log, and runs the schedule at its next time. Before, it started another backup of the same schedule.
 
 ### What a backup contains
 
@@ -53,11 +65,23 @@ Dumps run in a helper container from the database's own image, so the dump tool 
 
 ## Restore
 
-In **Backups and restores**, pick a backup and click **Restore**. It replaces the service's current data: databases are restored with their engine's own tool, volumes are unpacked into a fresh folder and swapped in. Tick **Back up the current data first** to keep a copy of what is there now. You type the service name to confirm. New in 0.2: a volume restore, like a volume copied by a move or a clone, keeps the sticky and setgid bits of folders; setuid and setgid on files are dropped, like on uploads. Before, folders came back without them.
+In **Backups and restores**, pick a backup and click **Restore**. It replaces the service's current data: databases are restored with their engine's own tool, volumes are unpacked into a fresh folder and swapped in. Tick **Back up the current data first** to keep a copy of what is there now. You type the service name to confirm. Changed in 0.2.15: a failed **Restore** or **Delete** keeps its dialog open with the reason; before, the message showed under the last row and stayed after the dialog closed. New in 0.2: a volume restore, like a volume copied by a move or a clone, keeps the sticky and setgid bits of folders; setuid and setgid on files are dropped, like on uploads. Before, folders came back without them.
 
 <Callout type="warn" title="A restore replaces the current data">
 Without **Back up the current data first**, the data in the service before the restore cannot be recovered.
 </Callout>
+
+New in 0.2.15: each row of **Backups and restores** names what it holds next to its date: **Database**, the volume (such as **Volume data**), **Deleted volume** for a volume removed since, and for a restore "Restore of the Nov 12 03:00 backup of Volume data". In the API and MCP, runs have `volumeName`, and restores `sourceStartedAt`.
+
+### Download a backup
+
+New in 0.2.15. A backup's menu in **Backups and restores** has **Download**. The browser saves the file straight from the bucket, so nothing passes through the panel and the bucket needs no CORS settings; the browser must be able to reach the bucket. The file is named after the service, what it holds and when it started (UTC), for example `vault-warden-data-2026-11-13_0300.tar.gz`. The link the panel signs is for that one file and works for 5 minutes, and the bucket's keys are never in it.
+
+It needs the permission to restore the service's backups, and on a database also the permission to see its credentials, since a dump holds its logins. Each download is in the activity log. Deleted backups, backups that failed or still run, and backups whose destination was deleted have no **Download**. In the API and MCP: `backups.downloadUrl`. An AI tool or an MCP token waits for a person's approval first, like a delete, unless **Ask before destructive actions** is off (see [Approvals](/features/mcp-and-ai#approvals)).
+
+### A deleted destination
+
+New in 0.2.15. A backup whose destination was deleted in **Settings → Backups** can no longer be restored or downloaded, since the panel has no keys for its bucket. Its row says **Destination deleted** and has no **Restore**, and **Remove from list** marks it deleted. The file stays in the bucket: delete it there by hand if you want it gone. Before, such a backup could never leave the list. In the API and MCP, `backups.deleteRun` of such a backup no longer fails with `noDestination`, and `backups.restore` refuses it at once.
 
 ### Postgres backups and missing users
 

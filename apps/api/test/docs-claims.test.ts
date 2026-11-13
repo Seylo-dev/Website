@@ -35,13 +35,23 @@ function mdxFiles(dir: string): string[] {
 describe("docs match the app", () => {
   // apps/panel/src/modules/backups/ops.ts runNow: with a policyId the run belongs to that schedule
   // and runs.ts applyRetention keeps only its keepLast newest; only a one-off (no policy) has keepLast 0.
+  // Since 0.2.15 the tab's Back up now calls runAll (ops.ts): every enabled schedule, each counted
+  // toward its own keepLast, skipping disabled ones and one still running (runs.ts runningBackup);
+  // apps/web back-up-now.ts sends a database with no schedule to runNow as a one-off, on the
+  // Backups tab and the Connection tab alike.
   test("guides/backups: Back up now counts toward the schedule's Keep newest", async () => {
     const text = await page("guides/backups.mdx");
     expect(text).not.toContain("Backups made by hand are kept until you delete them");
-    const line = text.split("\n").find((l) => l.startsWith("**Back up now**")) ?? "";
-    expect(line).toContain("first schedule");
-    expect(line).toContain("counts toward that schedule's **Keep newest**");
-    expect(line).toMatch(/without a schedule.*one-off.*kept until you delete it/);
+    expect(text).not.toContain("runs the service's first schedule at once");
+    expect(text).not.toContain("**Connection** tab needs a schedule");
+    const lines = text.split("\n");
+    const tab = lines.find((l) => l.startsWith("Changed in 0.2.15: **Back up now**")) ?? "";
+    expect(tab).toContain("starts every schedule that is on at once");
+    expect(tab).toContain("counts toward its own **Keep newest**");
+    expect(tab).toContain("one whose backup is still running, are skipped");
+    expect(tab).toContain("counts toward that schedule's **Keep newest**");
+    const database = lines.find((l) => l.startsWith("**Back up now** on a database's **Connection** tab")) ?? "";
+    expect(database).toMatch(/without a schedule.*one-off.*kept until you delete it/);
   });
 
   // apps/panel/src/modules/metrics/query.ts ranges.
