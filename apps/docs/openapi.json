@@ -10049,7 +10049,7 @@
       "post": {
         "operationId": "backups.deleteRun",
         "summary": "Delete a backup",
-        "description": "Deletes a backup's object from the bucket and marks the run deleted. It can no longer be restored.",
+        "description": "Deletes a backup's object from the bucket and marks the run deleted. It can no longer be restored. When the backup's destination was deleted (destinationId null), the panel has no keys for that bucket: the run is only marked deleted, and its object stays in the bucket, to delete there by hand.",
         "tags": [
           "backups"
         ],
@@ -10103,7 +10103,9 @@
                     "destinationId",
                     "target",
                     "volumeId",
+                    "volumeName",
                     "sourceRunId",
+                    "sourceStartedAt",
                     "status",
                     "objectKey",
                     "sizeBytes",
@@ -10183,11 +10185,32 @@
                         }
                       ]
                     },
+                    "volumeName": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "sourceRunId": {
                       "anyOf": [
                         {
                           "pattern": "^[a-z0-9]{16}$",
                           "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sourceStartedAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
                           "type": "string"
                         },
                         {
@@ -10279,6 +10302,86 @@
         },
         "x-op-kind": "destructive",
         "x-permission": "service:backups.edit",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/backups.downloadUrl": {
+      "post": {
+        "operationId": "backups.downloadUrl",
+        "summary": "Get a backup's download link",
+        "description": "Returns a link that downloads one successful backup's file straight from its bucket for 5 minutes: a GET presigned with the destination's keys for that backup's own object only, saved as fileName (<service>-<volume name or database>-<UTC start, YYYY-MM-DD_HHmm>.<the file's extension>). The browser or tool that opens it reaches the bucket itself, so the bucket must be reachable from there; the link carries no key, only its signature. Needs backups.restore, and on a database service databases.credentials too (a dump holds the database's logins). Refused for a run that is not a successful backup or was deleted (BAD_REQUEST) and for a backup whose destination was deleted (CONFLICT, reason noDestination). Model callers (MCP, AI) need a person's approval first, as the file leaves the panel.",
+        "tags": [
+          "backups"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "runId"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "runId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "fileName",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "service:backups.restore",
         "x-mcp": true
       }
     },
@@ -10748,7 +10851,9 @@
                           "destinationId",
                           "target",
                           "volumeId",
+                          "volumeName",
                           "sourceRunId",
+                          "sourceStartedAt",
                           "status",
                           "objectKey",
                           "sizeBytes",
@@ -10828,11 +10933,32 @@
                               }
                             ]
                           },
+                          "volumeName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "sourceRunId": {
                             "anyOf": [
                               {
                                 "pattern": "^[a-z0-9]{16}$",
                                 "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sourceStartedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
                                 "type": "string"
                               },
                               {
@@ -10937,7 +11063,7 @@
       "post": {
         "operationId": "backups.restore",
         "summary": "Restore a backup",
-        "description": "Restores a successful backup over the service's current data (database or volume). Current data is replaced and cannot be recovered unless backed up first. The service name must be repeated to confirm.",
+        "description": "Restores a successful backup over the service's current data (database or volume). Current data is replaced and cannot be recovered unless backed up first. The service name must be repeated to confirm. A backup whose destination was deleted (destinationId null) cannot be restored (CONFLICT, reason noDestination).",
         "tags": [
           "backups"
         ],
@@ -10999,7 +11125,9 @@
                     "destinationId",
                     "target",
                     "volumeId",
+                    "volumeName",
                     "sourceRunId",
+                    "sourceStartedAt",
                     "status",
                     "objectKey",
                     "sizeBytes",
@@ -11079,11 +11207,32 @@
                         }
                       ]
                     },
+                    "volumeName": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "sourceRunId": {
                       "anyOf": [
                         {
                           "pattern": "^[a-z0-9]{16}$",
                           "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sourceStartedAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
                           "type": "string"
                         },
                         {
@@ -11178,11 +11327,313 @@
         "x-mcp": true
       }
     },
+    "/api/v1/backups.runAll": {
+      "post": {
+        "operationId": "backups.runAll",
+        "summary": "Back up every schedule now",
+        "description": "Starts a backup of every enabled schedule of a service at once (its database and each scheduled volume), each to its own destination and counted toward its own keepLast, as when it runs on time. Disabled schedules are skipped, and so is a schedule with a backup still running (never started twice, also when two calls or the scheduler overlap); skipped says which and why, and runs is empty when every schedule was skipped. A service with no schedule is refused (BAD_REQUEST, reason noSchedules): start a one-off with backups.runNow. When no backup could start (the node offline, an agent too old, a schedule's volume gone) it fails as backups.runNow does; when only some could, runs also lists those that failed to start with their error, and skipped (reason error, with error) those refused before a run was recorded. backups.runNow with a policyId starts a single schedule.",
+        "tags": [
+          "backups"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "runs",
+                    "skipped"
+                  ],
+                  "properties": {
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "kind",
+                          "serviceId",
+                          "policyId",
+                          "destinationId",
+                          "target",
+                          "volumeId",
+                          "volumeName",
+                          "sourceRunId",
+                          "sourceStartedAt",
+                          "status",
+                          "objectKey",
+                          "sizeBytes",
+                          "error",
+                          "deletedAt",
+                          "startedAt",
+                          "finishedAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "pattern": "^[a-z0-9]{16}$",
+                            "description": "Panel-issued id.",
+                            "type": "string"
+                          },
+                          "kind": {
+                            "anyOf": [
+                              {
+                                "const": "backup",
+                                "type": "string"
+                              },
+                              {
+                                "const": "restore",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "serviceId": {
+                            "pattern": "^[a-z0-9]{16}$",
+                            "description": "Panel-issued id.",
+                            "type": "string"
+                          },
+                          "policyId": {
+                            "anyOf": [
+                              {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "destinationId": {
+                            "anyOf": [
+                              {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "target": {
+                            "anyOf": [
+                              {
+                                "const": "database",
+                                "type": "string"
+                              },
+                              {
+                                "const": "volume",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "volumeId": {
+                            "anyOf": [
+                              {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "volumeName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sourceRunId": {
+                            "anyOf": [
+                              {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sourceStartedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "succeeded",
+                                "type": "string"
+                              },
+                              {
+                                "const": "failed",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "objectKey": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "sizeBytes": {
+                            "anyOf": [
+                              {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "error": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "deletedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "finishedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "policyId",
+                          "reason"
+                        ],
+                        "properties": {
+                          "policyId": {
+                            "pattern": "^[a-z0-9]{16}$",
+                            "description": "Panel-issued id.",
+                            "type": "string"
+                          },
+                          "reason": {
+                            "anyOf": [
+                              {
+                                "const": "disabled",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "error",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "service:backups.run",
+        "x-mcp": true
+      }
+    },
     "/api/v1/backups.runNow": {
       "post": {
         "operationId": "backups.runNow",
         "summary": "Back up now",
-        "description": "Starts a backup right away: of a schedule (policyId), or a one-off of the database or a volume to a destination. Returns the run; follow it with backups.listRuns or the live service topic.",
+        "description": "Starts one backup right away: of one schedule (policyId; also a disabled one, counted toward its keepLast), or a one-off of the database or a volume to a destination (kept until deleted). Returns the run; follow it with backups.listRuns or the live service topic. To back up every enabled schedule of a service at once, use backups.runAll.",
         "tags": [
           "backups"
         ],
@@ -11257,7 +11708,9 @@
                     "destinationId",
                     "target",
                     "volumeId",
+                    "volumeName",
                     "sourceRunId",
+                    "sourceStartedAt",
                     "status",
                     "objectKey",
                     "sizeBytes",
@@ -11337,11 +11790,32 @@
                         }
                       ]
                     },
+                    "volumeName": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "sourceRunId": {
                       "anyOf": [
                         {
                           "pattern": "^[a-z0-9]{16}$",
                           "description": "Panel-issued id.",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "sourceStartedAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
                           "type": "string"
                         },
                         {
@@ -12696,7 +13170,10 @@
                           "canBuild",
                           "online",
                           "hasBuildx",
-                          "queued"
+                          "queued",
+                          "running",
+                          "waiting",
+                          "buildsAtOnce"
                         ],
                         "properties": {
                           "id": {
@@ -12718,6 +13195,18 @@
                           },
                           "queued": {
                             "minimum": 0,
+                            "type": "integer"
+                          },
+                          "running": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "waiting": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "buildsAtOnce": {
+                            "minimum": 1,
                             "type": "integer"
                           }
                         }
@@ -12741,7 +13230,7 @@
       "get": {
         "operationId": "builds.queue",
         "summary": "List the build queue",
-        "description": "Lists builds that are queued or running on every node (or one node), oldest first, with their place in the queue. Only builds of services the caller can view are returned.",
+        "description": "Lists builds that are queued or running on every node (or one node), in the order their nodes got them, with their place in the queue. queued = waiting for a free slot of its node's Builds at once (waiting true), or about to start in one; position is its place among the node's queued builds, in the order the node's agent got them, which is the order it starts them in (1 = next to start). running = started on the node's agent; startedAt is when it started, queuedAt when it was dispatched. Only builds of services the caller can view are returned.",
         "tags": [
           "builds"
         ],
@@ -12793,6 +13282,7 @@
                           "builder",
                           "status",
                           "position",
+                          "waiting",
                           "commitSha",
                           "queuedAt",
                           "startedAt"
@@ -12896,6 +13386,9 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "waiting": {
+                            "type": "boolean"
                           },
                           "commitSha": {
                             "anyOf": [
@@ -14554,6 +15047,7 @@
                         "kind",
                         "parentId",
                         "status",
+                        "buildWaiting",
                         "source",
                         "address",
                         "placements",
@@ -14697,6 +15191,9 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "buildWaiting": {
+                          "type": "boolean"
                         },
                         "source": {
                           "type": "object",
@@ -14932,6 +15429,7 @@
                           "kind",
                           "parentId",
                           "status",
+                          "buildWaiting",
                           "source",
                           "address",
                           "placements",
@@ -15075,6 +15573,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           },
                           "source": {
                             "type": "object",
@@ -15366,6 +15867,7 @@
                         "kind",
                         "parentId",
                         "status",
+                        "buildWaiting",
                         "source",
                         "address",
                         "placements",
@@ -15527,6 +16029,9 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "buildWaiting": {
+                          "type": "boolean"
                         },
                         "source": {
                           "type": "object",
@@ -16116,6 +16621,23 @@
                               "minimum": 1,
                               "maximum": 3600,
                               "type": "integer"
+                            },
+                            "init": {
+                              "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                              "anyOf": [
+                                {
+                                  "const": "auto",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "on",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "off",
+                                  "type": "string"
+                                }
+                              ]
                             }
                           }
                         },
@@ -16270,6 +16792,47 @@
                                 "failureThreshold": {
                                   "minimum": 1,
                                   "maximum": 100,
+                                  "type": "integer"
+                                }
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "imageHealthCheck": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "test",
+                                "intervalSeconds",
+                                "timeoutSeconds",
+                                "startPeriodSeconds",
+                                "retries"
+                              ],
+                              "properties": {
+                                "test": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "intervalSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "timeoutSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "startPeriodSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "retries": {
+                                  "minimum": 0,
                                   "type": "integer"
                                 }
                               }
@@ -16467,7 +17030,8 @@
                             "required": [
                               "id",
                               "name",
-                              "status"
+                              "status",
+                              "buildWaiting"
                             ],
                             "properties": {
                               "id": {
@@ -16525,6 +17089,9 @@
                                     "type": "string"
                                   }
                                 ]
+                              },
+                              "buildWaiting": {
+                                "type": "boolean"
                               }
                             }
                           }
@@ -16934,6 +17501,7 @@
                           "kind",
                           "parentId",
                           "status",
+                          "buildWaiting",
                           "source",
                           "address",
                           "placements",
@@ -17077,6 +17645,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           },
                           "source": {
                             "type": "object",
@@ -21382,7 +21953,7 @@
       "post": {
         "operationId": "databases.resetPassword",
         "summary": "Reset a database password",
-        "description": "Sets a new password for the database's user, the one used inside and through the exposed port alike. The user value exposed is still accepted for older callers and changes the same password as internal: there is no separate exposed user. Services that reference the password (PASSWORD, INTERNAL_URL, INTERNAL_HTTP_URL or EXPOSED_URL) get it on their next deploy or restart; anything else using the old password stops connecting. ClickHouse and Dragonfly read the admin password from their environment at start, so a new one restarts them (Redis, Valkey and KeyDB too, which would start with the old one again); a stopped database is refused (notRunning). MySQL and MariaDB give root the same password as the admin, also an admin other than root (MYSQL_ROOT_PASSWORD, MARIADB_ROOT_PASSWORD); warning says when root kept an older password because it could not sign in to change it.",
+        "description": "Sets a new password for the database's user, the one used inside and through the exposed port alike. The user value exposed is still accepted for older callers and changes the same password as internal: there is no separate exposed user. Services that reference the password (PASSWORD, INTERNAL_URL, INTERNAL_HTTP_URL or EXPOSED_URL) get it on their next deploy (a restart keeps the old one); anything else using the old password stops connecting. ClickHouse and Dragonfly read the admin password from their environment at start, so a new one restarts them (Redis, Valkey and KeyDB too, which would start with the old one again); a stopped database is refused (notRunning). MySQL and MariaDB give root the same password as the admin, also an admin other than root (MYSQL_ROOT_PASSWORD, MARIADB_ROOT_PASSWORD); warning says when root kept an older password because it could not sign in to change it.",
         "tags": [
           "databases"
         ],
@@ -23337,6 +23908,7 @@
                     "source",
                     "builder",
                     "builtOn",
+                    "buildWait",
                     "shippedTo",
                     "image",
                     "steps",
@@ -23538,6 +24110,43 @@
                             },
                             "name": {
                               "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "buildWait": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "node",
+                            "position"
+                          ],
+                          "properties": {
+                            "node": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^[a-z0-9]{16}$",
+                                  "description": "Panel-issued id.",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "position": {
+                              "minimum": 1,
+                              "type": "integer"
                             }
                           }
                         },
@@ -23859,6 +24468,7 @@
                     "source",
                     "builder",
                     "builtOn",
+                    "buildWait",
                     "shippedTo",
                     "image",
                     "steps",
@@ -24060,6 +24670,43 @@
                             },
                             "name": {
                               "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "buildWait": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "node",
+                            "position"
+                          ],
+                          "properties": {
+                            "node": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^[a-z0-9]{16}$",
+                                  "description": "Panel-issued id.",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "position": {
+                              "minimum": 1,
+                              "type": "integer"
                             }
                           }
                         },
@@ -24383,6 +25030,7 @@
                         "source",
                         "builder",
                         "builtOn",
+                        "buildWait",
                         "shippedTo",
                         "image",
                         "steps",
@@ -24584,6 +25232,43 @@
                                 },
                                 "name": {
                                   "type": "string"
+                                }
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "buildWait": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "node",
+                                "position"
+                              ],
+                              "properties": {
+                                "node": {
+                                  "type": "object",
+                                  "required": [
+                                    "id",
+                                    "name"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "pattern": "^[a-z0-9]{16}$",
+                                      "description": "Panel-issued id.",
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "position": {
+                                  "minimum": 1,
+                                  "type": "integer"
                                 }
                               }
                             },
@@ -24933,6 +25618,7 @@
                           "source",
                           "builder",
                           "builtOn",
+                          "buildWait",
                           "shippedTo",
                           "image",
                           "steps",
@@ -25134,6 +25820,43 @@
                                   },
                                   "name": {
                                     "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "buildWait": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "node",
+                                  "position"
+                                ],
+                                "properties": {
+                                  "node": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "position": {
+                                    "minimum": 1,
+                                    "type": "integer"
                                   }
                                 }
                               },
@@ -25618,6 +26341,7 @@
                           "source",
                           "builder",
                           "builtOn",
+                          "buildWait",
                           "shippedTo",
                           "image",
                           "steps",
@@ -25821,6 +26545,43 @@
                                   },
                                   "name": {
                                     "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "buildWait": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "node",
+                                  "position"
+                                ],
+                                "properties": {
+                                  "node": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "position": {
+                                    "minimum": 1,
+                                    "type": "integer"
                                   }
                                 }
                               },
@@ -26152,6 +26913,7 @@
                     "source",
                     "builder",
                     "builtOn",
+                    "buildWait",
                     "shippedTo",
                     "image",
                     "steps",
@@ -26353,6 +27115,43 @@
                             },
                             "name": {
                               "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "buildWait": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "node",
+                            "position"
+                          ],
+                          "properties": {
+                            "node": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "pattern": "^[a-z0-9]{16}$",
+                                  "description": "Panel-issued id.",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "position": {
+                              "minimum": 1,
+                              "type": "integer"
                             }
                           }
                         },
@@ -26758,6 +27557,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -26919,6 +27719,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -27508,6 +28311,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -27662,6 +28482,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -27859,7 +28720,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -27917,6 +28779,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -33513,7 +34378,7 @@
       "get": {
         "operationId": "env.analyze",
         "summary": "Check a service's environment",
-        "description": "Runs the env analyzer over the saved .env of a service and returns its diagnostics: syntax errors, unknown references, and internal addresses of services on another node (there is no cross-node private network). The web editor runs the same analyzer locally on unsaved text.",
+        "description": "Runs the env analyzer over the saved .env of a service and returns its diagnostics: syntax errors, unknown references, internal addresses of services on another node (there is no cross-node private network), and warnings for references the app would get as text (single-quoted-reference: a ${{target.VARIABLE}} in single quotes; bare-reference: api.URL written without ${{ }}), each with its fix. The web editor runs the same analyzer locally on unsaved text.",
         "tags": [
           "env"
         ],
@@ -33627,6 +34492,18 @@
                               },
                               {
                                 "const": "reference-cycle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hardcoded-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "single-quoted-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "bare-reference",
                                 "type": "string"
                               }
                             ]
@@ -33847,7 +34724,7 @@
       "get": {
         "operationId": "env.get",
         "summary": "Get a service's environment",
-        "description": "Returns the service's .env text as saved, the parsed variables (references left as written) and how many shared project variables it also receives.",
+        "description": "Returns the service's .env text as saved, the parsed variables (references left as written) and how many shared project variables it also receives. Model callers (MCP, the assistant) get every value redacted: to change one variable without the others, use env.setVariable.",
         "tags": [
           "env"
         ],
@@ -34164,6 +35041,9 @@
                               "sensitive": {
                                 "type": "boolean"
                               },
+                              "secret": {
+                                "type": "boolean"
+                              },
                               "description": {
                                 "type": "string"
                               },
@@ -34317,6 +35197,9 @@
                                 "sensitive": {
                                   "type": "boolean"
                                 },
+                                "secret": {
+                                  "type": "boolean"
+                                },
                                 "description": {
                                   "type": "string"
                                 },
@@ -34362,7 +35245,7 @@
       "post": {
         "operationId": "env.set",
         "summary": "Save a service's environment",
-        "description": "Replaces the service's .env text. Syntax errors are refused; context problems (for example an internal address of a service on another node) are saved and returned as diagnostics. The new values apply on the next deploy or restart.",
+        "description": "Replaces the service's whole .env text. Syntax errors are refused; context problems (for example an internal address of a service on another node) are saved and returned as diagnostics. The new values apply on the next deploy (a restart keeps the values of the last deploy); restartNeeded says the service runs with older values. To change one variable and keep the others as they are, use env.setVariable.",
         "tags": [
           "env"
         ],
@@ -34507,6 +35390,18 @@
                               },
                               {
                                 "const": "reference-cycle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hardcoded-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "single-quoted-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "bare-reference",
                                 "type": "string"
                               }
                             ]
@@ -34730,7 +35625,7 @@
       "post": {
         "operationId": "env.setShared",
         "summary": "Save a project's shared variables",
-        "description": "Replaces the project's shared variables (.env text). Shared variables cannot reference services. Services that use them get the new values on their next deploy or restart.",
+        "description": "Replaces the project's shared variables (.env text). Shared variables cannot reference services. Services that use them get the new values on their next deploy, not on a restart.",
         "tags": [
           "env"
         ],
@@ -34875,6 +35770,18 @@
                               },
                               {
                                 "const": "reference-cycle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hardcoded-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "single-quoted-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "bare-reference",
                                 "type": "string"
                               }
                             ]
@@ -35096,6 +36003,801 @@
         },
         "x-op-kind": "mutation",
         "x-permission": "project:env.edit",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/env.setSharedVariable": {
+      "post": {
+        "operationId": "env.setSharedVariable",
+        "summary": "Set one of a project's shared variables",
+        "description": "Sets one shared variable and keeps the others as they are, like env.setVariable for a service: the last line with the key gets the new value (its quoting, comments and # @public kept), a new key is appended, value null removes every line with the key (NOT_FOUND when there is none). Refused when the text would grow past 262144 characters. Shared variables cannot reference services. Services that use them get the new value on their next deploy, not on a restart.",
+        "tags": [
+          "env"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "projectId",
+                  "key",
+                  "value"
+                ],
+                "properties": {
+                  "projectId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+                    "description": "Variable name: a letter or _, then letters, digits, _, . or -.",
+                    "type": "string"
+                  },
+                  "value": {
+                    "description": "The new value as the program should read it, without quotes (references allowed). null removes the variable.",
+                    "anyOf": [
+                      {
+                        "maxLength": 262144,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "expectedUpdatedAt": {
+                    "anyOf": [
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "updatedAt",
+                    "diagnostics",
+                    "affectedServiceIds"
+                  ],
+                  "properties": {
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "code",
+                          "severity",
+                          "message",
+                          "detail",
+                          "params",
+                          "range",
+                          "fixes"
+                        ],
+                        "properties": {
+                          "code": {
+                            "anyOf": [
+                              {
+                                "const": "invalid-line",
+                                "type": "string"
+                              },
+                              {
+                                "const": "invalid-key",
+                                "type": "string"
+                              },
+                              {
+                                "const": "missing-equals",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unterminated-quote",
+                                "type": "string"
+                              },
+                              {
+                                "const": "trailing-characters",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unterminated-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "malformed-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "duplicate-key",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown-service",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown-variable",
+                                "type": "string"
+                              },
+                              {
+                                "const": "self-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "internal-reference-other-node",
+                                "type": "string"
+                              },
+                              {
+                                "const": "internal-address-other-node",
+                                "type": "string"
+                              },
+                              {
+                                "const": "service-not-exposed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "empty-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "reference-cycle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hardcoded-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "single-quoted-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "bare-reference",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "severity": {
+                            "anyOf": [
+                              {
+                                "const": "error",
+                                "type": "string"
+                              },
+                              {
+                                "const": "warning",
+                                "type": "string"
+                              },
+                              {
+                                "const": "info",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hint",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "params": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "range": {
+                            "type": "object",
+                            "required": [
+                              "start",
+                              "end",
+                              "startLine",
+                              "startColumn",
+                              "endLine",
+                              "endColumn"
+                            ],
+                            "properties": {
+                              "start": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "end": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "startLine": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "startColumn": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "endLine": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "endColumn": {
+                                "minimum": 1,
+                                "type": "integer"
+                              }
+                            }
+                          },
+                          "fixes": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "title",
+                                    "edits"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "edit",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "edits": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "required": [
+                                          "range",
+                                          "text"
+                                        ],
+                                        "properties": {
+                                          "range": {
+                                            "type": "object",
+                                            "required": [
+                                              "start",
+                                              "end",
+                                              "startLine",
+                                              "startColumn",
+                                              "endLine",
+                                              "endColumn"
+                                            ],
+                                            "properties": {
+                                              "start": {
+                                                "minimum": 0,
+                                                "type": "integer"
+                                              },
+                                              "end": {
+                                                "minimum": 0,
+                                                "type": "integer"
+                                              },
+                                              "startLine": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              },
+                                              "startColumn": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              },
+                                              "endLine": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              },
+                                              "endColumn": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              }
+                                            }
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "title",
+                                    "nodeId",
+                                    "nodeName"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "moveService",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "nodeName": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "title",
+                                    "serviceId",
+                                    "serviceName"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "exposeService",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "serviceId": {
+                                      "type": "string"
+                                    },
+                                    "serviceName": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "affectedServiceIds": {
+                      "type": "array",
+                      "items": {
+                        "pattern": "^[a-z0-9]{16}$",
+                        "description": "Panel-issued id.",
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "project:env.edit",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/env.setVariable": {
+      "post": {
+        "operationId": "env.setVariable",
+        "summary": "Set one variable of a service's environment",
+        "description": "Sets one variable and keeps the rest of the .env text as it is, so a caller that cannot read the other values (model callers get env.get redacted) changes only this line. An existing key keeps its line: the value of the last line with that key (the one that wins) is replaced, in its quote style when the value fits it, with its export, its trailing comment and the comment lines above it (# @public stays). A new key is appended as KEY=value. value null removes every line with the key (NOT_FOUND when there is none). Give the value unquoted; ${{target.VARIABLE}} references are allowed, and a value with spaces or a newline is written in double quotes. Same checks as env.set, and refused when the text would grow past 262144 characters; the diagnostics of the whole file come back (hardcoded-reference: a value that spells out a service's URL, with a fix to its reference). The new value applies on the next deploy, not on a restart.",
+        "tags": [
+          "env"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceId",
+                  "key",
+                  "value"
+                ],
+                "properties": {
+                  "serviceId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "key": {
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+                    "description": "Variable name: a letter or _, then letters, digits, _, . or -.",
+                    "type": "string"
+                  },
+                  "value": {
+                    "description": "The new value as the program should read it, without quotes (references allowed). null removes the variable.",
+                    "anyOf": [
+                      {
+                        "maxLength": 262144,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "expectedUpdatedAt": {
+                    "anyOf": [
+                      {
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "updatedAt",
+                    "diagnostics",
+                    "restartNeeded"
+                  ],
+                  "properties": {
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "code",
+                          "severity",
+                          "message",
+                          "detail",
+                          "params",
+                          "range",
+                          "fixes"
+                        ],
+                        "properties": {
+                          "code": {
+                            "anyOf": [
+                              {
+                                "const": "invalid-line",
+                                "type": "string"
+                              },
+                              {
+                                "const": "invalid-key",
+                                "type": "string"
+                              },
+                              {
+                                "const": "missing-equals",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unterminated-quote",
+                                "type": "string"
+                              },
+                              {
+                                "const": "trailing-characters",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unterminated-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "malformed-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "duplicate-key",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown-service",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown-variable",
+                                "type": "string"
+                              },
+                              {
+                                "const": "self-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "internal-reference-other-node",
+                                "type": "string"
+                              },
+                              {
+                                "const": "internal-address-other-node",
+                                "type": "string"
+                              },
+                              {
+                                "const": "service-not-exposed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "empty-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "reference-cycle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hardcoded-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "single-quoted-reference",
+                                "type": "string"
+                              },
+                              {
+                                "const": "bare-reference",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "severity": {
+                            "anyOf": [
+                              {
+                                "const": "error",
+                                "type": "string"
+                              },
+                              {
+                                "const": "warning",
+                                "type": "string"
+                              },
+                              {
+                                "const": "info",
+                                "type": "string"
+                              },
+                              {
+                                "const": "hint",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "params": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "range": {
+                            "type": "object",
+                            "required": [
+                              "start",
+                              "end",
+                              "startLine",
+                              "startColumn",
+                              "endLine",
+                              "endColumn"
+                            ],
+                            "properties": {
+                              "start": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "end": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "startLine": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "startColumn": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "endLine": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "endColumn": {
+                                "minimum": 1,
+                                "type": "integer"
+                              }
+                            }
+                          },
+                          "fixes": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "title",
+                                    "edits"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "edit",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "edits": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "required": [
+                                          "range",
+                                          "text"
+                                        ],
+                                        "properties": {
+                                          "range": {
+                                            "type": "object",
+                                            "required": [
+                                              "start",
+                                              "end",
+                                              "startLine",
+                                              "startColumn",
+                                              "endLine",
+                                              "endColumn"
+                                            ],
+                                            "properties": {
+                                              "start": {
+                                                "minimum": 0,
+                                                "type": "integer"
+                                              },
+                                              "end": {
+                                                "minimum": 0,
+                                                "type": "integer"
+                                              },
+                                              "startLine": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              },
+                                              "startColumn": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              },
+                                              "endLine": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              },
+                                              "endColumn": {
+                                                "minimum": 1,
+                                                "type": "integer"
+                                              }
+                                            }
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "title",
+                                    "nodeId",
+                                    "nodeName"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "moveService",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "nodeId": {
+                                      "type": "string"
+                                    },
+                                    "nodeName": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "title",
+                                    "serviceId",
+                                    "serviceName"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "exposeService",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "serviceId": {
+                                      "type": "string"
+                                    },
+                                    "serviceName": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "restartNeeded": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "service:env.edit",
         "x-mcp": true
       }
     },
@@ -38661,6 +40363,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -38822,6 +40525,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -39411,6 +41117,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -39565,6 +41288,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -39762,7 +41526,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -39820,6 +41585,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -41713,6 +43481,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -41874,6 +43643,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -42463,6 +44235,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -42617,6 +44406,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -42814,7 +44644,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -42872,6 +44703,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -48933,6 +50767,7 @@
                     "canBuild",
                     "canBuildWarning",
                     "maxParallelBuilds",
+                    "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
                     "facts",
@@ -49083,7 +50918,12 @@
                     "maxParallelBuilds": {
                       "minimum": 1,
                       "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                       "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
                     },
                     "wings": {
                       "type": "object",
@@ -49370,6 +51210,28 @@
                         }
                       ]
                     },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
+                    },
                     "createdAt": {
                       "format": "date-time",
                       "type": "string"
@@ -49513,6 +51375,80 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "panelAddressChoice": {
+                      "anyOf": [
+                        {
+                          "const": "follow",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stay",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "panelAddressChoiceBy": {
+                      "anyOf": [
+                        {
+                          "const": "owner",
+                          "type": "string"
+                        },
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "join",
+                          "type": "string"
+                        },
+                        {
+                          "const": "inspectedCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "default",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "panelAddressChoiceAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastOffline": {
+                      "type": "object",
+                      "required": [
+                        "from",
+                        "to",
+                        "reason",
+                        "failedAttempts"
+                      ],
+                      "properties": {
+                        "from": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "to": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "description": "The last connect error the agent had meanwhile, for example a certificate it does not trust.",
+                          "type": "string"
+                        },
+                        "failedAttempts": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -49726,6 +51662,7 @@
                           "canBuild",
                           "canBuildWarning",
                           "maxParallelBuilds",
+                          "parallelBuildsAuto",
                           "wings",
                           "gamesFirstCpu",
                           "facts",
@@ -49870,7 +51807,12 @@
                           "maxParallelBuilds": {
                             "minimum": 1,
                             "maximum": 16,
+                            "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                             "type": "integer"
+                          },
+                          "parallelBuildsAuto": {
+                            "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                            "type": "boolean"
                           },
                           "wings": {
                             "type": "object",
@@ -50156,6 +52098,28 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "rejectedHello": {
+                            "type": "object",
+                            "required": [
+                              "reason",
+                              "message",
+                              "at"
+                            ],
+                            "properties": {
+                              "reason": {
+                                "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                                "type": "string"
+                              },
+                              "message": {
+                                "description": "What the panel told the agent.",
+                                "type": "string"
+                              },
+                              "at": {
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            }
                           },
                           "createdAt": {
                             "format": "date-time",
@@ -50470,6 +52434,7 @@
                     "canBuild",
                     "canBuildWarning",
                     "maxParallelBuilds",
+                    "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
                     "facts",
@@ -50614,7 +52579,12 @@
                     "maxParallelBuilds": {
                       "minimum": 1,
                       "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                       "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
                     },
                     "wings": {
                       "type": "object",
@@ -50900,6 +52870,28 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
                     },
                     "createdAt": {
                       "format": "date-time",
@@ -51202,6 +53194,7 @@
                     "canBuild",
                     "canBuildWarning",
                     "maxParallelBuilds",
+                    "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
                     "facts",
@@ -51346,7 +53339,12 @@
                     "maxParallelBuilds": {
                       "minimum": 1,
                       "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                       "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
                     },
                     "wings": {
                       "type": "object",
@@ -51632,6 +53630,28 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
                     },
                     "createdAt": {
                       "format": "date-time",
@@ -51719,6 +53739,7 @@
                     "canBuild",
                     "canBuildWarning",
                     "maxParallelBuilds",
+                    "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
                     "facts",
@@ -51863,7 +53884,12 @@
                     "maxParallelBuilds": {
                       "minimum": 1,
                       "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                       "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
                     },
                     "wings": {
                       "type": "object",
@@ -52149,6 +54175,28 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
                     },
                     "createdAt": {
                       "format": "date-time",
@@ -52244,6 +54292,7 @@
                     "canBuild",
                     "canBuildWarning",
                     "maxParallelBuilds",
+                    "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
                     "facts",
@@ -52388,7 +54437,12 @@
                     "maxParallelBuilds": {
                       "minimum": 1,
                       "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                       "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
                     },
                     "wings": {
                       "type": "object",
@@ -52674,6 +54728,28 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
                     },
                     "createdAt": {
                       "format": "date-time",
@@ -52791,7 +54867,7 @@
       "post": {
         "operationId": "nodes.updateSettings",
         "summary": "Change node settings",
-        "description": "Changes a node's location label, public address, wildcard domain, how many builds run at once and how much log history each service keeps. Omitted fields stay as they are.",
+        "description": "Changes a node's location label, public address, wildcard domain, how many builds run at once, how much log history each service keeps and its Panel address (\"follow\" moves the node to the panel's domain once that is live, \"stay\" keeps it on the address it dials). Omitted fields stay as they are. Builds at once is a fixed number or Auto: maxParallelBuilds sets a fixed number (1 to 16) and turns Auto off; parallelBuildsAuto true turns Auto on, which runs one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes; parallelBuildsAuto false keeps the number that applies now as a fixed one, unless maxParallelBuilds gives another. parallelBuildsAuto true together with maxParallelBuilds is BAD_REQUEST (field maxParallelBuilds). The output's maxParallelBuilds is the number that applies now.",
         "tags": [
           "nodes"
         ],
@@ -52859,7 +54935,12 @@
                   "maxParallelBuilds": {
                     "minimum": 1,
                     "maximum": 16,
+                    "description": "A fixed number of builds at once; turns Auto off. Not together with parallelBuildsAuto true.",
                     "type": "integer"
+                  },
+                  "parallelBuildsAuto": {
+                    "description": "true: Auto, one build per 4 CPU cores and per 4 GiB of memory, 1 to 16. false: a fixed number, the one that applies now unless maxParallelBuilds is given. Added in 0.2.15.",
+                    "type": "boolean"
                   },
                   "logRetention": {
                     "type": "object",
@@ -52880,6 +54961,18 @@
                         "type": "integer"
                       }
                     }
+                  },
+                  "panelAddressChoice": {
+                    "anyOf": [
+                      {
+                        "const": "follow",
+                        "type": "string"
+                      },
+                      {
+                        "const": "stay",
+                        "type": "string"
+                      }
+                    ]
                   }
                 }
               }
@@ -52909,6 +55002,7 @@
                     "canBuild",
                     "canBuildWarning",
                     "maxParallelBuilds",
+                    "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
                     "facts",
@@ -53059,7 +55153,12 @@
                     "maxParallelBuilds": {
                       "minimum": 1,
                       "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
                       "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
                     },
                     "wings": {
                       "type": "object",
@@ -53346,6 +55445,28 @@
                         }
                       ]
                     },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
+                    },
                     "createdAt": {
                       "format": "date-time",
                       "type": "string"
@@ -53489,6 +55610,80 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "panelAddressChoice": {
+                      "anyOf": [
+                        {
+                          "const": "follow",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stay",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "panelAddressChoiceBy": {
+                      "anyOf": [
+                        {
+                          "const": "owner",
+                          "type": "string"
+                        },
+                        {
+                          "const": "node",
+                          "type": "string"
+                        },
+                        {
+                          "const": "join",
+                          "type": "string"
+                        },
+                        {
+                          "const": "inspectedCertificate",
+                          "type": "string"
+                        },
+                        {
+                          "const": "default",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "panelAddressChoiceAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastOffline": {
+                      "type": "object",
+                      "required": [
+                        "from",
+                        "to",
+                        "reason",
+                        "failedAttempts"
+                      ],
+                      "properties": {
+                        "from": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "to": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "description": "The last connect error the agent had meanwhile, for example a certificate it does not trust.",
+                          "type": "string"
+                        },
+                        "failedAttempts": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      }
                     }
                   }
                 }
@@ -58612,6 +60807,7 @@
                           "previewServiceId",
                           "url",
                           "status",
+                          "buildWaiting",
                           "closedAt",
                           "createdAt"
                         ],
@@ -58701,6 +60897,9 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           },
                           "closedAt": {
                             "anyOf": [
@@ -61593,6 +63792,7 @@
                         "kind",
                         "parentId",
                         "status",
+                        "buildWaiting",
                         "source",
                         "address",
                         "placements",
@@ -61754,6 +63954,9 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "buildWaiting": {
+                          "type": "boolean"
                         },
                         "source": {
                           "type": "object",
@@ -62343,6 +64546,23 @@
                               "minimum": 1,
                               "maximum": 3600,
                               "type": "integer"
+                            },
+                            "init": {
+                              "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                              "anyOf": [
+                                {
+                                  "const": "auto",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "on",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "off",
+                                  "type": "string"
+                                }
+                              ]
                             }
                           }
                         },
@@ -62497,6 +64717,47 @@
                                 "failureThreshold": {
                                   "minimum": 1,
                                   "maximum": 100,
+                                  "type": "integer"
+                                }
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "imageHealthCheck": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "test",
+                                "intervalSeconds",
+                                "timeoutSeconds",
+                                "startPeriodSeconds",
+                                "retries"
+                              ],
+                              "properties": {
+                                "test": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "intervalSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "timeoutSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "startPeriodSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "retries": {
+                                  "minimum": 0,
                                   "type": "integer"
                                 }
                               }
@@ -62694,7 +64955,8 @@
                             "required": [
                               "id",
                               "name",
-                              "status"
+                              "status",
+                              "buildWaiting"
                             ],
                             "properties": {
                               "id": {
@@ -62752,6 +65014,9 @@
                                     "type": "string"
                                   }
                                 ]
+                              },
+                              "buildWaiting": {
+                                "type": "boolean"
                               }
                             }
                           }
@@ -63952,6 +66217,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -64113,6 +66379,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -64702,6 +66971,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -64856,6 +67142,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -65053,7 +67380,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -65111,6 +67439,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -65514,6 +67845,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -65675,6 +68007,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -66264,6 +68599,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -66418,6 +68770,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -66615,7 +69008,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -66673,6 +69067,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -67021,6 +69418,7 @@
                           "kind",
                           "parentId",
                           "status",
+                          "buildWaiting",
                           "source",
                           "address",
                           "placements",
@@ -67164,6 +69562,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           },
                           "source": {
                             "type": "object",
@@ -68355,7 +70756,7 @@
       "post": {
         "operationId": "services.setHealthCheck",
         "summary": "Set a service's health check and deploy strategy",
-        "description": "Sets the custom health check (null = TCP on the first port) and how deploys roll out: rolling (zero downtime, health gated) or recreate, and how long a new version may take to become healthy. Applies on the next deploy.",
+        "description": "Sets the custom health check and how deploys roll out: rolling (zero downtime, health gated) or recreate, and how long a new version may take to become healthy. null = the default: the image's own HEALTHCHECK when it declares one (apps and compose members; deploys wait for Docker to call the container healthy, through its start period), else TCP on the first port. With the image's HEALTHCHECK the default health timeout (300) grows to its start period plus retries x (interval + timeout) plus a minute; any other timeout is used as set. Applies on the next deploy.",
         "tags": [
           "services"
         ],
@@ -69373,6 +71774,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -69534,6 +71936,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -70123,6 +72528,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -70277,6 +72699,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -70474,7 +72937,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -70532,6 +72996,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -70991,7 +73458,7 @@
       "post": {
         "operationId": "services.setWatchPaths",
         "summary": "Set a service's watch paths",
-        "description": "Sets the glob patterns a push must touch to deploy the service (for monorepos), in order: * (not across \"/\"), ** (across folders), ?, and ! to exclude; the last pattern that matches a file decides. A push deploys when at least one changed file counts; when the changed files cannot be known it deploys. An empty list deploys on every push. Applies to GitHub, GitLab, Gitea/Forgejo and Bitbucket pushes, branch polling and the deploy trigger URL.",
+        "description": "Sets the glob patterns a push must touch to deploy the service (for monorepos), in order: * (not across \"/\"), ** (across folders), ?, and ! to exclude; the last pattern that matches a file decides. Patterns start at the repository root: one with a \".\" or \"..\" segment (such as apps/docs/..) never matches and is refused; to watch a folder, write apps/docs/**. A push deploys when at least one changed file counts; when the changed files cannot be known it deploys. An empty list deploys on every push. Applies to GitHub, GitLab, Gitea/Forgejo and Bitbucket pushes, branch polling and the deploy trigger URL.",
         "tags": [
           "services"
         ],
@@ -71190,7 +73657,7 @@
       "post": {
         "operationId": "services.update",
         "summary": "Change a service's general settings",
-        "description": "Renames a service or changes its container settings, ports or cron schedule. Omitted fields keep their value. Changes to what runs apply on the next deploy; a rename updates the network alias on the next deploy too.",
+        "description": "Renames a service or changes its container settings (command, entrypoint, working directory, user, stop signal and timeout, init process), ports or cron schedule. Omitted fields keep their value. container.init: auto (default) runs Docker's init (Tini) as PID 1 to forward stop signals and reap zombies, unless the image runs its own init (s6-overlay's /init, tini, dumb-init, s6); on always; off never. Changes to what runs apply on the next deploy; a rename updates the network alias on the next deploy too.",
         "tags": [
           "services"
         ],
@@ -71261,6 +73728,23 @@
                         "minimum": 1,
                         "maximum": 3600,
                         "type": "integer"
+                      },
+                      "init": {
+                        "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                        "anyOf": [
+                          {
+                            "const": "auto",
+                            "type": "string"
+                          },
+                          {
+                            "const": "on",
+                            "type": "string"
+                          },
+                          {
+                            "const": "off",
+                            "type": "string"
+                          }
+                        ]
                       }
                     }
                   },
@@ -71364,6 +73848,7 @@
                     "kind",
                     "parentId",
                     "status",
+                    "buildWaiting",
                     "source",
                     "address",
                     "placements",
@@ -71525,6 +74010,9 @@
                           "type": "string"
                         }
                       ]
+                    },
+                    "buildWaiting": {
+                      "type": "boolean"
                     },
                     "source": {
                       "type": "object",
@@ -72114,6 +74602,23 @@
                           "minimum": 1,
                           "maximum": 3600,
                           "type": "integer"
+                        },
+                        "init": {
+                          "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                          "anyOf": [
+                            {
+                              "const": "auto",
+                              "type": "string"
+                            },
+                            {
+                              "const": "on",
+                              "type": "string"
+                            },
+                            {
+                              "const": "off",
+                              "type": "string"
+                            }
+                          ]
                         }
                       }
                     },
@@ -72268,6 +74773,47 @@
                             "failureThreshold": {
                               "minimum": 1,
                               "maximum": 100,
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "imageHealthCheck": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "test",
+                            "intervalSeconds",
+                            "timeoutSeconds",
+                            "startPeriodSeconds",
+                            "retries"
+                          ],
+                          "properties": {
+                            "test": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "intervalSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "timeoutSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "startPeriodSeconds": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "retries": {
+                              "minimum": 0,
                               "type": "integer"
                             }
                           }
@@ -72465,7 +75011,8 @@
                         "required": [
                           "id",
                           "name",
-                          "status"
+                          "status",
+                          "buildWaiting"
                         ],
                         "properties": {
                           "id": {
@@ -72523,6 +75070,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -73944,6 +76494,7 @@
                         "kind",
                         "parentId",
                         "status",
+                        "buildWaiting",
                         "source",
                         "address",
                         "placements",
@@ -74105,6 +76656,9 @@
                               "type": "string"
                             }
                           ]
+                        },
+                        "buildWaiting": {
+                          "type": "boolean"
                         },
                         "source": {
                           "type": "object",
@@ -74694,6 +77248,23 @@
                               "minimum": 1,
                               "maximum": 3600,
                               "type": "integer"
+                            },
+                            "init": {
+                              "description": "Init process. auto (default): Docker's init (Tini) as PID 1, forwarding stop signals to the app and reaping zombies, unless the image runs its own init as PID 1 (its entrypoint, or command without one, is s6-overlay's /init, another init or systemd, tini, dumb-init, docker-init, catatonit or s6-*). on: always. off: never. Applies on the next deploy.",
+                              "anyOf": [
+                                {
+                                  "const": "auto",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "on",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "off",
+                                  "type": "string"
+                                }
+                              ]
                             }
                           }
                         },
@@ -74848,6 +77419,47 @@
                                 "failureThreshold": {
                                   "minimum": 1,
                                   "maximum": 100,
+                                  "type": "integer"
+                                }
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "imageHealthCheck": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "test",
+                                "intervalSeconds",
+                                "timeoutSeconds",
+                                "startPeriodSeconds",
+                                "retries"
+                              ],
+                              "properties": {
+                                "test": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "intervalSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "timeoutSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "startPeriodSeconds": {
+                                  "minimum": 0,
+                                  "type": "number"
+                                },
+                                "retries": {
+                                  "minimum": 0,
                                   "type": "integer"
                                 }
                               }
@@ -75045,7 +77657,8 @@
                             "required": [
                               "id",
                               "name",
-                              "status"
+                              "status",
+                              "buildWaiting"
                             ],
                             "properties": {
                               "id": {
@@ -75103,6 +77716,9 @@
                                     "type": "string"
                                   }
                                 ]
+                              },
+                              "buildWaiting": {
+                                "type": "boolean"
                               }
                             }
                           }
@@ -84535,6 +87151,7 @@
                           "kind",
                           "parentId",
                           "status",
+                          "buildWaiting",
                           "source",
                           "address",
                           "placements",
@@ -84678,6 +87295,9 @@
                                 "type": "string"
                               }
                             ]
+                          },
+                          "buildWaiting": {
+                            "type": "boolean"
                           },
                           "source": {
                             "type": "object",
@@ -86178,7 +88798,7 @@
       "get": {
         "operationId": "terminals.watchConsole",
         "summary": "Watch the console of a service",
-        "description": "Returns a one-minute ticket for a WebSocket with the console's output only, like terminals.console without stdin: recent output first, then live output; what is sent on it is dropped. Like reading logs it is not written to the audit log; the Overview's console card watches and opens terminals.console once someone types.",
+        "description": "Returns a one-minute ticket for a WebSocket with the console's output only, like terminals.console without stdin: recent output first, then live output; what is sent on it is dropped. Like reading logs it is not written to the audit log; the Overview's console card watches and opens terminals.console once someone types, and the Console tab asks it which container it would attach to (target.containerId) before it reconnects by itself.",
         "tags": [
           "terminals"
         ],
