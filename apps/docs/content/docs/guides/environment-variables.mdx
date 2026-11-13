@@ -14,6 +14,7 @@ The editor checks the file as you type and underlines problems:
 - a reference to a service or variable that does not exist, to the service itself, or one that loops back on itself,
 - an internal address of a service that runs on another node, or that is not exposed (see below),
 - new in 0.2.15: a service's address written out instead of its reference, and a reference the app would get as text (see [Hints for references](#hints-for-references)).
+- new in 0.2.16: an index on a variable that is no list, or past the last domain of `DOMAINS` (see [DOMAINS](#domains)).
 
 Syntax problems block saving; the others are saved and shown as warnings, or as a blue hint for an address written out.
 
@@ -93,10 +94,10 @@ Every service offers these besides its own keys:
 
 | Service | Variables |
 | --- | --- |
-| Apps, compose members and Boxes | `URL` (public URL of the primary domain), `DOMAIN` (its host), `INTERNAL_URL` (`http://<service>:<port>` on the project network), `INTERNAL_HOST`, `INTERNAL_PORT` |
+| Apps, compose members and Boxes | `URL` (public URL of the primary domain), `DOMAIN` (its host), `DOMAINS` (new in 0.2.16: every domain's host, primary first, comma separated; see [DOMAINS](#domains)), `INTERNAL_URL` (`http://<service>:<port>` on the project network), `INTERNAL_HOST`, `INTERNAL_PORT` |
 | Databases | `INTERNAL_URL` (connection URL on the project network), `INTERNAL_HOST`, `INTERNAL_PORT`, `EXPOSED_URL` (connection URL from anywhere, with TLS), `EXPOSED_HOST`, `EXPOSED_PORT`, `USER`, `PASSWORD`, `DATABASE`. ClickHouse (new in 0.2) also has `INTERNAL_HTTP_URL` (its HTTP interface, with the password) and `INTERNAL_HTTP_PORT`. |
 
-`URL` and `DOMAIN` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed, and since 0.2.9 while an exposed Postgres, MySQL or MariaDB waits for its node's update (see [Closed until the node updates](/guides/databases#closed-until-the-node-updates)). The exposed URL has the database's own user and password.
+`URL`, `DOMAIN` and `DOMAINS` are empty until the service has a domain; the `EXPOSED_*` variables until the database is exposed, and since 0.2.9 while an exposed Postgres, MySQL or MariaDB waits for its node's update (see [Closed until the node updates](/guides/databases#closed-until-the-node-updates)). The exposed URL has the database's own user and password.
 
 New in 0.2.8: a service can reference its own built-in variables by its own name, for an app that must know its public address. n8n, for example:
 
@@ -106,6 +107,29 @@ WEBHOOK_URL=${{automations.URL}}
 ```
 
 Its own `.env` keys stay out of reach that way (they are the lines of the same file): the editor marks `${{automations.SOME_KEY}}` as an error and says to write the value instead. Before 0.2.8 every reference to the service itself was an error and stayed unresolved. Since 0.2.15 the **References** panel lists the service's own built-in variables under **this service** (see [The References panel](#the-references-panel)).
+
+### Every domain of a service: DOMAINS [#domains]
+
+New in 0.2.16. `${{api.DOMAINS}}` lists every host the api service answers on, comma separated with no spaces: the primary domain first, then the others in the order the **Domains** tab lists them.
+
+```bash
+ALLOWED_HOSTS=${{api.DOMAINS}}          # api.example.com,www.example.com
+WWW_HOST=${{api.DOMAINS[1]}}            # www.example.com
+CALLBACK=https://${{api.DOMAINS[1]}}/v1 # https://www.example.com/v1
+```
+
+Redirect-only domains are left out, a host with several paths counts once, and a wildcard host is listed as written. It is empty while the service has no domain. Apps, compose members and Boxes have it, like `DOMAIN`.
+
+`[n]` after the name picks one domain, counting from 0, so `DOMAINS[0]` is the primary domain, the same host as `DOMAIN`. It works inside a longer value too. In the editor:
+
+- completions offer `DOMAINS[0]`, `DOMAINS[1]`, ... with their hosts when the service has two or more domains, the hover shows the host ("Item 2 of 2 in DOMAINS"), and the **References** panel has a `DOMAINS` chip,
+- an index past the last domain gets an amber warning that says how many the service has, such as "api has 2 domains: DOMAINS[0] and DOMAINS[1]", and the value stays empty until it has that many,
+- an index on a variable that is no list, such as `${{api.URL[1]}}`, is a red error, with a fix to `DOMAINS[1]` for `DOMAIN[1]`; the reference then stays as written,
+- a broken index (`DOMAINS[-1]`, `DOMAINS[ 1 ]`, `DOMAINS[]`, `DOMAINS[1.5]`) is a syntax error and blocks the save.
+
+The **Secret** and **Public** chips judge an indexed reference by its one item, as the panel does on save. As with `DOMAIN`, adding, removing or changing a domain shows in the **References** panel right away and reaches running containers on their next deploy; a restart keeps the old values. Shared variables take no references, so `${{api.DOMAINS[1]}}` is refused there like any other reference. When the service's own `.env` has a key named `DOMAINS`, other services that reference `${{api.DOMAINS}}` get the built-in list, as with every built-in name.
+
+In the API and MCP, `env.references` marks the variable `list: true`, and `env.set`, `env.setVariable` and `env.analyze` return the diagnostics `not-a-list` (error) and `index-out-of-range` (warning); a broken index is `malformed-reference`.
 
 ## Hints for references
 
@@ -121,7 +145,8 @@ gets "NEXT_PUBLIC_API can use `${{api.URL}}`", and **Use `${{api.URL}}`** makes 
 
 - a service's `URL`, `INTERNAL_URL` or `EXPOSED_URL`, also followed by a path or a query,
 - the service's own address, such as `${{web.URL}}` for `NEXTAUTH_URL` on the web service,
-- a bare `DOMAIN` or `INTERNAL_HOST` as the whole value of a variable named for a host or a domain (`API_HOST`, `COOKIE_DOMAIN`, `ALLOWED_HOSTS`).
+- a bare `DOMAIN` or `INTERNAL_HOST` as the whole value of a variable named for a host or a domain (`API_HOST`, `COOKIE_DOMAIN`, `ALLOWED_HOSTS`),
+- new in 0.2.16: a service's domains written out in a variable named for hosts or domains, in the order of `DOMAINS` (`ALLOWED_HOSTS=api.example.com,www.example.com` can use `${{api.DOMAINS}}`; another order or a space after a comma is no match), and one of its other domains on its own (`WWW_HOST=www.example.com` can use `${{api.DOMAINS[1]}}`). The primary domain alone still gets `DOMAIN`.
 
 A database's `EXPOSED_HOST` on its own is left alone, since it is often just the node's address. So are addresses many services share (`localhost`, an IP address), mail settings such as `MAIL_DOMAIN`, an address two services share, and plain words that happen to be a service's name.
 
@@ -172,6 +197,8 @@ Two things still make one a secret: `# @secret` on the line above, and a passwor
 ### Secret and Public chips
 
 New in 0.2.15. In the editor, a **Secret** chip follows each variable that builds and crash reports treat as a secret, and a **Public** chip follows one whose name or value looks secret but is public, by a framework prefix or a `# @public` comment. Hovering the chip or the name says why (its name, its value, a reference to another secret, a comment, the prefix), what it changes (a Dockerfile or Railpack build gets a secret only as a build secret, `RUN --mount=type=secret,id=NAME`, not as `ARG NAME`; Nixpacks does not get it; crash reports and troubleshoot uploads hide its value) and which comment changes it. In the API and MCP, `env.references` says `secret` for every variable of other services and every shared variable.
+
+Changed in 0.2.16: an indexed reference such as `${{api.DOMAINS[1]}}` is judged by that one domain, not by the whole list, so the chip agrees with what the panel decides on save.
 
 ### A secret named by a Dockerfile ARG
 

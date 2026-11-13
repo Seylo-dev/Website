@@ -86,6 +86,16 @@ Then click **Check again**. **Always Use HTTPS** itself does not stop Let's Encr
 The deploy log shows the check that failed and the app's last log lines. The usual causes: the app listens on a different port than the one set under **Advanced → Container → Ports**, it listens on `127.0.0.1` instead of `0.0.0.0`, or it needs longer to start than **Health timeout** allows. An app built from a repository gets its port as `PORT`; with no port, its domains' port, else 80, so an app that reads `$PORT` listens there (changed in 0.2.3: every built app, also older ones; see [PORT for built apps](/guides/environment-variables#port-for-built-apps)). Your old version keeps serving while you fix it.
 
 New in 0.2.15, on nodes with agent 0.2.15: when the default TCP check was refused on every try, the error goes on with "Nothing in the container listens on port 80..." and says what to do, for a background worker too (see [Nothing listens on the port](/features/zero-downtime-deploys#nothing-listens-on-the-port)). An image that declares a `HEALTHCHECK` is checked by Docker with it instead, and the deploy error ends with the check's last output (see [The image's HEALTHCHECK](/features/zero-downtime-deploys#the-images-healthcheck)).
+
+New in 0.2.16, on nodes with agent 0.2.16: the agent reads which ports the new container listens on, and the error says "The app listens on port 6000, not 80. ..." or "The app listens only on 127.0.0.1:...; it must listen on 0.0.0.0 (all addresses)". For an app on another port, **Use port 6000** next to the error sets the service's port, moves its domains, IP:port access and Cloudflare tunnel there, and deploys (see [The app listens on another port](/features/zero-downtime-deploys#the-app-listens-on-another-port)). The app's own output is under **Last output of the new container**, below the error.
+</Accordion>
+
+<Accordion title='A domain says it "does not exist"'>
+New in 0.2.16. The row reads "`<domain>` does not exist: it is not registered, or has no name servers yet. Check the spelling." when the registrable domain, such as `example.co.il` for `app.example.co.il`, has no name servers and the host has no record. Check the spelling first: "Did you mean ...?" names a likely one from the domains in the panel. A domain registered a few minutes ago may need its registrar to publish its name servers. Once the domain exists, create the record the row still shows and click **Check again**. See [A domain that does not exist](/guides/domains-and-https#a-domain-that-does-not-exist).
+</Accordion>
+
+<Accordion title="A database client without TLS is refused">
+An exposed database only takes TLS by default: Postgres clients get "this port only accepts TLS connections: connect with sslmode=require", MySQL and MariaDB clients error 3159. Connect with TLS, as the exposed URL does (see [Self-signed certificates](/guides/databases#self-signed-certificates) for clients that check the certificate). New in 0.2.16, for a client that cannot use TLS: turn on **Allow connections without TLS** on the **Exposed connection** card, with the allowed IPs limited to that client, or open a [timed expose](/guides/databases#timed-expose) to its IP for a while. See [Connections without TLS](/guides/databases#connections-without-tls).
 </Accordion>
 
 <Accordion title="An app can't reach a database on another node">

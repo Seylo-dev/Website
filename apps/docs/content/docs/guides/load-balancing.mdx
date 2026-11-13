@@ -3,7 +3,7 @@ title: Load balancing and replicas
 description: Run an app on several nodes with several replicas each, and spread its traffic over all of them.
 ---
 
-An app runs on one node by default, as one container. On its **Advanced** tab, **Replicas and nodes** lets you add nodes and set **Replicas** per node (1 to 32). The new replicas deploy right away.
+An app runs on one node by default, as one container. On its **Advanced** tab, **Replicas and nodes** lets you add nodes and set **Replicas** per node (1 to 32). The new replicas deploy right away. Changed in 0.2.16: while a deploy of the app runs, **Save** waits when the nodes change, since a deploy rolls out on the nodes it started with; replica counts, sticky sessions and the entry node alone still save (see [Nodes during a deploy](/features/zero-downtime-deploys#nodes-during-a-deploy)).
 
 The image is built once and shipped to every node, so all replicas run the same image.
 

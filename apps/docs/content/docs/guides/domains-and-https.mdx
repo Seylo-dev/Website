@@ -32,6 +32,28 @@ The panel checks the record through public resolvers and shows one of:
 
 New in 0.2.5: each row names the IP its record should point at, next to the status.
 
+Changed in 0.2.16: a domain's container port follows the service's main port. When the main port changes, with **Use port** after a failed deploy or by hand under **Advanced → Container → Ports**, the domains on the old port move to the new one, with the IP:port access and the Cloudflare tunnel; a domain on another port stays (see [Change the main port](/features/zero-downtime-deploys#change-the-main-port)).
+
+### A domain that does not exist
+
+Changed in 0.2.16. The panel looks for the zone where a domain's DNS is managed from the host up, and now stops at the registrable domain: the name under a public suffix from the Public Suffix List (`example.com`, `example.co.il`, `example.co.uk`, `example.com.au`). A delegated sub-zone with name servers of its own, such as `eu.example.co.il`, is still found first. Before, the search went on past it, so a domain that does not exist said to add its record "where co.il's DNS is managed".
+
+When the registrable domain has no name servers, and the host itself has no A, AAAA or CNAME record, the row says:
+
+```text
+example.co.il does not exist: it is not registered, or has no name servers yet. Check the spelling.
+```
+
+It adds "Did you mean ...?" when another domain you can see in the panel is a likely spelling under the same suffix, at most two edits away (one for names of four letters or fewer). The row still shows the record to create once the domain exists. Adding such a domain works and says the same ("Domain added, but example.co.il does not exist."). Names that are never public are never called missing: `localhost`, `test`, `local`, `invalid`, `example`, `example.com` and the other special-use names, and the top-level names `internal`, `lan`, `home`, `corp`, `intranet`, `localdomain` and `private`. Name servers that do not answer are not a missing domain either.
+
+The list ships with the panel, so nothing is fetched at run time, and a newer list comes with a panel update. In the API and MCP, `domains.checkDns` answers `zoneMissing`, `registrable` and `didYouMean`, and `domains.add` and `domains.addAuto` return `warning` (reason `registrableMissing`).
+
+### The count on the Domains tab
+
+The **Domains** tab shows in red how many of the service's domains need you, and its tooltip names them. Each counted row says why. A domain counts while its record is missing or points elsewhere, while the panel's origin check finds another server answering through Cloudflare, when its certificate failed, and when it has no route on the node for a reason other than a service that has not deployed yet. Automatic domains, redirects and a certificate on its way never count.
+
+Changed in 0.2.16: a domain behind Cloudflare's proxy that the panel has not checked yet, or is still checking, no longer counts, and its DNS chip says "Checking that requests reach `<IP>`...". It counts once the panel's checks through Cloudflare have not reached the node for 30 minutes: the chip turns amber, and a note under the row says so, with Cloudflare's reason when there is one and **Check again**. Before, every proxied domain the panel had not seen reach the node counted, so a domain whose check had not run showed a red 1 with nothing on the page saying why.
+
 ### No route on the node
 
 New in 0.2.13. A node routes a service's domains once a deployment of the service is live there. When the panel knows a domain has no route on its node, the row says why in place of **Certificate waits for DNS** or **Certificate waits for Cloudflare**, which read as a record to fix while the record was right:
@@ -60,6 +82,8 @@ New in 0.2.5: for a proxied domain the panel also runs an **origin check**. It a
 - No answer that tells (a timeout, Cloudflare's 52x, an agent older than 0.2.5): the panel cannot tell where the record points. New in 0.2.13: when the answer came from Cloudflare itself, the row says what stopped the check (see [Certificate waits for Cloudflare](#certificate-waits-for-cloudflare)).
 
 Changed in 0.2.13: a challenge or a block from Cloudflare's own security never counts as another server answering, since the request may not have left Cloudflare. Before, its 403 page read **Cloudflare proxy, not this node** while the record was right. A domain with **HTTPS** set to **HTTP only** now answers the check on port 443 as well, so behind **Always Use HTTPS** with SSL/TLS on **Full** it no longer reads **Cloudflare proxy, not this node** either.
+
+Fixed in 0.2.16: a proxied domain could stay on "needs setup" for good. Overlapping checks of one domain stored whichever finished last, so an old answer from before the node served the route could replace the newer proof that requests reach it, and once the certificate arrived the panel cleared that answer and never checked again. Now an older answer never replaces a newer one, and the panel checks a domain's origin on its own until it knows it, also once the domain is live: every 2 minutes in the first hour, every 15 minutes in the first day, then every 6 hours.
 
 New in 0.2.8: a custom domain does not ask Let's Encrypt for its certificate until it reaches the node: its record points at the node, or behind Cloudflare the origin check reached the node. Until then the row says **Certificate waits for DNS** (behind Cloudflare's proxy, since 0.2.13, **Certificate waits for Cloudflare**), the route serves the node's own certificate, and no failed validation counts against Let's Encrypt's limit of 5 per host name per hour. The panel checks waiting domains again on its own, and **Check again** on the row checks at once; the certificate starts as soon as one says the domain arrived. Automatic domains (the node's wildcard record) and domains with their own certificate never wait. Also fixed in 0.2.8: a proxied domain whose certificate was issued kept showing **Generating**.
 

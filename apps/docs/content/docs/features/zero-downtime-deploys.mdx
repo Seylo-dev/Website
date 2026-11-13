@@ -11,7 +11,7 @@ description: A new version only gets traffic after it passes its health check. U
 4. **Health check.** The check runs until it passes or the health timeout runs out.
 5. **Switch traffic.** The route moves to the new container in one atomic step, the agent confirms the domain answers through the proxy, then stops the old container.
 
-If the new version never passes within the health timeout, it is removed and the deploy is marked failed with the reason and the last log lines. The previous version stays live; nothing changes for your visitors.
+If the new version never passes within the health timeout, it is removed and the deploy is marked failed with the reason and the new container's last output (see [A failed deploy's output](#last-output)). The previous version stays live; nothing changes for your visitors.
 
 New in 0.2, on nodes with the 0.2 agent:
 
@@ -23,6 +23,22 @@ New in 0.2.1: IP:port addresses, such as the one a new app answers on before it 
 The node also checks the new settings before it starts anything, for example that volume names are valid and that an image from the panel's registry belongs to this service. When it refuses them, the deploy fails at once with the node's reason ("The node refused the new settings: ...") and a **Deploy failed** alert, instead of waiting for the health timeout. The previous version keeps running, and the other services on that node are not affected.
 
 Deploys of one service run one at a time; a deploy started while another runs waits in line. **Cancel deploy** in the service header stops one that has not switched yet.
+
+### Follow a deploy
+
+The service header says **Deploying** while a deploy runs, with **Cancel deploy**, and the **Deployments** tab lists every deploy with its steps and log. Changed in 0.2.16: the **Deploys** card on an app's **Overview** shows the deploy in progress while one is queued, waiting for a build slot or running: its steps (**Queued** first while it waits) and how long it has run. Under it one line shows the version that is live now (**Live now**), or the last one that finished when none of the recent ones is live, and a note counts the deploys queued behind it. With nothing in progress it shows the newest deploy as before, with "Live: ..." when the live one is another.
+
+Fixed in 0.2.16: the card could keep the previous deploy, for example "Failed, 1 hour ago", after a new one went live, until a reload. These screens no longer rely on the panel's live updates alone. A deploy list checks again every 15 seconds while one of its deploys moves (every 2 seconds while the live connection is down) and as soon as the browser tab is shown again, so a deploy that ended while the tab was hidden no longer stays on **Building**. The Overview's card also checks every minute while nothing moves. A running deploy's clock counts with the panel's time, not the computer's, and stops as soon as the deploy has ended.
+
+### A failed deploy's output [#last-output]
+
+Changed in 0.2.16. A failed deploy's error is the reason alone, such as "not healthy after 5m0s: ...", followed by "The previous version stayed live." The new container's last output (its last 20 lines, secrets hidden) is a block of its own, **Last output of the new container**, collapsed, with the node, the number of lines and a copy button, in the deploy's log dialog and under the deploy on the **Deployments** tab. It is no longer inside the step log or the red error, and the **Deploy failed** alert carries the reason alone too. Agents before 0.2.16 send the output inside the message, and deploys that failed before the update kept it in their error: both are split the same way when shown, without rewriting the stored deploy.
+
+### Nodes during a deploy [#nodes-during-a-deploy]
+
+Changed in 0.2.16. A deploy rolls out on the nodes the service had when it started, so where a service runs changes only between deploys. While a deploy of the service is queued, building or deploying, **Replicas and nodes** refuses other nodes and **Move to another node** refuses to start, with the deploy to wait for or cancel: "A deploy of this service (generation 12) is running. Wait for it to finish, or cancel it, then ...". Replica counts, sticky sessions and the entry node alone can still change. On the **Advanced** tab, **Save** (when the nodes change) and **Move** wait, with the reason on the button. In the API, `services.setPlacements` and `services.move` return CONFLICT with reason `deployRunning` and the `deploymentId`.
+
+Fixed in 0.2.16: a rollout could wait forever after its service moved to another node. A node that no longer runs the service now fails the rollout at its next check ("`<node>` no longer runs this service: its nodes changed after this deploy started, so nothing rolls it out there. Deploy again to roll it out on ..."). A node that sends no progress for the health timeout (or the longer wait it reported, such as an image's start period) plus 5 minutes fails it with "No progress from `<node>` for N minutes", plus "(`<node>` is offline)" when it is, and the previous version stays live. Before, the whole rollout had that much time from its start, so a slow image pull could fail a rollout that was still moving.
 
 ## Health checks
 
@@ -65,6 +81,24 @@ Nothing in the container listens on port 80. If this service does not serve on a
 ```
 
 A compose member is pointed at its stack's compose file instead, and a service whose domains use the port is told the app must listen there. A check that timed out, an HTTP or command check, and a TCP check you set keep the plain error. Nothing about the defaults or the check changed: the deploy still fails until the port goes or a check that fits is set.
+
+### The app listens on another port
+
+New in 0.2.16, on nodes with agent 0.2.16. Before that hint, while the new container still runs, the agent reads which TCP ports it listens on, from inside the container's own network namespace, so nothing has to be installed in the image. When the app listens elsewhere, the error says so instead:
+
+```text
+The app listens on port 6000, not 80. Set the service's port to 6000 (Ports in the Container section of its Advanced tab) and point its domains there, or make the app listen on port 80.
+```
+
+With several ports it names them all ("ports 3000 and 6000"), and a compose member is told to name the port in its stack's compose file. An app that listens on the checked port only on a loopback address gets "The app listens only on 127.0.0.1:80; it must listen on 0.0.0.0 (all addresses) for the health check and its domains to reach it.", which wins over any other port it listens on, such as a debugger on 9229 or a metrics port. One that listens only on 127.0.0.1 on another port is told to listen on 0.0.0.0 on the service's port, or to change the port. A container that listens on nothing, or whose sockets could not be read, keeps the hint above.
+
+**Use port 6000**, next to the error in the deploy's log dialog and on the **Deployments** tab, does the fix in one click for an app that is not a compose member: it sets the service's main port to 6000, moves the domains, the first-run IP:port address, open timed exposes and the Cloudflare tunnel that were on the old port to 6000, and deploys. A built app's `PORT` follows the main port. Without a live version, or while the service is stopped, they move at once. With one running, its containers still listen on the old port, so they move when the new version rolls out, and go back to the old port, with the service's port, if that deploy fails or is cancelled; the toast says which. The button shows only on the service's newest deploy, while the service still has the port that deploy checked, and waits while another deploy runs. It needs the permissions to change and to deploy the service. In the API and MCP, `services.usePort` (with `fromPort`, the port the deploy checked).
+
+### Change the main port
+
+New in 0.2.16. Changing an app's main port by hand, its first TCP port under **Advanced → Container → Ports** or with `services.update`, moves the same things as **Use port**: the domains whose container port was the old port (a domain on another port stays), the first-run IP:port address, open timed exposes and the Cloudflare tunnel on it. Only a real change moves them: reordering ports that keeps the old one, or keeping the old port among the TCP ports, moves nothing, and neither does a compose member, which takes its ports from the compose file.
+
+When they move follows what runs. Without a live version, or when the live version already listens on another port, they move when you save. When the live version listens on the old port, they move when the next deploy rolls out, with the new containers; if that deploy fails or is cancelled they go back to the live version's port while the service's port stays as you set it, so the next deploy moves them again. **Ports** says which applies while the field differs from the saved port, and the deploy log says what moved.
 
 ## Stop the old version first
 
