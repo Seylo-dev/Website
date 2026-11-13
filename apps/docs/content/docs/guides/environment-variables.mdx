@@ -1,26 +1,29 @@
 ---
 title: Environment variables
-description: The .env editor, references between services with ${{service.VAR}}, shared project variables and the warnings for addresses that will not work.
+description: The .env editor, references between services with ${{service.VAR}}, shared project variables, secret and public variables, and the hints for addresses and references that will not work.
 ---
 
 ## The editor
 
-A service's **Environment** tab is a `.env` file in an editor: one `KEY=value` per line, `#` for comments, quotes for values with spaces or newlines. Values are hidden until you click **Show values**.
+A service's **Environment** tab is a `.env` file in an editor: one `KEY=value` per line, `#` for comments, quotes for values with spaces or newlines. Values of variables that count as secrets (see [Secret variables](#secret-variables)), and the password in a URL, are hidden until you click **Show values**. Changed in 0.2.15: a variable with a framework's public prefix, such as `NEXT_PUBLIC_`, or a `# @public` comment shows its value, since every browser gets it, and a `# @secret` one is hidden. A **Secret** or **Public** chip after a line says how it counts (see [Secret and Public chips](#secret-and-public-chips)).
 
 The editor checks the file as you type and underlines problems:
 
 - syntax: a line without `=`, an invalid name, a quote that is never closed,
 - a key set twice (the last value wins),
 - a reference to a service or variable that does not exist, to the service itself, or one that loops back on itself,
-- an internal address of a service that runs on another node, or that is not exposed (see below).
+- an internal address of a service that runs on another node, or that is not exposed (see below),
+- new in 0.2.15: a service's address written out instead of its reference, and a reference the app would get as text (see [Hints for references](#hints-for-references)).
 
-Syntax problems block saving; the others are saved and shown as warnings.
+Syntax problems block saving; the others are saved and shown as warnings, or as a blue hint for an address written out.
 
 The environment is stored encrypted. When two people edit at once, the second save is refused with **Someone else saved meanwhile** instead of silently overwriting the first.
 
 ## When new values apply
 
 An app's deployment keeps the environment it started with. Saving new values does not touch the running version: they apply on the next deploy. That way a half-finished edit, or a failed deploy, never reaches the running app. Databases and Boxes take the new values on their next restart.
+
+Changed in 0.2.15: after a save, the tab says the running instances keep the old values until the next deploy, and offers **Deploy**. Before, it said "Restart to apply them, or deploy" and offered **Restart**, but a restart starts the same containers again with the values of the last deploy, so nothing changed. Shared variables work the same way: services get new values on their next deploy, not on a restart.
 
 From the command line, `seylo env set` and `seylo env unset` save and deploy in one step (`--no-deploy` only saves). See [Command line](/guides/command-line).
 
@@ -47,6 +50,19 @@ ENV APP_VERSION=$GIT_SHA
 
 A service gets `GIT_SHA` from its next deploy after the update to 0.2.14. The build argument needs the node's agent from 0.2.14; a node on an older agent still gives the containers the environment variable.
 
+## NODE_ENV for apps
+
+New in 0.2.15. Every app gets `NODE_ENV=production` in its containers, the way an app built from a repository gets `PORT`: built from a repository, a Dockerfile or an upload, run from an image, a compose stack member or a pull request preview. A `NODE_ENV` of your own wins, whatever its value, also an empty one: in the service's `.env` (for a compose member, its `environment:` block) or in the project's shared variables. It also replaces a `NODE_ENV` the image sets itself (`ENV NODE_ENV=...`).
+
+- **Builds** do not get it, so `npm ci` in a Dockerfile still installs devDependencies. A `NODE_ENV` you set reaches the build as before.
+- **Databases, Boxes and cron services** get none.
+
+Like every environment change, it applies on the next deploy. Apps that are running get it then, not on a restart, which keeps the environment the app was deployed with. An app that must run with another value sets `NODE_ENV` in its `.env` before its next deploy:
+
+```bash
+NODE_ENV=development
+```
+
 ## References
 
 Point at another service's values instead of copying them:
@@ -62,6 +78,14 @@ A reference is `${{<service>.<VARIABLE>}}`, where `<service>` is a service name 
 Hover a reference to see the value it becomes. The **References** panel lists everything this service can reference; click an entry to insert it. Internal addresses of services on other nodes are struck through there (see [In the References panel](#in-the-references-panel)).
 
 A reference hands its value to your container, so you can only save one whose value you may see yourself: a member with access to one service can't read a sibling's API key or a database password by referencing it. The same rule applies to compose files and templates; a stack's or template's own services count as yours. A push to a compose stack's repository has no person behind it, so outside the stack it can only add references to other services' addresses, never to their secrets.
+
+### The References panel
+
+New in 0.2.15: the panel starts with the service you edit, marked **this service**, and its own built-in variables (see [Built-in variables](#built-in-variables)): `URL`, `DOMAIN`, `INTERNAL_URL`, `INTERNAL_HOST` and `INTERNAL_PORT` for an app, the connection set (`INTERNAL_URL`, `EXPOSED_URL`, `USER`, `PASSWORD`, ...) for a database. A click inserts `${{<its name>.DOMAIN}}` like any other reference, and the tip shows the value. Before, the panel listed the other services and the shared variables only, so a service's own domain could not be inserted from there. Its own `.env` keys are not listed: a reference to another line of the same file is refused, since it could loop back on itself, so write that value instead.
+
+Also new in 0.2.15: a variable that is empty right now gets no chip. That is `URL` and `DOMAIN` of a service without a domain (the service you edit included), a database's `EXPOSED_*` while it is not exposed, and an empty shared variable. A service, or the shared variables, with nothing left is not listed. A value you may not see keeps its chip, such as another service's variables or a database password without access to its credentials. A reference typed by hand, such as `${{web.DOMAIN}}`, still works, and gets its value once the service has a domain.
+
+The panel is never taller than the editor: its list scrolls inside it, by mouse wheel, keys or Tab, and its title and hint stay at the top. Each group (the service you edit, every other service, the shared variables) collapses and expands with a click on its header row, or Enter or Space. A group with more than 12 variables starts collapsed and shows how many it holds ("34 variables"); the service you edit and the other groups start expanded. **Expand all** and **Collapse all** in the header do every group. What you expand or collapse is remembered in this browser, per project. The panel is up to 440px wide (about 320px before) once the editor has 600px next to it; on a narrow screen it goes under the editor.
 
 ### Built-in variables
 
@@ -81,7 +105,40 @@ N8N_HOST=${{automations.DOMAIN}}
 WEBHOOK_URL=${{automations.URL}}
 ```
 
-Its own `.env` keys stay out of reach that way (they are the lines of the same file): the editor marks `${{automations.SOME_KEY}}` as an error and says to write the value instead. Before 0.2.8 every reference to the service itself was an error and stayed unresolved.
+Its own `.env` keys stay out of reach that way (they are the lines of the same file): the editor marks `${{automations.SOME_KEY}}` as an error and says to write the value instead. Before 0.2.8 every reference to the service itself was an error and stayed unresolved. Since 0.2.15 the **References** panel lists the service's own built-in variables under **this service** (see [The References panel](#the-references-panel)).
+
+## Hints for references
+
+### An address written out
+
+New in 0.2.15. A value that spells out a service's address gets a blue hint in the editor, with a quick fix to the reference that gives the same value and follows the address when it changes. With `api.example.com` as the api service's domain:
+
+```bash
+NEXT_PUBLIC_API=https://api.example.com/v1
+```
+
+gets "NEXT_PUBLIC_API can use `${{api.URL}}`", and **Use `${{api.URL}}`** makes it `NEXT_PUBLIC_API=${{api.URL}}/v1`. The hint covers:
+
+- a service's `URL`, `INTERNAL_URL` or `EXPOSED_URL`, also followed by a path or a query,
+- the service's own address, such as `${{web.URL}}` for `NEXTAUTH_URL` on the web service,
+- a bare `DOMAIN` or `INTERNAL_HOST` as the whole value of a variable named for a host or a domain (`API_HOST`, `COOKIE_DOMAIN`, `ALLOWED_HOSTS`).
+
+A database's `EXPOSED_HOST` on its own is left alone, since it is often just the node's address. So are addresses many services share (`localhost`, an IP address), mail settings such as `MAIL_DOMAIN`, an address two services share, and plain words that happen to be a service's name.
+
+Browser variables (`NEXT_PUBLIC_`, `VITE_`, `PUBLIC_`, `REACT_APP_`, `NUXT_PUBLIC_`, `EXPO_PUBLIC_`, `GATSBY_`, `VUE_APP_`) end up in code that runs in the visitor's browser, which cannot reach the project network, so `INTERNAL_URL` never works in them. For these the fix uses the public URL, also when the value was the internal address, and the hint says that a server-side variable can use `INTERNAL_URL` instead when both services share a node. When the service has no public address yet, the hint says the browser cannot reach it and has no fix.
+
+The hint is not counted as a problem and does not block saving. In the API and MCP, `env.set`, `env.analyze` and `env.setVariable` return it as the diagnostic `hardcoded-reference` (severity `info`) with its fix. It names the key and the reference, never the value, so an AI tool can apply it with [`env.setVariable`](#set-one-variable-through-the-api) without seeing the value. A database URL with its password gets the hint only for people who may see the database's credentials, in the editor and in the API.
+
+### References the app gets as text
+
+New in 0.2.15. Two ways of writing a reference hand the app the text instead of the value, and get an amber warning with a quick fix:
+
+| Written as | The app gets | Fix |
+| --- | --- | --- |
+| `API='${{api.URL}}'` | The text `${{api.URL}}`: single quotes keep a value as written | **Use double quotes** |
+| `API=api.DOMAIN` | The text `api.DOMAIN` | **Use `${{api.DOMAIN}}`** |
+
+For a name that is no service, such as `blabla.DOMAIN`, there is no wrap fix, only the closest service names when one is a typo away. A token counts only when the part after the dot is an exact variable name in capitals, so `example.com`, `api.domain`, `api.DOMAIN.com` and `https://api.DOMAIN` are left alone. Saving is never blocked, and the **Shared variables** sheet, which takes no references, shows neither warning. In the API and MCP, `env.set`, `env.analyze` and `env.setVariable` return them as `single-quoted-reference` and `bare-reference` (severity `warning`) with their fixes; they name the key, the token and the reference, never the rest of the value.
 
 ## Secret variables
 
@@ -89,9 +146,62 @@ Every value reaches the container the same way. Whether a variable is a secret m
 
 ```bash
 # @public
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+STRIPE_PUBLISHABLE_KEY=pk_live_51Hx...
 SIGNUP_CODE=spring-2026 # @secret
 ```
+
+### Framework public prefixes
+
+New in 0.2.15. A variable whose name starts with a framework's public prefix is public, whatever its name or value says, since the framework ships its value to every browser:
+
+| Prefix | Framework |
+| --- | --- |
+| `NEXT_PUBLIC_` | Next.js |
+| `NUXT_PUBLIC_` | Nuxt |
+| `EXPO_PUBLIC_` | Expo |
+| `REACT_APP_` | Create React App |
+| `VUE_APP_` | Vue CLI |
+| `GATSBY_` | Gatsby |
+| `VITE_` | Vite |
+| `PUBLIC_` | SvelteKit, Astro |
+
+Such a variable is a Dockerfile build argument, Nixpacks builds get it, and crash reports keep its value. Before, a name like `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (KEY in it, a value that looks like a token) counted as a secret, so a Dockerfile's `ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY` stayed empty and the build failed with "is a required build arg". Redeploy a service for its build to get them.
+
+Two things still make one a secret: `# @secret` on the line above, and a password. A URL with a password (`PUBLIC_DATABASE_URL=postgres://user:pass@...`, as written or once its references resolve), or a reference to a database's `PASSWORD` or connection URL, also through another variable, keeps a variable a secret under any of these prefixes. Its **Secret** chip says why the prefix did not decide; `# @public` makes it public if the browser should get it.
+
+### Secret and Public chips
+
+New in 0.2.15. In the editor, a **Secret** chip follows each variable that builds and crash reports treat as a secret, and a **Public** chip follows one whose name or value looks secret but is public, by a framework prefix or a `# @public` comment. Hovering the chip or the name says why (its name, its value, a reference to another secret, a comment, the prefix), what it changes (a Dockerfile or Railpack build gets a secret only as a build secret, `RUN --mount=type=secret,id=NAME`, not as `ARG NAME`; Nixpacks does not get it; crash reports and troubleshoot uploads hide its value) and which comment changes it. In the API and MCP, `env.references` says `secret` for every variable of other services and every shared variable.
+
+### A secret named by a Dockerfile ARG
+
+New in 0.2.15, on nodes with agent 0.2.15. A Dockerfile build says when an `ARG` of the Dockerfile, in any stage, names a secret variable, since that `ARG` stays empty. The line comes before the build output, and again as the last line when a failed build's output mentions the name:
+
+```text
+--> TURNSTILE_SECRET is a secret, so the build gets it as a BuildKit secret (RUN --mount=type=secret,id=TURNSTILE_SECRET), not as ARG TURNSTILE_SECRET. If it is not secret, add "# @public" above it in the service's environment.
+```
+
+Read a real secret in the Dockerfile with `RUN --mount=type=secret,id=NAME` instead of `ARG`. The build log names variables, never their values.
+
+## Set one variable through the API
+
+New in 0.2.15. `env.setVariable` changes one variable of a service's environment and keeps the rest of the file as it is. It is for scripts and AI tools: `env.get` hides every value from models (MCP and the assistant), and `env.set` replaces the whole file, so changing one line with it meant wiping the values the tool could not see.
+
+```bash
+curl -X POST https://panel.example.com/api/v1/env.setVariable \
+  -H "Authorization: Bearer $SEYLO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"serviceId": "<service id>", "key": "LOG_LEVEL", "value": "debug"}'
+```
+
+- The last line with the key, the one that wins, gets the new value. It keeps its quotes when the value fits them, its `export`, its comment and the comment lines above it, `# @public` included.
+- A new key goes at the end of the file, as `KEY=value`.
+- A `null` value removes the key: every line with it, and a `# @public` or `# @secret` line right above. A key that is not there is `NOT_FOUND`.
+- Give the value without quotes. It can hold references; a value with spaces or a line break is written in double quotes.
+
+The value goes through the same checks as a save from the editor: a reference to something the caller may not read is refused, as before, but only for the line being written. A change that would make the file longer than 256 KiB is refused, so the **Environment** tab always loads. The call returns the diagnostics of the whole file, the [hints](#hints-for-references) included, and like `env.set` takes `expectedUpdatedAt` from `env.get` to refuse a change when someone saved in between. The new value applies on the next deploy. The activity log shows the key, never the value.
+
+`env.setSharedVariable` does the same for a project's shared variables. Both run right away for MCP tokens that may make changes, like `env.set`, and `env.get` and `env.set` point models to them.
 
 ## Shared variables
 

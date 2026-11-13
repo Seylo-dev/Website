@@ -54,11 +54,15 @@ Tools are the panel's actions with dots replaced by underscores: `services_list`
 
 Tool results leave secrets out the same way the assistant's do: environment values, database passwords, tokens and file contents read through `files_read` come back as `[redacted]`, so a read-only token never hands them to the model's host.
 
+New in 0.2.15: since a tool cannot read a service's environment values, it changes one variable with `env_setVariable` (`env_setSharedVariable` for a project's shared variables), which keeps every other line as it is, instead of `env_set`, which replaces the whole file. The editor's hints, such as a service's address written out, come back with a fix that names the key and the reference, never the value. See [Set one variable through the API](/guides/environment-variables#set-one-variable-through-the-api).
+
 ## Approvals
 
 An action that deletes something or cannot be undone (deleting a service, restoring a backup over current data, removing a domain, resetting a database password, changing a database's version, and similar) never runs straight from an AI tool, even with a read-and-change token. It waits in **Approvals** with the exact input and the tool's reason. A person who could run it themselves clicks **Approve and run**, and it runs with that person's permissions; or **Deny**, with an optional note for the tool. Requests expire after 24 hours. The **Approval requested** alert can notify you. Approving needs a browser session; an API key can deny a request but never approve one.
 
 The tool gets an approval id back and can check later whether it ran (`approvals_get`).
+
+New in 0.2.15: a backup download link (`backups_downloadUrl`) waits for approval too, since the file leaves the panel, though it deletes nothing. With **Ask before destructive actions** off, it runs right away like the rest. See [Download a backup](/guides/backups#download-a-backup).
 
 New in 0.2.2: only MCP tools and the assistant ask for approvals, so **Approvals** shows in the sidebar and the command palette only once the MCP server or the assistant is on. It also shows while a request waits for you, and when you open the page from a link.
 
