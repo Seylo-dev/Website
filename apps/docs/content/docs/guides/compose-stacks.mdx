@@ -54,4 +54,10 @@ The preview warns about everything that does not run as written:
 - Not supported: bind mounts (including the Docker socket), `env_file`, external volumes, secrets and configs read from files, `network_mode: host`, `privileged`, devices and GPUs, `volumes_from`.
 - `cap_add`, `sysctls`, volume drivers and host namespaces are ignored.
 
+New in 0.2.15, from each member's next deploy:
+
+- A member with no `healthcheck:` of its own gets traffic once Docker calls its image's `HEALTHCHECK` healthy, on nodes with agent 0.2.15; a `healthcheck:` in the file still replaces it, and `healthcheck: disable: true` keeps the TCP check on the first port, as before. See [The image's HEALTHCHECK](/features/zero-downtime-deploys#the-images-healthcheck).
+- Members run with Docker's init (Tini) unless their image runs its own init; `init: true` or `init: false` in the file decides instead. See [Init process](/features/zero-downtime-deploys#init-process).
+- Members get `NODE_ENV=production` unless their `environment:` or the project's shared variables set `NODE_ENV`. See [NODE_ENV for apps](/guides/environment-variables#node_env-for-apps).
+
 Moving a stack to another node is coming later, and so is [exporting](/guides/export-and-import) a stack or one of its members (new in 0.2.10 for other services).
