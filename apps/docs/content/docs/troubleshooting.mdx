@@ -176,12 +176,41 @@ New in 0.2. Git servers on private, loopback or link-local addresses, a node's o
 New in 0.2. The node clones through its HTTP proxy (`HTTPS_PROXY` in the agent's environment) and its own DNS does not know the git host, so it cannot check where the proxy would connect, and refuses. An owner or admin can allow the host in the project, or, when the node relies on its proxy to resolve names, root on the node sets `git_proxy_resolves: true` in `/var/lib/seylo/config.yml` and runs `systemctl restart seylo`. See [Git servers on private addresses](/guides/github-and-git#git-servers-on-private-addresses).
 </Accordion>
 
+<Accordion title='A clone fails with "a network problem on the node"'>
+New in 0.2.17, on nodes with agent 0.2.17. The node could not reach the git host, so the address, the branch and the credentials are not what is wrong. The deploy's error names the node, the host it tried and the connection's own error:
+
+```text
+fetching the source failed: node node-1 could not connect to github.com:443 - a network problem on the node, not the address, the branch or the credentials: dial tcp 192.0.2.10:443: i/o timeout (git exited with code 128). The node's Health check (its Health tab, or `seylo health` on the node) tests its DNS and connections
+```
+
+It says "could not resolve" for a DNS server that failed or timed out, "could not get through a proxy to" for a proxy's error such as "CONNECT tunnel failed, response 502" (the agent clones through a small proxy of its own, and through the node's `HTTPS_PROXY` when it has one), and "could not open a TLS connection to" for a TLS error, which may also be a certificate the node does not trust (a firewall that decrypts HTTPS re-signs it). The build log also has the line "The git connection to github.com:443 failed: ..." with the same error. Under the deploy, on the **Overview** and the **Deployments** tab, a hint says "A network problem on node-1 stopped the clone, not the repository's address or credentials.", with a link to the node's **Health** tab for owners and admins.
+
+What to do, on that node:
+
+1. Run its health checks (**Run checks now**, or `seylo health`): **DNS resolution** tests the server's own lookups and **Panel connection** its way out.
+2. Try the host from the server: `curl -sI https://github.com` (with the node's proxy, if it has one), and `getent hosts github.com`.
+3. When those time out, look at the server's firewall and the provider's: some providers block a server's new outbound connections for a while after flagging it, for example for too many DNS sessions. The [DNS cache for containers](/guides/node-health#dns-cache-for-containers) cuts the DNS sessions apps open; it does not lift a block.
+4. Deploy again once the node reaches the host. Meanwhile the service's **Build node** can name another node that builds and reaches it (see [Where builds run](/guides/github-and-git#where-builds-run)).
+
+Two failures a wrong address gives as well, a host name that does not exist and a refused port, say to check the address first: "node node-1 could not resolve gihub.com - check the address: dial tcp: lookup gihub.com: no such host (git exited with code 128). If the address is right, the node's Health check ... tests its DNS and connections", and the hint under the deploy reads "The clone could not reach the repository's host from node-1. Check the address; if it is right, ...". Wrong credentials, a missing branch or repository, and an address the node refused (see "A Git source is refused as an internal address" above) keep their own messages, and the hint about private repositories does not show for a network failure. Before 0.2.17 all of these said "check the address, the branch and the credentials".
+</Accordion>
+
 <Accordion title="A node was skipped in an update run">
 The node was offline when its turn came. Since 0.2 the panel updates it in a run of its own when it reconnects; **History** in **Settings → Updates** shows that run as started by **Node came back**, and hovering the skipped step says what became of the node. A node that had rolled that release back is not retried by itself: **Update now** on **Nodes** installs it. See [Nodes that were offline](/self-hosting/updates#nodes-that-were-offline).
 </Accordion>
 
 <Accordion title='Backups fail with "too old for backups"'>
 New in 0.2. The panel no longer gives nodes a backup destination's keys, and agents before 0.2 cannot back up or restore without them. Update the node (**Update now** on **Nodes**), then run the backup again. The panel itself must reach the bucket too; **Test** on the destination checks that. See [Backups](/guides/backups).
+</Accordion>
+
+<Accordion title='A database backup fails with "The database closed the connection"'>
+New in 0.2.17, on nodes with agent 0.2.17. When the dump or restore tool's last line says the database closed the connection (MySQL and MariaDB errors 2006, 2013, 4031 or 2026 with "unexpected eof", "I/O Error reading RDB payload" from Redis, Valkey or KeyDB, "server closed the connection unexpectedly" from PostgreSQL), the error goes on with what usually causes it:
+
+```text
+the dump exited with code 2: mariadb-dump: Error 2026: TLS/SSL error: unexpected eof while reading when dumping table `orders` at row: 81234. The database closed the connection in the middle of the dump. Usually it restarted or ran out of memory: look in its Logs for a restart or "Aborted connection". Before Seylo 0.2.17 a slow upload to the bucket caused this too.
+```
+
+Open the database's **Logs** around the time of the backup: a restart, an out-of-memory kill, or the line the message names ("Aborted connection" for MySQL and MariaDB, "Disconnecting timedout replica" for Redis, Valkey and KeyDB, "terminating connection" for PostgreSQL). A slow bucket no longer causes this by itself: the node holds up to 4 GiB of a backup while the upload catches up. When it had no more room and the dump waited, the error says so instead ("The database closed the connection after the dump waited 1m15s for the upload: the upload fell behind the dump by more than 4.3 GB, ..."): free space on the node, use a bucket the node reaches faster, or raise the timeout the message names. See [When the bucket is slow](/guides/backups#slow-buckets).
 </Accordion>
 
 <Accordion title="A new node never builds">
@@ -207,6 +236,32 @@ The build worker is a container on Docker's default bridge and uses the DNS serv
 - The setting is fine, but Docker 29.0 to 29.2 was reloaded (`systemctl reload docker`, for example to turn on live-restore, as the installer did before 0.2.13). On those versions a reload empties the setting until Docker restarts (moby#52060, fixed in Docker 29.3.0), and new containers get `nameserver invalid IP` for each entry. Run `systemctl restart docker`, not a reload, and leave the file as it is.
 
 With live-restore on, containers keep running through the restart; with it off, the restart stops every container on the server until they are started again, and the check's fix says how to turn live-restore on first. Containers that run through the restart keep the bad servers: since 0.2.15 the agent restarts the build worker itself before the next build (see [Build workers restart themselves](/guides/node-health#build-workers-restart-themselves)); on an older agent restart it with `docker restart` (or remove it with `docker buildx rm`, and the next build makes a new one). Restart apps and the panel with **Restart** on their page. The check names each one and how to restart it. Then deploy again. See [Container DNS](/guides/node-health#container-dns).
+</Accordion>
+
+<Accordion title='Container DNS: "could not resolve github.com" or "but slowly"'>
+New in 0.2.17, on nodes with agent 0.2.17. The **Container DNS** check now also resolves `github.com` from a short-lived test container on the `seylo-edge` network, the way apps do, so it fails when the servers containers get look right but do not answer:
+
+```text
+a test container on seylo-edge could not resolve github.com through Docker's embedded DNS, which forwards to 192.0.2.53, 198.51.100.53: connection timed out; no servers could be reached (after 5.0 s)
+```
+
+The servers it names are the ones Docker forwards containers' lookups to: Docker's `dns` setting, or the host's. On the node:
+
+- `dig @192.0.2.53 github.com` (the first server named) shows whether that server answers from here. When `dig github.com` works but that one does not, Docker's `dns` setting names servers this server cannot use: put ones that answer in `/etc/docker/daemon.json` (`"dns": [...]`), or remove the key so containers get the host's, and run `systemctl restart docker`, not a reload. With live-restore off that restart stops every container; the check's fix says so and how to turn it on first.
+- When no server answers, something drops DNS (port 53) on the way: the node's firewall, or the hosting provider's. Some providers limit how many DNS sessions a server opens and then block it, which the [DNS cache for containers](/guides/node-health#dns-cache-for-containers) helps prevent.
+
+"..., but slowly: in 2.4 s" warns: a lookup took a second or more, so the servers answer late or drop some queries, and every new connection of an app that does not cache DNS waits that long. Run `dig` against them a few times to see which. When the detail ends with "no lookup from a test container" and a reason (no image on the node, no `seylo-edge` network yet, an image whose busybox `nslookup` is too old), the check judged only the files, as before 0.2.17. See [The test lookup](/guides/node-health#the-test-lookup).
+</Accordion>
+
+<Accordion title='The DNS cache stays "Starting" or "Blocked"'>
+New in 0.2.17. New containers get the node's [DNS cache](/guides/node-health#dns-cache-for-containers) only once its test from inside a container passed, so while it is **Starting** or **Blocked** they keep Docker's servers and nothing breaks. The node's **Settings** shows why and **How to fix**:
+
+- "a test container on bridge gets no answer from it": a host firewall drops DNS from containers to `169.254.53.53`. With ufw, which on a node installed before 0.2.17 has no rule for it: `for n in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do ufw allow from $n to 169.254.53.53 port 53 comment "seylo dns"; done` (see [Firewalls](/guides/node-health#dns-cache-firewalls)).
+- "... holds port 53 on every address": another DNS server, such as dnsmasq, listens on `0.0.0.0:53`. Make it listen only on the addresses it needs, or leave the cache off on that node.
+- "it gets no answer from its upstream servers": the server's own DNS does not answer. Check the servers with `dig @<server> example.com`.
+- no test container could run: the node has none of the images the test uses. Deploy anything once, or `docker pull busybox`.
+
+Then click **Run checks now** on the node's **Health** tab: the test runs again (also every 10 minutes after a failure, and hourly). Containers that already use the cache and get no answer wait about 4 seconds per lookup before they try the next server, and the node raises **Node health check failed** until the cache answers again or they are deployed again without it.
 </Accordion>
 
 <Accordion title='The join ends with "not connected to the panel yet" or "refused this node"'>
