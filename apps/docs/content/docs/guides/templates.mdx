@@ -35,9 +35,15 @@ So new templates and newer image versions reach your panel without a panel updat
 The line under the title on **Templates** says which catalog you see:
 
 - "Official catalog, updated 14 Nov 2026 (a1b2c3d)." once the panel downloaded one, with the commit in the Templates repository it was built from,
-- "Catalog bundled with Seylo 0.2.17." before that, or when downloads are off,
+- "Catalog bundled with Seylo 0.2.17." before that, or when downloads are off ("Downloads are off."),
 - the last failed check and when it was, for example "Could not reach github.com. Last tried 5 minutes ago.",
+- "The official catalog is not published yet. Last checked 5 minutes ago." until the Templates repository publishes its first signed catalog. That is no error: the panel lists the catalog it shipped with, asks again at its next check, and shows no error toast or alert; **Check for new templates** answers "The official catalog is not published yet."
 - how many templates are new. A new template carries a **New** tag on its card until someone with **templates.manage** opens the page.
+- "2 templates could not be read." when the catalog has templates this panel cannot read. Only those are left out; hover the text for which and why.
+
+A build of Seylo without the catalog key, such as a fork, says "This build has no key for the official catalog, so no new templates are downloaded." It lists the templates it shipped with and never downloads the official catalog; a private catalog still works.
+
+In the API and MCP, `templates.catalogStatus` returns all of this. In the API, `templates.refreshCatalog` is **Check for new templates** and `templates.setCatalogSource` the owner's **Catalog source**; templates carry `catalog` (`official`, `private` or `custom`) and `unsigned`.
 
 ### Templates that need a newer panel
 
@@ -194,13 +200,15 @@ Service types:
 | `ref(service, VARIABLE)` | A `${{service.VARIABLE}}` reference the panel resolves on every deploy, so a reset database password reaches the app |
 | `PRIMARY_DOMAIN` | The node's automatic domain |
 
+An app's `domains` take a `host` and a `port`, and optionally a `path`. Leave `host` out, or use `PRIMARY_DOMAIN`, for the node's automatic domain. New in 0.2.17: any other `host` must be a host name the **Domains** tab takes, and `path` a path it takes, or the template fails with the field, for example "generate() returned an invalid result at /services/0/data/domains/0/host: ...". Before, any text up to 253 characters went in, so a template could add a domain the **Domains** tab refuses.
+
 Databases offer `INTERNAL_URL`, `INTERNAL_HOST`, `INTERNAL_PORT`, `USER`, `PASSWORD` and `DATABASE` (`clickhouse` also `INTERNAL_HTTP_URL` and `INTERNAL_HTTP_PORT`); apps offer `URL`, `DOMAIN`, `DOMAINS` and `INTERNAL_URL` (see [DOMAINS](/guides/environment-variables#domains)).
 
 ### Logo
 
 `logo.svg`, or `logo.webp` or `logo.png` when the app has no small SVG. The card and the install dialog show it on a light tile; a template without one shows its first letter.
 
-Take it from [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) at the commit `NOTICE` names: an SVG from `svg/<name>.svg` as it is, or `png/<name>.png` resized to 128 px and saved as WebP when there is no SVG or it embeds a large image. Pick the variant drawn for light backgrounds. An SVG stays under 50 KB and a WebP or PNG under 30 KB, and an SVG has no scripts, event handlers, embedded images or links to other sites. Panels may have no internet access, so a logo is always a file in the folder, never a URL.
+Take it from [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) at the commit `NOTICE` names: an SVG from `svg/<name>.svg` as it is, or `png/<name>.png` resized to 128 px and saved as WebP when there is no SVG or it embeds a large image. Pick the variant drawn for light backgrounds. An SVG stays under 50 KB and a WebP or PNG under 30 KB, and an SVG has no scripts, event handlers, embedded images or links to other sites. Panels may have no internet access, so a logo is always a file in the folder, never a URL. Since 0.2.17 the panel serves it at an address that carries a version taken from the file's hash (`?v=...`), so a changed logo shows at once, without waiting for the browser's one-day cache.
 
 ### Porting from Easypanel
 
