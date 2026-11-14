@@ -116,7 +116,7 @@ A member of the stack `shop` crashes as "acme-shop / shop / shop-web crashed". N
 
 A title is written once, when the alert is raised. Renaming a project or a service later leaves the alerts already raised, and sent, as they were; the next one uses the new name.
 
-In the API and MCP, `alerts.list` (the `alerts_list` tool) returns each alert with its `projectId`, `serviceId` and `nodeId`, and new in 0.2.18 `projectName`, `serviceName` and `stackName`: the current names of the alert's project and service, `stackName` for a member of a compose stack only, `null` when the alert is not about one. Match on those, the ids or `event` rather than on the title. `projectName` names the project the alert was raised in, so for a service [moved to another project](/guides/clone-and-move) since, it is the old one.
+In the API and MCP, `alerts.list` (the `alerts_list` tool) returns each alert with its `projectId`, `serviceId` and `nodeId`, and new in 0.2.18 `projectName`, `serviceName` and `stackName`: the current names of the alert's project and service, `stackName` for a member of a compose stack only, `null` when the alert is not about one. Match on those, the ids or `event` rather than on the title. `projectName` names the project the alert was raised in, so for a service [moved to another project](/guides/clone-and-move) since, it is the old one; `serviceProjectId` (new in 0.2.18) is the project the service is in now, and `link`, when it points at one of the service's pages, and the webhook's `serviceUrl` follow the service there.
 
 The feed keeps an alert for 180 days after it was resolved. New in 0.2: alerts nothing resolves, such as deploy, build, backup, cleanup and update results, go 180 days after they were raised; before, they stayed for good.
 

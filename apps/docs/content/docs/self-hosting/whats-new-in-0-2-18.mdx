@@ -17,6 +17,10 @@ description: Alerts that name the service's project, the project and service in 
 - **An unchanged catalog is one short answer.** A check asks for `catalog.json` only if it changed since the download the panel uses (`If-None-Match` and `If-Modified-Since`), so an unchanged catalog is a `304` from GitHub and no signature download. A private catalog gets the same when its server sends `ETag` or `Last-Modified`.
 - **The release ships the first signed template catalog.** Seylo-dev/Templates published its first catalog, signed with the release key, and 0.2.18 ships it: catalog number 8, with the same 23 templates as before. A panel without internet access lists this signed copy; a 0.2.17 panel that can reach GitHub downloads the same catalog.
 
+## Fixed
+
+- **Links of alerts about a service moved to another project went to its old project.** An alert keeps the project it was raised in, and its link was stored with it, so after a move the dashboard's Alerts card, `alerts.list`'s `link`, and notifications or pushes sent after the move pointed at the old project's address. Links to the service's pages now follow it to the project it is in now; other links stay as they were. In the API and MCP, `alerts.list` adds `serviceProjectId`, the project the service is in now.
+
 ## After the update
 
 - Everything in 0.2.18 needs only the panel; nothing waits for the node's agent, and there is no migration.
