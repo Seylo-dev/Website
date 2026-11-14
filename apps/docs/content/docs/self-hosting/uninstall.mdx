@@ -17,7 +17,9 @@ This stops and disables `seylo.service`, removes its systemd units and the `/usr
 curl -fsSL https://install.seylo.dev | sudo sh -s -- uninstall --purge
 ```
 
-`--purge` also removes every container, network and volume that carries the `seylo.managed=true` label, and the whole `/var/lib/seylo` folder. Containers and volumes Seylo did not create are left alone. Docker itself, and firewall rules the installer added, stay.
+`--purge` also removes every container, network and volume that carries the `seylo.managed=true` label, and the whole `/var/lib/seylo` folder. Containers and volumes Seylo did not create are left alone. Docker itself, and firewall rules the installer added, stay. New in 0.2.17: except the rules for the node's [DNS cache](/guides/node-health#dns-cache-for-containers) (DNS to `169.254.53.53`, or the node's `dns_cache_address`), which `--purge` deletes from ufw, with the cache's `seylo-dns` interface, once no container of Seylo's is left to use them.
+
+A plain `uninstall` keeps those rules and the interface: containers that keep running may still ask the cache's address, and while its port is closed they move on to their other DNS servers at once.
 
 <Callout type="warn" title="On the panel's node, --purge deletes the panel">
 The panel's database and `master.key` live in `/var/lib/seylo/panel/`. Purging the panel's node deletes the panel with every project, person and setting. Take a [backup](/self-hosting/backups) first if you might need it.

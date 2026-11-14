@@ -192,6 +192,7 @@ When ufw or firewalld is active, the installer adds rules for what Seylo needs a
 | 3000 (panel port) | You, until the panel has a domain | The panel, published by Docker, on the panel server. Since 0.2.1 the panel can publish it on `127.0.0.1` only (**Serve on IP address**). |
 | 3443 (agents' TLS port) | Your other nodes: until the panel has a domain, then as their way back when the domain stops answering (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)) | The panel, published by Docker, on the panel server. Since 0.2.1 the panel can publish it on `127.0.0.1` only (**Agents' port**). |
 | 5756 on the `seylo-edge` bridge | Traefik on the same server, for maintenance pages and tool hosts | The agent; the installer allows it in ufw |
+| 53 (UDP and TCP) on `169.254.53.53` | Containers on the same server, when the node's [DNS cache](/guides/node-health#dns-cache-for-containers) is on (new in 0.2.17) | The agent; since 0.2.17 the installer allows it in ufw from `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16`, whether the cache is on or not. firewalld needs no rule |
 | 5757 | Your other nodes only, for [load balancing](/guides/load-balancing) | Traefik, published by Docker; it only serves nodes with a certificate from the panel. A joining node also allows it in ufw from the panel's address when the join URL is an IP address, which Docker's rules bypass (see below) |
 | IP:port addresses | People you give them to: first-run access, [timed expose](/features/dev-access-and-tunnels), exposed databases | The agent: open each port you want reachable |
 
@@ -235,6 +236,7 @@ Everything Seylo keeps on a node is in one folder:
     </Folder>
     <Folder name="logs" />
     <Folder name="builds" />
+    <Folder name="backup-spool" />
     <Folder name="registry" />
     <Folder name="network" />
     <Folder name="run" />
@@ -247,15 +249,16 @@ Everything Seylo keeps on a node is in one folder:
 
 | Path | What it is |
 | --- | --- |
-| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell`, `git_proxy_resolves` and, since 0.2.1, `no_tailnet`. Since 0.2.15, `stay_on_address` until the panel has the node's request to stay on its address (see [Panel address](/guides/adding-nodes#panel-address)) |
+| `config.yml` | The node's config: panel URL, node id, panel certificate pin, and settings only root on the node can change, such as `no_host_shell`, `git_proxy_resolves` and, since 0.2.1, `no_tailnet`. Since 0.2.15, `stay_on_address` until the panel has the node's request to stay on its address (see [Panel address](/guides/adding-nodes#panel-address)). Since 0.2.17, `dns_cache_address` when the node's DNS cache needs another address (see [Another address](/guides/node-health#dns-cache-address)) |
 | `agent.key` | The node's private key; it signs every connection to the panel |
 | `panel/` | Only on the node that runs the panel: `panel.db` (everything the panel knows), `metrics.db` (metric history), `master.key` and `agent-tls.key` with its certificate (what agents pin while the panel has no domain, see [Secrets at rest](/security#on-the-panels-node)), and since 0.2.1 `tailnet.sock`, where Tailscale Serve sends the panel's tailnet requests (see [The panel on Tailscale](/self-hosting/tailscale#how-it-works)). Mode 0700, owned by the panel's user (uid and gid 61000), so only root and the panel can read it. |
 | `services/<id>/volumes/<name>` | Service volumes. New in 0.2: `services/` and each `services/<id>/` are mode 0700, so only root reaches the volumes and file mounts under them; the agent closes older folders when it starts. |
 | `services/<id>/files` | File mounts, mode 0700. New in 0.2: one folder per version of the service's settings, so a deploy that fails, and the old version it rolls back to, keep their own files |
 | `logs/<service id>/` | Service logs, kept across deploys |
 | `builds/` | Build workspaces and uploaded sources |
+| `backup-spool/` | New in 0.2.17: what a backup's upload has not taken yet, at most 4 GiB per backup (see [When the bucket is slow](/guides/backups#slow-buckets)). Its files are removed from the folder as soon as they are made, so it looks empty while `df` counts them |
 | `registry/` | Image registry storage (panel node only) |
-| `network/` | Ports the agent picked for IP:port addresses, kept across restarts, and the key that signs tool session cookies on the node's edge listener |
+| `network/` | Ports the agent picked for IP:port addresses, kept across restarts, and the key that signs tool session cookies on the node's edge listener. Since 0.2.17 also `dns-cache-in-use` while containers get the node's DNS cache, so it comes up before them after a reboot, and `dns-cache-port-taken` while another program holds port 53 |
 | `run/` | The agent's local socket (`agent.sock`), which the node commands such as `seylo status` talk to |
 | `state/` | The last desired state from the panel and reports waiting to be sent. Since 0.2.15 also `panel.json`: the node's name in the panel, moves to a panel address that failed on its certificate and wait for their retry, and the last connect error while the node was away |
 | `traefik/` | Traefik's config, route files and certificates |

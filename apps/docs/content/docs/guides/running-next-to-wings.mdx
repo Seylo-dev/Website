@@ -34,6 +34,10 @@ A Wings build that removes route files it does not own deletes Seylo's. The agen
 
 On nodes where Wings is detected, the node's settings show **Game servers first**. It puts every Seylo container in the `seylo.slice` cgroup with a low CPU weight, so when the CPU is busy the game servers get it first and a large build can't cause lag. When the CPU is idle, Seylo's containers can still use all of it: this is a priority, not a cap.
 
+## DNS
+
+New in 0.2.17: the node's [DNS cache for containers](/guides/node-health#dns-cache-for-containers) covers Seylo's containers only. Wings game servers take their DNS servers from Wings' own config (`docker.network.dns`), and the cache does not change them.
+
 ## Memory
 
 Seylo sets no memory limits by default. On a game node, set a **Memory limit** on each service (**Advanced → Resource limits**) so a leaking app can't push game servers into the out-of-memory killer.

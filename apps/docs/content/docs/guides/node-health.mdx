@@ -30,7 +30,8 @@ The agent also runs the checks every hour in the background. When a check that p
 | Proxy | The `seylo-traefik` container runs, or routes go to Wings' Traefik | Fails when the container is not running |
 | Route files | Every `seylo-*.yml` route file parses | Fails and names the files that do not |
 | DNS resolution | `github.com`, `ghcr.io`, `registry-1.docker.io` and the panel's host resolve on the server itself | Fails and names what did not resolve |
-| Container DNS | New in 0.2.13: Docker gives containers DNS servers they can use, in a short test container and in Seylo's running containers (build workers, apps, Traefik, the panel) | Fails when containers get no server they can use, so builds cannot pull images and apps cannot look up outside names, or when one of Seylo's running containers still has none; warns on usable servers next to unusable ones, only IPv6 servers while Docker's bridge has no IPv6, or a `dns` setting that breaks at Docker's next restart. See [Container DNS](#container-dns). |
+| Container DNS | New in 0.2.13: Docker gives containers DNS servers they can use, in a short test container and in Seylo's running containers (build workers, apps, Traefik, the panel). New in 0.2.17: a test container on the `seylo-edge` network also resolves `github.com` the way apps do, in under a second | Fails when containers get no server they can use, so builds cannot pull images and apps cannot look up outside names, or when one of Seylo's running containers still has none; warns on usable servers next to unusable ones, only IPv6 servers while Docker's bridge has no IPv6, or a `dns` setting that breaks at Docker's next restart. Since 0.2.17 also fails when the test lookup fails and warns when it takes a second or more. See [Container DNS](#container-dns). |
+| DNS cache | New in 0.2.17, only while the node's [DNS cache for containers](#dns-cache-for-containers) is on or still used: containers reach it and it answers | Fails when the cache cannot run (port 53 taken, no `ip` command), its servers do not answer, or a test container gets no answer from it (usually a firewall); warns when no test container could run. Skipped while the cache is off and unused, and always in `seylo health`. See [The DNS cache check](#the-dns-cache-check). |
 | Firewall | No host firewall, or ufw or firewalld allow 80, 443 and every IP:port address the agent serves | Warns when the firewall blocks 80, 443, or a first-run, timed expose or exposed database port, with the command for each; also warns when ufw allows the `seylo-edge` bridge but no interface has that name |
 | Clock | Synchronized with NTP and within 5 seconds of the panel's clock | Warns when not synchronized or more than 5 seconds off; fails at more than a minute off |
 | Panel connection | `GET <panel>/api/health` answers in under 800 ms (over the pinned key when the node joined with `--pin`) | Warns when slower; fails when the panel cannot be reached or is not healthy |
@@ -47,6 +48,8 @@ The agent also runs the checks every hour in the background. When a check that p
 | Firewall blocks an IP:port address | `ufw allow <port>/tcp`, or `firewall-cmd --permanent --add-port=<port>/tcp && firewall-cmd --reload` |
 | Live-restore is off | Add `"live-restore": true` to `/etc/docker/daemon.json`, then `systemctl reload docker` (restarts nothing). On Docker 29.0 to 29.2 with a `dns` setting, run `systemctl restart docker` right after the reload: live-restore is on by then, so containers keep running (see [Reloads on Docker 29.0 to 29.2](#reloads-on-docker-290-to-292)) |
 | Containers get `nameserver invalid IP` | IP addresses in Docker's `dns` setting, or no setting, then `systemctl restart docker`, not a reload; then restart the containers that kept the old servers. See [Container DNS](#container-dns) |
+| A test container could not resolve `github.com` | Check that the servers it names answer from the node (`dig @<server> github.com`) and that no firewall, the node's or the provider's, drops DNS to them; put servers that answer in Docker's `dns` setting and restart Docker. See [The test lookup](#the-test-lookup) |
+| The DNS cache stays **Blocked** | Follow its **How to fix**: with ufw, allow DNS from Docker's networks to the cache's address (see [Firewalls](#dns-cache-firewalls)); free port 53 or leave the cache off; install `iproute2`. Then **Run checks now** |
 | No public address | Set it as the node's **Public address** on **Nodes** |
 | Disk almost full | **Settings → Docker cleanup**, or (new in 0.2) a scheduled or disk-triggered cleanup in the node's **Cleanup** view (see [Docker cleanup](/guides/docker-cleanup)), or grow the disk. Between checks, the node raises **Disk above 85%** on its own when its data or Docker disk passes 85% |
 | Docker too old | **Update Docker** on the node's row, or your package manager |
@@ -64,6 +67,22 @@ New in 0.2.13. **DNS resolution** checks the server's own lookups. **Container D
 - **A test container** on Docker's default bridge, where build workers run, named `seylo-dnscheck-<random>` with the label `seylo.dnscheck=true`. It prints its `/etc/resolv.conf`, which is what Docker gives a new container right now. It uses an image already on the node, `moby/buildkit`, `traefik`, `alpine` or `busybox` in that order, and never pulls one (`--pull never`). It runs with every check run (hourly and **Run checks now**) and is gone in well under a second; one that a cut-off run left behind is removed by a later run once it is two minutes old. Without one of those images no test container runs, and the check judges Docker's `dns` setting and, when the setting is fine, Seylo's running containers. With no `dns` setting at all it passes, since containers then get the host's servers.
 - **Seylo's running containers**: the build workers (`buildx_buildkit_seylo-builder-...`) and every container Seylo manages (apps, Traefik, the panel). The check reads the `resolv.conf` Docker keeps for each in its data folder and runs nothing in them. Containers on the host's network are skipped. A container keeps the servers it started with, also after the setting is fixed and through a Docker restart with live-restore on, so this is how the check finds the ones that still need a restart. A container on a project network has `nameserver 127.0.0.11`: the check reads the servers the embedded DNS forwards to from Docker's `# ExtServers:` note, which Docker 25 and later write. On older Docker such a container is not judged.
 - **Docker's `dns` setting**, to say where the servers come from: `"dns"` and `"ipv6"` in `daemon.json` (`/etc/docker/daemon.json`, or the file dockerd's `--config-file` names) and `--dns` on dockerd's command line. The check finds the host's dockerd through its pid file or `docker.service`, so it does not read a docker-in-docker container's or another user's rootless Docker. Docker reads `daemon.json` only when it starts, so when the setting in the file is not what containers get, the check says it applies at Docker's next restart. Docker's version says whether a reload can explain what the test container got (see [`nameserver invalid IP`](#nameserver-invalid-ip)).
+- **A lookup**, new in 0.2.17: see [The test lookup](#the-test-lookup). Reading the files says which servers containers get, not whether those servers answer from this node.
+
+### The test lookup
+
+New in 0.2.17, on nodes with agent 0.2.17 (the node's Health tab and `seylo health` both run it). After the reads above, a second short-lived test container resolves `github.com` the way an app's container does: on the `seylo-edge` network, through Docker's embedded DNS (`127.0.0.11`), which forwards to the servers of Docker's `dns` setting or the host's. Before, the check only read the settings, so a node whose servers looked right but did not answer from the node, for example because a firewall dropped its DNS, passed.
+
+The test container is like the one above: same image (one already on the node, never pulled), same name and label, and it touches no running service; it only joins `seylo-edge` while it runs. It runs busybox's `nslookup`, which gives up after 5 seconds, and the whole run is cut off after 20 seconds and the container removed. The time it reports is the lookup's own, without Docker starting the container. What it found goes into the check's detail next to what the reads say:
+
+| Lookup | Detail | Effect on the check |
+| --- | --- | --- |
+| Works | "a test container on seylo-edge resolved github.com in 24 ms through Docker's embedded DNS, which forwards to 192.0.2.53, 198.51.100.53" | None |
+| Slow, a second or more | "..., but slowly: in 2.4 s" | Warns |
+| Fails | "a test container on seylo-edge could not resolve github.com through Docker's embedded DNS, which forwards to 192.0.2.53, 198.51.100.53: connection timed out; no servers could be reached (after 5.0 s)", with `nslookup`'s first error line | Fails |
+| None | Why there was no lookup, at the end of the detail: Docker could not be reached, no image to use, no `seylo-edge` network yet (the agent creates it when it starts), the image has no `nslookup`, or its `nslookup` is an older or minimal busybox that does not take `-type` and `-timeout`, or the run failed or took longer than 20 seconds | None |
+
+A lookup that is worse than what the reads found leads the detail, and its fix comes first: check on the node that the servers answer (`dig @192.0.2.53 github.com`, with the first server it names); when they do not, something drops DNS (port 53) on the way, the node's firewall or the hosting provider's, some of which limit how many DNS sessions a server opens and then block it. To use servers that answer from the node, put them in Docker's `dns` setting in `daemon.json` and restart Docker (`systemctl restart docker`, with what that restart stops, as in [The fix](#the-fix)). For a slow lookup the fix also says that every new connection of an app that does not cache DNS waits that long; the [DNS cache for containers](#dns-cache-for-containers) answers repeated names from memory. A lookup no worse than the reads follows them, and their own fix stays.
 
 ### Results
 
@@ -71,9 +90,11 @@ A server counts when it is an IP address that is neither loopback (`127.0.0.53`,
 
 | Result | When |
 | --- | --- |
-| Fails | The test container gets no server it can use. Docker refuses to start the test container over its DNS servers (Docker 28 does that for an empty entry). A running build worker, app, Traefik or the panel has no server it can use, named in the detail, also when new containers are fine again. Or, when no test container ran, the `dns` setting has no usable server. |
-| Warns | Usable servers next to ones that are not: lookups work, but the setting is still wrong. Only IPv6 servers while Docker's bridge has no IPv6 (`"ipv6": true`). A `dns` setting edited since Docker started that has wrong entries, which apply at the next restart. A `daemon.json` that does not parse, so Docker would not start with it. Nothing could be read (run `seylo health` as root). |
-| Passes | Containers get usable servers. The detail says which and where they come from: the `dns` setting, or the host's servers from the file Docker read them from (such as `/run/systemd/resolve/resolv.conf`). |
+| Fails | The test container gets no server it can use. Docker refuses to start the test container over its DNS servers (Docker 28 does that for an empty entry). A running build worker, app, Traefik or the panel has no server it can use, named in the detail, also when new containers are fine again. Or, when no test container ran, the `dns` setting has no usable server. New in 0.2.17: the [test lookup](#the-test-lookup) failed. |
+| Warns | Usable servers next to ones that are not: lookups work, but the setting is still wrong. Only IPv6 servers while Docker's bridge has no IPv6 (`"ipv6": true`). A `dns` setting edited since Docker started that has wrong entries, which apply at the next restart. A `daemon.json` that does not parse, so Docker would not start with it. Nothing could be read (run `seylo health` as root). New in 0.2.17: the test lookup took a second or more. |
+| Passes | Containers get usable servers. The detail says which and where they come from: the `dns` setting, or the host's servers from the file Docker read them from (such as `/run/systemd/resolve/resolv.conf`). Since 0.2.17 it also says how long the test lookup took and where Docker's embedded DNS forwarded it. |
+
+The node's [DNS cache](#dns-cache-for-containers) address counts as a server like any other.
 
 The detail names the wrong entries and where they are, for example:
 
@@ -145,3 +166,106 @@ New in 0.2.13: when a build fails in the builder and its output shows a failed n
 ```
 
 It looks at the last 64 KiB of output for BuildKit's `lookup <name> on <server>:53`, `dial tcp: lookup` and `no such host`, and for what `RUN` steps print when a lookup fails (apt, curl and git, pip, npm), which use the same servers: `Temporary failure in name resolution`, `Temporary failure resolving`, `Could not resolve host` and `getaddrinfo EAI_AGAIN`. A wrong host name in the build gives the same errors, hence "if the name is right". The failure message itself is unchanged.
+
+## DNS cache for containers
+
+New in 0.2.17, on nodes with agent 0.2.17. Off by default, and set per node.
+
+Without it, every lookup in a container goes out to the DNS servers Docker gives it. Docker's embedded DNS (`127.0.0.11`) does not cache, and many apps (Node.js ones among them) do not either, so each new outbound connection is a new lookup and a new UDP session to those servers. An app that retries in a loop can send thousands of them, and some providers' firewalls take that for an attack and block the server's outbound connections.
+
+With the cache on, the node's agent answers DNS on `169.254.53.53`, port 53, and gives the containers it creates that address as their first DNS server, with the servers they would get without it as fallbacks.
+
+### What it does and does not do
+
+- It answers repeated lookups of a name from memory, for as long as the answer's TTL says and at most an hour. A name that does not exist is remembered for at most 30 seconds (5 without an SOA record), and errors are never kept. Identical lookups at the same moment share one question to the outside. So an app that looks up the same few names again and again sends far fewer packets out.
+- It asks the servers of Docker's `dns` setting when there is one, the servers containers use today, so names only those servers know keep working. Else it asks the host's servers from `/etc/resolv.conf` (`127.0.0.53` included, since the cache runs on the host), else Docker's own defaults, `8.8.8.8` and `8.8.4.4`. It reads them again every minute.
+- When none of them answers within 1.8 seconds it gives an answer that expired up to an hour ago, with a TTL of 30 seconds. Without one, the lookup fails within 3 seconds, before Docker's own 4, so the container moves on to its fallback servers.
+- It does not help with many different names: each new name still goes out once.
+- It is not a limit. A container whose cache does not answer asks its fallback servers directly.
+- It does not keep apps working when the provider blocks the server's outbound connections: names may still resolve from memory, but the connections themselves fail.
+- It answers only containers on the node's Docker bridge networks, never other machines. It does not resolve names itself (it forwards) and does not validate DNSSEC: records pass through as they come.
+
+Docker is never restarted and its settings are not changed: the agent sets the DNS servers of each container when it creates it (`HostConfig.Dns`, with the label `seylo.dns-cache=<address>`). A container on its project network keeps `nameserver 127.0.0.11` in its `/etc/resolv.conf`: Docker's embedded DNS still answers the names of the project's services, and forwards the rest to the cache, then to the fallbacks (its `# ExtServers:` note shows `169.254.53.53` first). A container on Docker's default bridge gets the cache's address directly.
+
+### Turn it on
+
+The node's **Settings** has the switch **DNS cache for containers**, below **Can build**. Owners and admins turn it on and off, and each change is in the activity log. It needs the node's agent 0.2.17: on an older agent the switch is disabled and says "The DNS cache needs the node's agent 0.2.17 or later. Update the node first." Turning it off always works.
+
+Turned on, the cache is **Starting** first. The agent adds its address on a dummy interface named `seylo-dns` (with the `ip` command from iproute2), listens on it, and tests it from inside containers (see [The DNS cache check](#the-dns-cache-check)). Only once that test passed, **Active**, do new containers get it. So a firewall that drops containers' DNS to the cache never costs them a lookup: they keep Docker's servers until the cache is proven.
+
+Containers get the cache, and lose it after you turn it off, only when they are created:
+
+- an app, a compose stack or a cron service at its next deploy, a deploy of the same version included,
+- any other service, such as a database, when its container is next created, for example by a version change or **Save and restart** on its resource limits,
+- cron runs, backups, database tools and Cloudflare tunnels at their next run.
+
+**Restart** keeps the container, so it changes nothing, and turning the cache on or off recreates nothing by itself. The panel's own container, Traefik, the image registry and containers on the host's network keep Docker's DNS.
+
+In the API and MCP: `nodes.setDnsCache` turns it on or off (CONFLICT with reason `agentTooOld` on an older agent), `nodes.dnsCacheStatus` returns what the node's **Settings** show, and `nodes.get` returns `dnsCache` and `dnsCacheSupported`.
+
+### What the node's Settings show
+
+While the cache is on, or still used after you turned it off, the switch shows its status, read again every 10 seconds:
+
+- the state: **Starting** ("Testing the cache from inside a container before new containers get it."), **Active**, **Blocked**, or **Off, still in use** ("Containers created while it was on still use it until they are redeployed."),
+- **Address**, **Hit rate** (the share of lookups answered from memory since the agent started) and **Upstream lookups per minute** (over the last 10 full minutes),
+- **Asks**: the servers it forwards to, and **Fallbacks**: the servers containers get after it, at most two,
+- while it is **Blocked**, why, and **How to fix**,
+- **Using the cache**: the containers that have it, each with its service and what it is (**Service**, **Cron run**, **Backup**, **Database tool**, **Box** or **Tunnel**), and **Not yet - redeploy to apply**: the running containers that do not have it yet. Once it is off, **Still using the cache** lists the containers that keep it.
+
+The containers that use it are counted running or stopped: a stopped one starts again as the same container, with the same DNS. On an offline node the status says its state is not known.
+
+When you turn it off, the cache keeps answering the containers created with it until no container with its label is left, and then removes its address and stops listening.
+
+### The DNS cache check [#the-dns-cache-check]
+
+**DNS cache** in the node's health checks runs the cache's test, which is also the gate for new containers:
+
+1. From the server, it resolves the panel's host (or `github.com`) through the cache's own address: the cache listens and its servers answer.
+2. A short-lived test container asks the cache for a name only the cache answers (under `dnscache.seylo.internal`), once on Docker's default bridge and once on a project network when there is one: containers reach the cache through any firewall on the way. The containers use an image already on the node (`moby/buildkit`, `traefik`, `alpine` or `busybox`), never pull one, and carry the Container DNS check's `seylo.dnscheck=true` label.
+
+The test runs when the cache is turned on, again 10 minutes after a failure, with the hourly checks and on **Run checks now**.
+
+| Result | When |
+| --- | --- |
+| Skipped | The cache is off and no container uses it. `seylo health` on the node always skips it: only the agent runs this test. |
+| Passes | Containers on the networks it names reach the cache and it answers through its servers. The detail says how many containers use it. |
+| Warns | No test container could run, so whether containers reach the cache is not known and new containers keep Docker's servers. Deploy anything once or pull an image (`docker pull busybox`), then run the checks again. |
+| Fails | The cache cannot run on this node: another program holds port 53 on every address, or the `ip` command is missing. Its servers give the server no answer. A test container got no answer from it, usually a host firewall. Or it is off, containers still use it, and it does not answer them. |
+
+While it fails, new containers keep Docker's servers. A container that already uses a cache that does not answer waits about 4 seconds per lookup before Docker tries its next server, so while any container does, the agent raises **Node health check failed** once, with the fix in it, and resolves it when the test passes again or no container uses the cache. A failing check while no container uses the cache raises no alert.
+
+**Port 53 taken.** Another program that listens on port 53 on every address (`0.0.0.0:53`), such as dnsmasq without `bind-interfaces`, leaves the cache no room on its address. The check names the program; `ss -lunp 'sport = :53'` shows it too. Make it listen only on the addresses it needs (dnsmasq: `bind-interfaces` with `listen-address`), or leave the cache off on that node. The agent does not try the port again by itself, so that program always gets it back when it restarts: after the change, click **Run checks now**, or turn the cache off and on. systemd-resolved listens on `127.0.0.53` only and is not in the way.
+
+### Firewalls [#dns-cache-firewalls]
+
+The cache's address is on the node itself, so a host firewall that drops incoming traffic by default drops containers' DNS to it too:
+
+- **ufw**: the installer adds a rule for DNS (UDP and TCP) to the cache's address from each of `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16`, the private ranges Docker's networks use, so nothing outside the server reaches the address. It adds them whenever ufw is active as it installs or runs again, whether the cache is on or not: nothing listens on the address while it is off. An update from **Settings → Updates** does not run the installer, so a node installed before 0.2.17 with ufw on has none of these rules. Add them before you turn the cache on:
+
+  ```bash
+  for n in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do ufw allow from $n to 169.254.53.53 port 53 comment "seylo dns"; done
+  ```
+
+- **firewalld** needs nothing: it puts Docker's bridges in its `docker` zone, which accepts.
+- **Your own iptables rules**: `iptables -I INPUT -s 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 -d 169.254.53.53 -p udp --dport 53 -j ACCEPT`, and the same with `-p tcp`.
+
+The agent never changes the firewall. When a test container gets no answer, the cache is **Blocked** and its fix gives these commands. `uninstall --purge` deletes the ufw rules and the `seylo-dns` interface; a plain uninstall keeps both, since containers that keep running may still ask the address (see [Uninstall](/self-hosting/uninstall)).
+
+### Another address [#dns-cache-address]
+
+`169.254.53.53` is a link-local address, which every Docker network reaches through its gateway, the host. When it clashes with something on the server, such as a provider's own service on a link-local address, set another one in `/var/lib/seylo/config.yml`:
+
+```yaml title="/var/lib/seylo/config.yml"
+dns_cache_address: 169.254.53.54
+```
+
+and run `systemctl restart seylo`. It must be an IPv4 address that is not loopback, unspecified, multicast or broadcast; another link-local one (`169.254.0.0/16`) is best. `seylo join --force` keeps it, and the installer adds its ufw rules for that address when it runs again; the old address's rules stay. With your own firewall rules, use the new address in them.
+
+### Restarts, updates and reboots
+
+While the agent restarts, for example during an update, the address stays and its port closes, so containers' lookups move on to the fallback servers at once. The cache starts empty again. After a reboot the agent brings the address and the cache up before it starts containers.
+
+### Wings and builds
+
+Wings game servers are not Seylo's containers: they take their DNS from Wings' own config (`docker.network.dns`), and the node's **Settings** says so next to the switch on a Wings node. Build workers do not use the cache yet: builds keep Docker's DNS servers.
