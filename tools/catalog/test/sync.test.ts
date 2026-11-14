@@ -157,12 +157,12 @@ describe("sync", () => {
     await expect(sync(broken)).rejects.toThrow();
   });
 
-  describe("while brand.json has no catalog key", () => {
+  describe("with a placeholder instead of a key in brand.json", () => {
     const placeholder = "PLACEHOLDER_TEMPLATES_MINISIGN_PUBLIC_KEY";
 
     test("downloads nothing, and --soft keeps the committed copy", async () => {
       const { fetch, calls } = server(signed([{ slug: "alpha" }]));
-      await expect(sync(options(fetch, { publicKey: placeholder }))).rejects.toThrow(/not a minisign key yet/);
+      await expect(sync(options(fetch, { publicKey: placeholder }))).rejects.toThrow(/not a minisign key,/);
       expect(await sync(options(fetch, { publicKey: placeholder, soft: true }))).toMatchObject({ written: false });
       expect(calls).toEqual([]);
       expect(existsSync(join(root, outputs.landing))).toBe(false);
@@ -173,7 +173,7 @@ describe("sync", () => {
       writeFileSync(file, catalogJson([{ slug: "alpha" }]));
       const result = await sync(options(undefined, { publicKey: placeholder, local: { catalog: file } }));
       expect(result).toMatchObject({ written: true, unsigned: true });
-      expect(lines).toContain("catalog: warning: brand.json has no catalog key yet; this copy is not verified");
+      expect(lines).toContain("catalog: warning: brand.json has no catalog key; this copy is not verified");
     });
   });
 

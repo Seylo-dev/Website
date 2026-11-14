@@ -8,14 +8,16 @@
 //                                             a local file, such as the App repo's templates/catalog.json
 //
 // It downloads catalog.json and catalog.json.minisig from the Templates repo's "catalog" release,
-// verifies the signature with brand.json's templatesMinisignPublicKey, checks the format, the source,
-// every file's sha256 and that the catalog is not older than the committed copy, then writes:
+// verifies the signature with brand.json's templatesMinisignPublicKey (the release key: the catalog is
+// signed with the same key as Seylo releases), checks the format, the source, every file's sha256 and
+// that the catalog is not older than the committed copy, then writes:
 //
 //   apps/landing/lib/templates.generated.json        the landing's template list
 //   apps/landing/public/templates/<slug>/logo.<ext>  the logos, with NOTICE and LICENSE.* from the catalog
 //   apps/docs/content/generated/templates-catalog.mdx  the count and table the Templates guide includes
 //
-// While brand.json has no catalog key yet (a placeholder), nothing can be verified: downloads are
+// Before the catalog is published the download answers 404, and --soft keeps the committed copy.
+// Only a brand.json key that is not a minisign key (a placeholder) skips the signature: downloads are
 // refused and only --local works, unsigned.
 
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -50,7 +52,7 @@ export interface SyncOptions {
   root: string;
   /** catalog.json's URL; the signature is the same URL with .minisig. */
   url: string;
-  /** The catalog key (brand.json templatesMinisignPublicKey); a placeholder means none yet. */
+  /** The catalog key (brand.json templatesMinisignPublicKey); a placeholder means none. */
   publicKey: string;
   /** The source a catalog must name (brand.json github.templatesRepo). */
   source: string;
@@ -105,7 +107,7 @@ async function obtain(options: SyncOptions): Promise<{ catalog: Catalog; unsigne
   } else {
     if (!keyed)
       throw new CatalogError(
-        "brand.json templatesMinisignPublicKey is not a minisign key yet, so no download can be verified.",
+        "brand.json templatesMinisignPublicKey is not a minisign key, so no download can be verified.",
       );
     const get = options.fetch ?? fetch;
     bytes = await download(options.url, get);
@@ -171,7 +173,7 @@ export async function sync(options: SyncOptions): Promise<SyncResult> {
   }
   const { catalog, unsigned } = got;
   for (const warning of catalog.warnings) log(`catalog: warning: ${warning}`);
-  if (unsigned) log("catalog: warning: brand.json has no catalog key yet; this copy is not verified");
+  if (unsigned) log("catalog: warning: brand.json has no catalog key; this copy is not verified");
   const site = writeOutputs(options.root, catalog);
   log(
     `catalog: ${site.templates.length} templates, sequence ${catalog.sequence} (commit ${catalog.commit.slice(0, 12)}${

@@ -24,11 +24,11 @@ The catalog grows without panel releases: see [Where the catalog comes from](#wh
 
 ## Where the catalog comes from
 
-New in 0.2.17. Templates live in their own repository, [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates), not in the panel. Every change merged there publishes a new catalog: one `catalog.json` with every template, signed with the catalog's own minisign key.
+New in 0.2.17. Templates live in their own repository, [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates), not in the panel. Its templates and scripts are under the [MIT License](https://github.com/Seylo-dev/Templates/blob/main/LICENSE); each logo keeps its own license and is credited in the repository's `NOTICE`. Every change merged there publishes a new catalog: one `catalog.json` with every template, signed with the same minisign key as Seylo releases (see [Signed releases](/security#signed-releases)).
 
 - **The panel ships a copy.** Every release carries the catalog of the day it was made, so a panel without internet access still lists templates.
 - **It checks for a newer one** when it starts, every 6 hours after that, and when someone clicks **Check for new templates** on the **Templates** page (people with the **templates.manage** permission: owners and admins).
-- **It only takes a catalog it can trust.** The signature must match the key built into the panel, every file must match its hash, and the catalog must not be older than the one the panel already has (an old catalog would bring back old image versions). Anything else keeps the current catalog, and the page says why. The panel keeps the download in its data folder and checks it again every time it reads it.
+- **It only takes a catalog it can trust.** The signature must match the release key built into the panel, every file must match its hash, and the catalog must not be older than the one the panel already has (an old catalog would bring back old image versions). Anything else keeps the current catalog, and the page says why. The panel keeps the download in its data folder and checks it again every time it reads it.
 
 So new templates and newer image versions reach your panel without a panel update. Panels up to 0.2.16 keep the templates they shipped with.
 
@@ -86,7 +86,7 @@ This copies the commented example to `templates/my-app/` with the name and slug 
 
 Fill in `meta.yaml` and `index.ts` (see [Template format](#template-format)). Pin the image to a version: `latest`, `stable`, `main`, `nightly` and `edge` are refused, a digest is fine. If the app has a logo, add it as `logo.svg` (or `logo.webp`, `logo.png`) and a line for it in `NOTICE` saying where it comes from; see [Logo](#logo).
 
-Write the template yourself rather than copying one from another catalog: the catalog has to be able to ship it under its own license.
+Write the template yourself rather than copying one from another catalog: the catalog publishes every template under the MIT License, and by opening a pull request you agree to that.
 
 </Step>
 <Step>

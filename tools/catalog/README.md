@@ -25,8 +25,10 @@ bun tools/catalog/sync.ts --local ../seylo/templates/catalog.json   # a local co
 
 ## What it checks
 
-- The signature, with `templatesMinisignPublicKey` in `brand/brand.json` (the catalog's own key, not the
-  release key; the same value as in the App repo's `brand/brand.json`).
+- The signature, with `templatesMinisignPublicKey` in `brand/brand.json`. The catalog is signed with the same
+  minisign key as Seylo releases, so this is the same value as `minisignPublicKey` (and as in the App repo's
+  `brand/brand.json`). The private half is in the Templates repo's `catalog` environment, for its signing job
+  only; this repo never needs it.
 - `format` 1, `source` `Seylo-dev/Templates` (`github.templatesRepo`), and every file's sha256.
 - A `sequence` not lower than the committed copy's, so an old catalog never replaces a newer one.
 - At most 20 MB, 15 s per file, no redirect away from https.
@@ -39,9 +41,11 @@ Any of these failing refuses the whole catalog. `--soft` then prints why, keeps 
 so a build never fails because GitHub is unreachable or the catalog is not published yet, and never uses one
 it could not verify. Without `--soft` it exits 1 and writes nothing.
 
-While `templatesMinisignPublicKey` is a placeholder (the key is not made yet), nothing can be verified:
-downloads are refused and only `--local` works, writing the copy unsigned with a warning. Once the key is
-set, `--local` needs the file's `.minisig` next to it (or `--signature <file>`).
+Until Seylo-dev/Templates publishes its first catalog, the download answers 404: `--soft` keeps the committed
+copy (the App's vendored catalog, sequence 0, written before the key was set and so never verified), and the
+first published catalog replaces it. `--local` needs the file's `.minisig` next to it (or
+`--signature <file>`). Only with a `templatesMinisignPublicKey` that is not a minisign key (a placeholder) does
+it skip the signature: downloads are refused and `--local` writes the copy unsigned, with a warning.
 
 ## Keeping the committed copy fresh
 

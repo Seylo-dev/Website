@@ -5,8 +5,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import landingConfig from "../../../apps/landing/next.config";
 import { catalog as landingCatalog, namesOf } from "../../../apps/landing/lib/templates";
-import { docsSnippet, logoFiles, logoProblem, type SiteCatalog, slugPattern } from "../catalog";
-import { outputs, repoRoot } from "../sync";
+import brand from "../../../brand/brand.json";
+import { docsSnippet, isMinisignPublicKey, logoFiles, logoProblem, type SiteCatalog, slugPattern } from "../catalog";
+import { committedSequence, officialUrl, outputs, repoRoot, sync } from "../sync";
 
 const committed = JSON.parse(readFileSync(join(repoRoot, outputs.landing), "utf8")) as SiteCatalog;
 const logos = join(repoRoot, outputs.logos);
@@ -61,7 +62,32 @@ describe("the landing", () => {
   });
 });
 
+describe("brand.json", () => {
+  test("the catalog is signed with the release key", () => {
+    expect(isMinisignPublicKey(brand.templatesMinisignPublicKey)).toBe(true);
+    expect(brand.templatesMinisignPublicKey).toBe(brand.minisignPublicKey);
+  });
+});
+
 describe("the builds", () => {
+  test("before the catalog is published, a build keeps the committed copy", async () => {
+    const lines: string[] = [];
+    const before = readFileSync(join(repoRoot, outputs.landing), "utf8");
+    const result = await sync({
+      root: repoRoot,
+      url: officialUrl,
+      publicKey: brand.templatesMinisignPublicKey,
+      source: brand.github.templatesRepo,
+      soft: true,
+      fetch: async () => new Response("Not Found", { status: 404 }),
+      log: (line) => lines.push(line),
+    });
+    expect(result).toEqual({ written: false, reason: `${officialUrl} answered 404.` });
+    expect(lines).toEqual([`catalog: kept the committed copy. ${officialUrl} answered 404.`]);
+    expect(readFileSync(join(repoRoot, outputs.landing), "utf8")).toBe(before);
+    expect(committedSequence(repoRoot)).toBe(committed.sequence);
+  });
+
   test.each(["apps/landing", "apps/docs"])("%s syncs the catalog before building, softly", (app) => {
     const pkg = JSON.parse(readFileSync(join(repoRoot, app, "package.json"), "utf8"));
     expect(pkg.scripts.prebuild).toBe("bun ../../tools/catalog/sync.ts --soft");

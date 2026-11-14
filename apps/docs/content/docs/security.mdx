@@ -98,7 +98,7 @@ Every [release](https://github.com/Seylo-dev/App/releases) is signed with the pr
 RWTwvrETQsecIkFOCm1ceiZwfxVq6sFfiEmJfWnUVv7UBIn0jWm2h1ip
 ```
 
-It is the `minisignPublicKey` in `brand/brand.json` of the [app repo](https://github.com/Seylo-dev/App) and is compiled into the panel, the agent and the installer. The private half is kept offline by the maintainers and, on GitHub, only in the app repo's `release` environment: only the job that signs a release can read it, after a maintainer approves that run. The job that builds the release, and runs its npm build scripts, never sees it. Each release carries:
+It is the `minisignPublicKey` in `brand/brand.json` of the [app repo](https://github.com/Seylo-dev/App) and is compiled into the panel, the agent and the installer. The same key also signs the [template catalog](/guides/templates#where-the-catalog-comes-from) that [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates) publishes, and the panel uses a downloaded catalog only when that signature checks out. The private half is kept offline by the maintainers and, on GitHub, only in two environments, each read only by its signing job: the app repo's `release`, after a maintainer approves that run, and the Templates repo's `catalog`, for runs on `main` only. The jobs that build a release or a catalog, and run their npm or Bun build scripts, never see it. Each release carries:
 
 | File | What it is |
 | --- | --- |

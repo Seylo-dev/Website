@@ -12,9 +12,11 @@ and `apps/api` import it directly.
 - `minisignPublicKey` is the release signing key, the same value as in the app repo's `brand/brand.json`.
   The site API serves `install.sh` only when the release's `manifest.json` is signed with it, and the docs
   print it for checking downloads by hand (`apps/api/test/brand.test.ts` checks they match).
-- `templatesMinisignPublicKey` is the template catalog's signing key (a key of its own, not the release key),
-  the same value as in the app repo's `brand/brand.json`. `tools/catalog` uses a catalog only when it is signed
-  with it. Until the key exists it is a placeholder, and builds keep the committed catalog.
+- `templatesMinisignPublicKey` is the key the template catalog is signed with. It is the release key (the same
+  value as `minisignPublicKey`): Seylo-dev/Templates signs its catalog with the key that signs Seylo releases.
+  It is its own field so the app repo's `brand/brand.json` and this one name the catalog key the same way.
+  `tools/catalog` uses a catalog only when it is signed with it (`tools/catalog/test/site.test.ts` checks it
+  is the release key).
 
 It mirrors the app repo's `brand/brand.json` (the panel, agent and installer read that one), and the app
 repo's `scripts/dev/check-site-brand.sh` checks that the URLs and the repo match. Keep the two copies (this one
