@@ -40,7 +40,7 @@ On a service's **Backups** tab, **Add schedule**:
 | **Destination** | One of the buckets from Settings |
 | **When** | A preset, or **Custom (cron expression)**. Times are UTC. |
 | **Keep newest** | How many backups this schedule keeps. The panel deletes older ones from the bucket after each successful backup and when you change the number. |
-| **Stop the service while copying** | For files that change while being copied, like SQLite databases. The service is down for the length of the backup. |
+| **Stop the service while copying** | For files that change while being copied, like SQLite databases. The service is down while its volume is archived. Changed in 0.2.17, on nodes with agent 0.2.17: it starts again as soon as the archive is written, while the upload goes on (see [When the bucket is slow](#slow-buckets)); before, it stayed down until the upload ended. |
 
 Changed in 0.2.15: **Back up now** on a service's **Backups** tab starts every schedule that is on at once. Each backup goes to its own destination and counts toward its own **Keep newest**, and the toast says how many started. Schedules that are off, and one whose backup is still running, are skipped. Before, it ran only the first schedule, so a service with a schedule per volume got one backup. Each schedule's menu still has a **Back up now** of its own that backs up just that schedule. Such a run counts toward that schedule's **Keep newest**, so it can push the schedule's oldest backup out.
 
@@ -119,6 +119,60 @@ Changed in 0.2.13: a PostgreSQL backup made with `pg_dump` restores in one trans
 To restore such a backup, make a user with that name on the database's **Users** tab (**New user**, any access), then **Restore** again.
 
 One transaction takes a lock on every table it replaces, so a database with a very large number of tables may need Postgres's `max_locks_per_transaction` raised for the restore to run.
+
+## When the bucket is slow [#slow-buckets]
+
+Changed in 0.2.17, on nodes with agent 0.2.17.
+
+The node uploads a backup in parts of 32 MiB. Before 0.2.17 the dump waited while each part uploaded, and some databases close a client that stops reading: on a slow uplink MariaDB and MySQL dumps failed with "mariadb-dump: Error 2026: TLS/SSL error: unexpected eof" or "Error 2013: Lost connection", and Redis, Valkey and KeyDB dumps with "I/O Error reading RDB payload".
+
+### The node holds what the upload has not taken yet
+
+The agent now keeps reading the dump or the archive while a part uploads, and holds what the upload has not taken yet:
+
+- in memory, up to 16 MiB per backup, for every backup,
+- then on disk, for dumps of MySQL, MariaDB, Redis, Valkey and KeyDB, whose servers drop a dump that stops reading, and for volume backups with **Stop the service while copying**, so the service starts again sooner. These go into files of 32 MiB in `/var/lib/seylo/backup-spool`.
+
+| Limit | What it means |
+| --- | --- |
+| 4 GiB per backup | The most one backup holds on the node's disk. |
+| 15% of the disk and 10 GiB free | No file is written that would leave less free on the disk that holds `/var/lib/seylo`. That is where the **Disk space** health check starts to warn, so a backup never sets it off. |
+
+Each file is removed from the folder as soon as it is made, so the folder looks empty while `df` shows the space in use. The space comes back as the upload takes each file, and at the latest when the backup ends or the agent stops; the agent also empties the folder when it starts. Other dumps (PostgreSQL, MongoDB, ClickHouse and Dragonfly) and other volume backups keep to memory: their database does not drop them while they wait, and their bytes are not written to the node's disk once more.
+
+When there is no room left, the dump waits for the upload, as before: the node never fails a backup for want of room by itself. The progress of a run counts what the upload took. A volume backup that stopped its service starts the service again once the whole archive is written; an archive larger than the room the node has keeps the service down until the rest fits.
+
+### "The database closed the connection" [#connection-closed]
+
+A dump or a restore whose tool's last line says the database closed the connection gets a sentence after that line with what usually causes it:
+
+```text
+the dump exited with code 2: mariadb-dump: Error 2026: TLS/SSL error: unexpected eof while reading when dumping table `orders` at row: 81234. The database closed the connection in the middle of the dump. Usually it restarted or ran out of memory: look in its Logs for a restart or "Aborted connection". Before Seylo 0.2.17 a slow upload to the bucket caused this too.
+```
+
+A restore says "in the middle of the restore" and "a slow download from the bucket". What to look for in the database's **Logs** around that time:
+
+| Engine | The tool's line | In the database's Logs |
+| --- | --- | --- |
+| MySQL, MariaDB | Errors 2006 (server has gone away), 2013 (lost connection), 4031 (disconnected for inactivity), or 2026 with "unexpected eof" | A restart, or "Aborted connection" |
+| Redis, Valkey, KeyDB | "I/O Error reading RDB payload", or "while SYNCing" | A restart, or "Disconnecting timedout replica" |
+| PostgreSQL | "server closed the connection unexpectedly", "connection to server was lost", "terminating connection due to ..." | A restart, or "terminating connection" |
+
+When a MySQL, MariaDB, Redis, Valkey or KeyDB dump had just waited a second or more for the upload because the node had no more room, the message says so instead, and what to change:
+
+```text
+... The database closed the connection after the dump waited 1m15s for the upload: the upload fell behind the dump by more than 4.3 GB, the most one backup holds on the node. Use a bucket the node reaches faster or raise the database's net_write_timeout and wait_timeout.
+```
+
+When the disk was the limit it reads "... and the node has no room to hold it (backups leave 15% of its disk and 10 GiB free). Free space on the node, use a bucket it reaches faster or raise ...". For Redis, Valkey and KeyDB the setting to raise is `repl-timeout`. A mysqldump that exits without a word after such a wait (MySQL closed its idle session) gets "The dump stopped without a message right after it waited ... for the upload: ..., so the database most likely closed its connection meanwhile."
+
+### Timeouts of the backup's own session
+
+The dump and restore tools raise the database's idle timeouts for their own session only. The database's settings are never changed:
+
+- MySQL and MariaDB restores set `wait_timeout`, `net_read_timeout` and `net_write_timeout` to 86400 seconds for their session. Before, a restore from a slow bucket ended with "Server has gone away" (2006) or "disconnected by the server because of inactivity" (4031).
+- mysqldump 8.4 and later does the same for its dump. mysqldump 8.0 and 5.7 and mariadb-dump cannot, and the node's room for the upload covers them.
+- A PostgreSQL restore of a whole-server backup, which runs `psql`, turns `idle_session_timeout` off for its sessions on PostgreSQL 14 and later.
 
 ## Alerts
 
