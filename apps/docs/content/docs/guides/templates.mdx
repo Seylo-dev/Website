@@ -26,32 +26,63 @@ The catalog grows without panel releases: see [Where the catalog comes from](#wh
 
 New in 0.2.17. Templates live in their own repository, [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates), not in the panel. Its templates and scripts are under the [MIT License](https://github.com/Seylo-dev/Templates/blob/main/LICENSE); each logo keeps its own license and is credited in the repository's `NOTICE`. Every change merged there publishes a new catalog: one `catalog.json` with every template, signed with the same minisign key as Seylo releases (see [Signed releases](/security#signed-releases)).
 
-- **The panel ships a copy.** Every release carries the catalog of the day it was made, so a panel without internet access still lists templates.
-- **It checks for a newer one** when it starts, every 6 hours after that, and when someone clicks **Check for new templates** on the **Templates** page (people with the **templates.manage** permission: owners and admins).
-- **It only takes a catalog it can trust.** The signature must match the release key built into the panel, every file must match its hash, and the catalog must not be older than the one the panel already has (an old catalog would bring back old image versions). Anything else keeps the current catalog, and the page says why. The panel keeps the download in its data folder and checks it again every time it reads it.
+- **The panel ships a copy.** Every release carries the catalog of the day it was made, so a panel without internet access still lists templates. 0.2.18 is the first release that ships the signed catalog the Templates repository published; a copy that ships with a signature must verify with the release key.
+- **It checks for a newer one** when it starts, every 6 hours after that, when someone clicks the refresh button on the **Templates** page (**Check for new templates**, for people with the **templates.manage** permission: owners and admins) and, new in 0.2.18, when someone opens **Templates** 10 minutes or more after the last check. See [When the panel checks](#when-the-panel-checks).
+- **It only takes a catalog it can trust.** The signature must match the release key built into the panel, every file must match its hash, and the catalog must not be older than the one the panel already has (an old catalog would bring back old image versions). Anything else keeps the current catalog, and the refresh button's warning says why (see [The toolbar](#catalog-toolbar)). The panel keeps the download in its data folder and checks it again every time it reads it.
 
 So new templates and newer image versions reach your panel without a panel update. Panels up to 0.2.16 keep the templates they shipped with.
 
-The line under the title on **Templates** says which catalog you see:
+### The toolbar [#catalog-toolbar]
 
-- "Official catalog, updated 14 Nov 2026 (a1b2c3d)." once the panel downloaded one, with the commit in the Templates repository it was built from,
-- "Catalog bundled with Seylo 0.2.17." before that, or when downloads are off ("Downloads are off."),
-- the last failed check and when it was, for example "Could not reach github.com. Last tried 5 minutes ago.",
-- "The official catalog is not published yet. Last checked 5 minutes ago." until the Templates repository publishes its first signed catalog. That is no error: the panel lists the catalog it shipped with, asks again at its next check, and shows no error toast or alert; **Check for new templates** answers "The official catalog is not published yet."
-- how many templates are new. A new template carries a **New** tag on its card until someone with **templates.manage** opens the page.
-- "2 templates could not be read." when the catalog has templates this panel cannot read. Only those are left out; hover the text for which and why.
+Changed in 0.2.18: the catalog's controls sit on the title row of **Templates**, left of the search, and the line under the title that said where the catalog came from is gone.
 
-A build of Seylo without the catalog key, such as a fork, says "This build has no key for the official catalog, so no new templates are downloaded." It lists the templates it shipped with and never downloads the official catalog; a private catalog still works.
+- **Catalog source** (the owner only) opens the dialog with the catalog in use and where templates come from; see [What is in use](#what-is-in-use).
+- The refresh button (people with **templates.manage**; its tooltip says **Check for new templates**) checks the official catalog, and a private one, right away. It spins while the panel checks, then says what it found: "No new templates.", "3 new templates.", "The official catalog is not published yet." or "The check failed: " with the reason. When there is nothing to download (the official catalog is off or this build has no key for it, and there is no private catalog), the button stays, dimmed, for its warning, and a click does nothing.
 
-In the API and MCP, `templates.catalogStatus` returns all of this. In the API, `templates.refreshCatalog` is **Check for new templates** and `templates.setCatalogSource` the owner's **Catalog source**; templates carry `catalog` (`official`, `private` or `custom`) and `unsigned`.
+On a phone the buttons keep their row and the search takes the full width under them. Without **templates.manage**, and on the **Docker Hub** tab, the search is alone.
+
+While all is well nothing else shows. A problem puts an amber dot on the refresh button, and its tooltip (which screen readers read with the button) says what is wrong and what to do:
+
+| Problem | The warning says | What it means |
+| --- | --- | --- |
+| The last check of the official catalog failed | "Checking for new templates failed 5 minutes ago: Could not reach github.com. The templates you have stay.", then to check again later and, if it keeps failing, to make sure the panel can reach GitHub | The download failed, or the panel refused what it got: a signature that does not match, a file whose hash does not match, a catalog older than the one it has. It keeps its catalog. |
+| A private catalog failed | "The private catalog templates.example.com failed 5 minutes ago: ...", then to check its server, or its URL and key in **Catalog source** | The same for your [private catalog](#private-catalogs). Its templates you have stay. |
+| Downloads are off | "Downloads of the official catalog are off, so no new templates come." The owner's adds "Turn them on in Catalog source." | **Official catalog** is off in **Catalog source** ([Turning downloads off](#turning-downloads-off)). |
+| No key in this build | "This build has no key for the official catalog, so no new templates are downloaded. Release builds of Seylo have it." | A build without the catalog key, such as a fork: it lists the templates it shipped with and never downloads the official catalog. A private catalog still works. |
+| No catalog could be read | Why the copy the panel shipped with could not be read | Rare: the panel has no download and cannot read its own copy, so it lists no official templates. |
+
+GitHub having no official catalog to give (it answers 404) is not a problem: the panel keeps the catalog it has, asks again at its next check and shows no dot, toast or alert.
+
+Under the title, a short note shows only when templates were left out: "2 templates need a newer Seylo." (see [Templates that need a newer panel](#templates-that-need-a-newer-panel)) and "2 templates could not be read." when the catalog has templates this panel cannot read; only those are left out, and hovering the note says which and why. A template a newer catalog brought carries a **New** tag on its card until someone with **templates.manage** opens the page.
+
+### What is in use [#what-is-in-use]
+
+New in 0.2.18: the owner's **Catalog source** dialog starts with the catalog the panel uses now.
+
+| Row | What it says |
+| --- | --- |
+| **In use** | "Downloaded from Seylo-dev/Templates", "Bundled with Seylo 0.2.18" (the copy the panel shipped with) or "None could be read" |
+| **Built** | When that catalog was built |
+| **Commit** | The commit in the Templates repository it was built from, linked to that commit on GitHub |
+| **Last checked** | When the panel last asked for a newer one, "Not yet", "Downloads off" or "No key in this build" |
+
+A private catalog gets the same rows, the first one **Private catalog** with its host ("templates.example.com, unsigned" without a key), and its commit is not linked. When GitHub has no official catalog to give, a line says "The official catalog is not published yet." ("The official catalog is not published at the moment, so this copy stays." while the panel uses a download). The problems from the refresh button's warning follow, in one warning box.
+
+### When the panel checks [#when-the-panel-checks]
+
+The panel checks the official catalog and a private one when it starts, every 6 hours, and when someone clicks the refresh button. New in 0.2.18: opening **Templates** also asks for a check when a catalog the panel downloads (the official one, on and with its key, or a private one) was last checked 10 minutes ago or more, or never. Anyone signed in triggers it, once per visit, and it runs in the background: the page does not wait for it, and when it brings a newer catalog, an open **Templates** page updates by itself. One check runs at a time across the panel, so a page opened while one runs starts none, and however many people open the page, page opens make the panel ask GitHub at most 6 times an hour.
+
+Also new in 0.2.18: a check asks for `catalog.json` only if it changed since the download the panel uses, with `If-None-Match` and `If-Modified-Since`. For an unchanged catalog GitHub answers `304 Not Modified`, the signature is not downloaded and the check counts as done. While the panel uses the copy it shipped with, a check downloads in full, and so does the first check after the update to 0.2.18. A private catalog's server gets the same requests when it sends `ETag` or `Last-Modified`, and a full download every time otherwise.
+
+In the API and MCP, `templates.catalogStatus` returns where the catalog comes from, the last check and its error, the new and left-out templates and, new in 0.2.18, `checkDue`: whether opening the page would start a check. In the API, `templates.refreshCatalog` is the refresh button, `templates.checkCatalogIfDue` (new in 0.2.18, any signed-in person) the check when the page opens, which starts one only when it is due and none runs and returns `started`, and `templates.setCatalogSource` the owner's **Catalog source**; templates carry `catalog` (`official`, `private` or `custom`) and `unsigned`.
 
 ### Templates that need a newer panel
 
-A template can name the oldest panel version it works with (`minPanel` in its [meta.yaml](#metayaml)), when it uses something older panels do not have. An older panel leaves it out, and the **Templates** page says "2 templates need a newer Seylo", with a link to **Settings → Updates**.
+A template can name the oldest panel version it works with (`minPanel` in its [meta.yaml](#metayaml)), when it uses something older panels do not have. An older panel leaves it out, and a note under the **Templates** title says "2 templates need a newer Seylo.", with a link to **Settings → Updates**.
 
 ### Turning downloads off
 
-**Catalog source** on the **Templates** page (the owner only) has the switch **Official catalog**. Off, the panel uses only the templates bundled with it and downloads nothing: the setting for panels without internet access, which would otherwise try every 6 hours.
+**Catalog source** on the **Templates** page (the owner only) has the switch **Official catalog**. Off, the panel uses only the templates bundled with it and downloads nothing: the setting for panels without internet access, which would otherwise try every 6 hours and when someone opens **Templates**. While it is off, the refresh button carries a warning that says so.
 
 ### Private catalogs
 
@@ -110,7 +141,7 @@ This is the check every pull request runs, with the panel's own code: the first 
 
 ### Open a pull request
 
-The pull request runs the same check against the panel version the repository targets and against the oldest version it still supports. A template that needs a newer panel than that oldest one fails there until its `meta.yaml` sets `minPanel`. Once it is merged, the next catalog has it, and panels pick it up within 6 hours or on **Check for new templates**.
+The pull request runs the same check against the panel version the repository targets and against the oldest version it still supports. A template that needs a newer panel than that oldest one fails there until its `meta.yaml` sets `minPanel`. Once it is merged, the next catalog has it, and panels pick it up within 6 hours, or sooner when someone opens **Templates** or clicks **Check for new templates**.
 
 </Step>
 </Steps>
