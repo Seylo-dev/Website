@@ -16545,6 +16545,7 @@
                         "parentId",
                         "status",
                         "buildWaiting",
+                        "runtimeStatus",
                         "source",
                         "address",
                         "placements",
@@ -16691,6 +16692,50 @@
                         },
                         "buildWaiting": {
                           "type": "boolean"
+                        },
+                        "runtimeStatus": {
+                          "anyOf": [
+                            {
+                              "const": "idle",
+                              "type": "string"
+                            },
+                            {
+                              "const": "building",
+                              "type": "string"
+                            },
+                            {
+                              "const": "deploying",
+                              "type": "string"
+                            },
+                            {
+                              "const": "starting",
+                              "type": "string"
+                            },
+                            {
+                              "const": "running",
+                              "type": "string"
+                            },
+                            {
+                              "const": "partial",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unhealthy",
+                              "type": "string"
+                            },
+                            {
+                              "const": "crashed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stopped",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unknown",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "source": {
                           "type": "object",
@@ -16927,6 +16972,7 @@
                           "parentId",
                           "status",
                           "buildWaiting",
+                          "runtimeStatus",
                           "source",
                           "address",
                           "placements",
@@ -17073,6 +17119,50 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "source": {
                             "type": "object",
@@ -17365,6 +17455,7 @@
                         "parentId",
                         "status",
                         "buildWaiting",
+                        "runtimeStatus",
                         "source",
                         "address",
                         "placements",
@@ -17529,6 +17620,50 @@
                         },
                         "buildWaiting": {
                           "type": "boolean"
+                        },
+                        "runtimeStatus": {
+                          "anyOf": [
+                            {
+                              "const": "idle",
+                              "type": "string"
+                            },
+                            {
+                              "const": "building",
+                              "type": "string"
+                            },
+                            {
+                              "const": "deploying",
+                              "type": "string"
+                            },
+                            {
+                              "const": "starting",
+                              "type": "string"
+                            },
+                            {
+                              "const": "running",
+                              "type": "string"
+                            },
+                            {
+                              "const": "partial",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unhealthy",
+                              "type": "string"
+                            },
+                            {
+                              "const": "crashed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stopped",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unknown",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "source": {
                           "type": "object",
@@ -18528,7 +18663,9 @@
                               "id",
                               "name",
                               "status",
-                              "buildWaiting"
+                              "buildWaiting",
+                              "runtimeStatus",
+                              "liveDeployment"
                             ],
                             "properties": {
                               "id": {
@@ -18589,6 +18726,79 @@
                               },
                               "buildWaiting": {
                                 "type": "boolean"
+                              },
+                              "runtimeStatus": {
+                                "anyOf": [
+                                  {
+                                    "const": "idle",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "building",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "deploying",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "starting",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "running",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "partial",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unhealthy",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "crashed",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "stopped",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unknown",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "liveDeployment": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "label",
+                                      "createdAt"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "label": {
+                                        "type": "string"
+                                      },
+                                      "createdAt": {
+                                        "format": "date-time",
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           }
@@ -18999,6 +19209,7 @@
                           "parentId",
                           "status",
                           "buildWaiting",
+                          "runtimeStatus",
                           "source",
                           "address",
                           "placements",
@@ -19145,6 +19356,50 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "source": {
                             "type": "object",
@@ -30085,6 +30340,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -30249,6 +30505,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -31248,7 +31548,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -31309,6 +31611,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -43563,6 +43938,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -43727,6 +44103,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -44726,7 +45146,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -44787,6 +45209,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -46681,6 +47176,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -46845,6 +47341,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -47844,7 +48384,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -47905,6 +48447,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -53914,6 +54529,281 @@
         "x-mcp": false
       }
     },
+    "/api/v1/nodes.dnsCacheStatus": {
+      "get": {
+        "operationId": "nodes.dnsCacheStatus",
+        "summary": "Get the node's DNS cache status",
+        "description": "The DNS cache's state on the node, its address, upstream servers and fallbacks, hit rate and upstream questions per minute, and which running containers use it (the rest get it at their next redeploy). State \"unknown\" while the node is offline or its agent is older than 0.2.17.",
+        "tags": [
+          "nodes"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9]{16}$",
+              "description": "Panel-issued id.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "nodeId",
+                    "enabled",
+                    "supported",
+                    "online",
+                    "state",
+                    "reason",
+                    "fixHint",
+                    "address",
+                    "upstreams",
+                    "fallbacks",
+                    "entries",
+                    "queries",
+                    "hits",
+                    "stale",
+                    "upstreamQueries",
+                    "upstreamFailures",
+                    "hitRate",
+                    "upstreamPerMinute",
+                    "minutes",
+                    "checkedAt",
+                    "checkPassed",
+                    "containers"
+                  ],
+                  "properties": {
+                    "nodeId": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "supported": {
+                      "type": "boolean"
+                    },
+                    "online": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "description": "\"off\": nothing runs. \"starting\": listening, testing from inside a container before containers get it. \"active\": new containers get it. \"blocked\": it cannot work here (reason, fixHint), containers keep Docker's servers. \"draining\": turned off, containers created with it still use it until they are redeployed. \"unknown\": the node is offline or its agent is older than 0.2.17.",
+                      "anyOf": [
+                        {
+                          "const": "off",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "active",
+                          "type": "string"
+                        },
+                        {
+                          "const": "blocked",
+                          "type": "string"
+                        },
+                        {
+                          "const": "draining",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "fixHint": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "string"
+                    },
+                    "upstreams": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "fallbacks": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "entries": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "queries": {
+                      "minimum": 0,
+                      "description": "Questions answered since the agent started.",
+                      "type": "integer"
+                    },
+                    "hits": {
+                      "minimum": 0,
+                      "description": "Answered from the cache while fresh.",
+                      "type": "integer"
+                    },
+                    "stale": {
+                      "minimum": 0,
+                      "description": "Answered from an expired entry because no upstream answered.",
+                      "type": "integer"
+                    },
+                    "upstreamQueries": {
+                      "minimum": 0,
+                      "description": "Questions the cache sent to its upstream servers.",
+                      "type": "integer"
+                    },
+                    "upstreamFailures": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "hitRate": {
+                      "anyOf": [
+                        {
+                          "minimum": 0,
+                          "maximum": 1,
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "upstreamPerMinute": {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "minutes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "queries",
+                          "upstream"
+                        ],
+                        "properties": {
+                          "queries": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "upstream": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "checkedAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "checkPassed": {
+                      "type": "boolean"
+                    },
+                    "containers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "serviceId",
+                          "serviceName",
+                          "kind",
+                          "usesCache",
+                          "created"
+                        ],
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "serviceId": {
+                            "anyOf": [
+                              {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "serviceName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "usesCache": {
+                            "type": "boolean"
+                          },
+                          "created": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "nodes.view",
+        "x-mcp": true
+      }
+    },
     "/api/v1/nodes.get": {
       "get": {
         "operationId": "nodes.get",
@@ -53969,6 +54859,7 @@
                     "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
+                    "dnsCache",
                     "facts",
                     "usage",
                     "serviceCount",
@@ -53981,7 +54872,8 @@
                     "services",
                     "desiredRevision",
                     "appliedRevision",
-                    "panelAddress"
+                    "panelAddress",
+                    "dnsCacheSupported"
                   ],
                   "properties": {
                     "id": {
@@ -54152,6 +55044,10 @@
                       }
                     },
                     "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                       "type": "boolean"
                     },
                     "facts": {
@@ -54648,6 +55544,9 @@
                           "type": "integer"
                         }
                       }
+                    },
+                    "dnsCacheSupported": {
+                      "type": "boolean"
                     }
                   }
                 }
@@ -54864,6 +55763,7 @@
                           "parallelBuildsAuto",
                           "wings",
                           "gamesFirstCpu",
+                          "dnsCache",
                           "facts",
                           "usage",
                           "serviceCount",
@@ -55041,6 +55941,10 @@
                             }
                           },
                           "gamesFirstCpu": {
+                            "type": "boolean"
+                          },
+                          "dnsCache": {
+                            "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                             "type": "boolean"
                           },
                           "facts": {
@@ -55636,6 +56540,7 @@
                     "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
+                    "dnsCache",
                     "facts",
                     "usage",
                     "serviceCount",
@@ -55813,6 +56718,10 @@
                       }
                     },
                     "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                       "type": "boolean"
                     },
                     "facts": {
@@ -56396,6 +57305,7 @@
                     "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
+                    "dnsCache",
                     "facts",
                     "usage",
                     "serviceCount",
@@ -56573,6 +57483,560 @@
                       }
                     },
                     "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
+                      "type": "boolean"
+                    },
+                    "facts": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "hostname",
+                            "os",
+                            "kernel",
+                            "arch",
+                            "cpuCores",
+                            "memoryTotalBytes",
+                            "diskTotalBytes",
+                            "diskFreeBytes",
+                            "dockerVersion",
+                            "cgroupVersion",
+                            "bootTime"
+                          ],
+                          "properties": {
+                            "hostname": {
+                              "type": "string"
+                            },
+                            "os": {
+                              "description": "For example \"ubuntu 24.04\".",
+                              "type": "string"
+                            },
+                            "kernel": {
+                              "type": "string"
+                            },
+                            "arch": {
+                              "description": "\"amd64\" or \"arm64\".",
+                              "type": "string"
+                            },
+                            "cpuCores": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "memoryTotalBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "diskTotalBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "diskFreeBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "dockerVersion": {
+                              "type": "string"
+                            },
+                            "cgroupVersion": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "bootTime": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "docker": {
+                      "type": "object",
+                      "required": [
+                        "version",
+                        "latest",
+                        "updateAvailable",
+                        "checkedAt",
+                        "reason"
+                      ],
+                      "properties": {
+                        "version": {
+                          "description": "The Docker Engine version the node runs, for example \"29.9.3\".",
+                          "type": "string"
+                        },
+                        "latest": {
+                          "anyOf": [
+                            {
+                              "description": "The newest version the node's package manager offers; null when the agent cannot update Docker there.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "updateAvailable": {
+                          "anyOf": [
+                            {
+                              "description": "true: latest is newer than version. false: nothing newer, checked in the last two days. null: unknown (the agent cannot update Docker here, or its checks stopped answering).",
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "checkedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "description": "Why the agent cannot update Docker on this node (static binaries, snap, no package manager); null when it can.",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "usage": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "at",
+                            "cpuPercent",
+                            "memoryUsedBytes",
+                            "memoryTotalBytes",
+                            "diskUsedBytes",
+                            "diskTotalBytes",
+                            "networkRxBytesPerSec",
+                            "networkTxBytesPerSec",
+                            "load1"
+                          ],
+                          "properties": {
+                            "at": {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "cpuPercent": {
+                              "minimum": 0,
+                              "description": "0-100, share of all cores.",
+                              "type": "number"
+                            },
+                            "memoryUsedBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "memoryTotalBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "diskUsedBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "diskTotalBytes": {
+                              "minimum": 0,
+                              "description": "Bytes.",
+                              "type": "integer"
+                            },
+                            "networkRxBytesPerSec": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "networkTxBytesPerSec": {
+                              "minimum": 0,
+                              "type": "number"
+                            },
+                            "load1": {
+                              "minimum": 0,
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "serviceCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "health": {
+                      "type": "object",
+                      "required": [
+                        "checkedAt",
+                        "worst"
+                      ],
+                      "properties": {
+                        "checkedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "worst": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "const": "pass",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "warn",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "fail",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "skipped",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "lastSeenAt": {
+                      "anyOf": [
+                        {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "rejectedHello": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "message",
+                        "at"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "description": "The HelloRejectReason, \"AGENT_TOO_OLD\" or \"BAD_SIGNATURE\".",
+                          "type": "string"
+                        },
+                        "message": {
+                          "description": "What the panel told the agent.",
+                          "type": "string"
+                        },
+                        "at": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "createdAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "nodes.manage",
+        "x-mcp": true
+      }
+    },
+    "/api/v1/nodes.setDnsCache": {
+      "post": {
+        "operationId": "nodes.setDnsCache",
+        "summary": "Turn the node's DNS cache on or off",
+        "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own. Turning it on needs an agent of 0.2.17 or later: CONFLICT with details.reason \"agentTooOld\" otherwise. Turning it off stops giving it to new containers; the agent keeps answering the containers that have it until they are redeployed.",
+        "tags": [
+          "nodes"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nodeId",
+                  "enabled"
+                ],
+                "properties": {
+                  "nodeId": {
+                    "pattern": "^[a-z0-9]{16}$",
+                    "description": "Panel-issued id.",
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "location",
+                    "tags",
+                    "status",
+                    "isPanelNode",
+                    "publicIpv4",
+                    "publicIpv6",
+                    "publicAddress",
+                    "wildcardDomain",
+                    "agentVersion",
+                    "updateAvailable",
+                    "canBuild",
+                    "canBuildWarning",
+                    "maxParallelBuilds",
+                    "parallelBuildsAuto",
+                    "wings",
+                    "gamesFirstCpu",
+                    "dnsCache",
+                    "facts",
+                    "usage",
+                    "serviceCount",
+                    "health",
+                    "lastSeenAt",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "pattern": "^[a-z0-9]{16}$",
+                      "description": "Panel-issued id.",
+                      "type": "string"
+                    },
+                    "name": {
+                      "minLength": 1,
+                      "maxLength": 60,
+                      "pattern": "^[a-z0-9][a-z0-9.-]*$",
+                      "description": "Lowercase letters, digits, dots and hyphens; unique.",
+                      "type": "string"
+                    },
+                    "location": {
+                      "anyOf": [
+                        {
+                          "maxLength": 80,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "locationSource": {
+                      "description": "\"detected\" from the public IP address (Geolocation by DB-IP) until saved; \"manual\" once saved.",
+                      "anyOf": [
+                        {
+                          "const": "detected",
+                          "type": "string"
+                        },
+                        {
+                          "const": "manual",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "minLength": 1,
+                        "maxLength": 30,
+                        "pattern": "^[a-z0-9][a-z0-9-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "const": "online",
+                          "type": "string"
+                        },
+                        {
+                          "const": "offline",
+                          "type": "string"
+                        },
+                        {
+                          "const": "disabled",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "isPanelNode": {
+                      "type": "boolean"
+                    },
+                    "publicIpv4": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "publicIpv6": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "publicAddress": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "wildcardDomain": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "agentVersion": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "updateAvailable": {
+                      "type": "boolean"
+                    },
+                    "canBuild": {
+                      "type": "boolean"
+                    },
+                    "canBuildWarning": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "maxParallelBuilds": {
+                      "minimum": 1,
+                      "maximum": 16,
+                      "description": "Builds at once that apply now: the fixed number, or what Auto works out when parallelBuildsAuto is true.",
+                      "type": "integer"
+                    },
+                    "parallelBuildsAuto": {
+                      "description": "true: builds at once is on Auto, so maxParallelBuilds is one build per 4 CPU cores and per 4 GiB of memory the node reported, whichever allows fewer, at least 1 and at most 16 (1 until the node reported its cores and memory), and follows the machine when its hardware changes. false: a fixed number. Nodes that join since 0.2.15 start on Auto; nodes from before keep their fixed number.",
+                      "type": "boolean"
+                    },
+                    "wings": {
+                      "type": "object",
+                      "required": [
+                        "detected",
+                        "version",
+                        "sharedProxy"
+                      ],
+                      "properties": {
+                        "detected": {
+                          "description": "Pelican Wings runs on this node; the games-first switch is only shown then.",
+                          "type": "boolean"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "sharedProxy": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                       "type": "boolean"
                     },
                     "facts": {
@@ -56941,6 +58405,7 @@
                     "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
+                    "dnsCache",
                     "facts",
                     "usage",
                     "serviceCount",
@@ -57118,6 +58583,10 @@
                       }
                     },
                     "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                       "type": "boolean"
                     },
                     "facts": {
@@ -57494,6 +58963,7 @@
                     "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
+                    "dnsCache",
                     "facts",
                     "usage",
                     "serviceCount",
@@ -57671,6 +59141,10 @@
                       }
                     },
                     "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                       "type": "boolean"
                     },
                     "facts": {
@@ -58204,6 +59678,7 @@
                     "parallelBuildsAuto",
                     "wings",
                     "gamesFirstCpu",
+                    "dnsCache",
                     "facts",
                     "usage",
                     "serviceCount",
@@ -58216,7 +59691,8 @@
                     "services",
                     "desiredRevision",
                     "appliedRevision",
-                    "panelAddress"
+                    "panelAddress",
+                    "dnsCacheSupported"
                   ],
                   "properties": {
                     "id": {
@@ -58387,6 +59863,10 @@
                       }
                     },
                     "gamesFirstCpu": {
+                      "type": "boolean"
+                    },
+                    "dnsCache": {
+                      "description": "The node's DNS cache for containers: the agent answers DNS on one link-local address of the server (169.254.53.53 by default) and gives every container it creates, once it proved containers reach it, that address first and the servers Docker would give it as fallbacks. It cuts repeated lookups of the same names (a container retrying in a loop) and the UDP sessions they open to outside resolvers; it does not help with bursts of different names and is no hard limit, since containers keep the fallbacks. Containers get it, or lose it, when they are next created (a redeploy, the next cron run); nothing restarts on its own.",
                       "type": "boolean"
                     },
                     "facts": {
@@ -58883,6 +60363,9 @@
                           "type": "integer"
                         }
                       }
+                    },
+                    "dnsCacheSupported": {
+                      "type": "boolean"
                     }
                   }
                 }
@@ -67043,6 +68526,7 @@
                         "parentId",
                         "status",
                         "buildWaiting",
+                        "runtimeStatus",
                         "source",
                         "address",
                         "placements",
@@ -67207,6 +68691,50 @@
                         },
                         "buildWaiting": {
                           "type": "boolean"
+                        },
+                        "runtimeStatus": {
+                          "anyOf": [
+                            {
+                              "const": "idle",
+                              "type": "string"
+                            },
+                            {
+                              "const": "building",
+                              "type": "string"
+                            },
+                            {
+                              "const": "deploying",
+                              "type": "string"
+                            },
+                            {
+                              "const": "starting",
+                              "type": "string"
+                            },
+                            {
+                              "const": "running",
+                              "type": "string"
+                            },
+                            {
+                              "const": "partial",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unhealthy",
+                              "type": "string"
+                            },
+                            {
+                              "const": "crashed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stopped",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unknown",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "source": {
                           "type": "object",
@@ -68206,7 +69734,9 @@
                               "id",
                               "name",
                               "status",
-                              "buildWaiting"
+                              "buildWaiting",
+                              "runtimeStatus",
+                              "liveDeployment"
                             ],
                             "properties": {
                               "id": {
@@ -68267,6 +69797,79 @@
                               },
                               "buildWaiting": {
                                 "type": "boolean"
+                              },
+                              "runtimeStatus": {
+                                "anyOf": [
+                                  {
+                                    "const": "idle",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "building",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "deploying",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "starting",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "running",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "partial",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unhealthy",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "crashed",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "stopped",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unknown",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "liveDeployment": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "label",
+                                      "createdAt"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "label": {
+                                        "type": "string"
+                                      },
+                                      "createdAt": {
+                                        "format": "date-time",
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           }
@@ -69468,6 +71071,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -69632,6 +71236,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -70631,7 +72279,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -70692,6 +72342,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -71096,6 +72819,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -71260,6 +72984,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -72259,7 +74027,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -72320,6 +74090,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -72669,6 +74512,7 @@
                           "parentId",
                           "status",
                           "buildWaiting",
+                          "runtimeStatus",
                           "source",
                           "address",
                           "placements",
@@ -72815,6 +74659,50 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "source": {
                             "type": "object",
@@ -75368,6 +77256,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -75532,6 +77421,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -76531,7 +78464,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -76592,6 +78527,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -77442,6 +79450,7 @@
                     "parentId",
                     "status",
                     "buildWaiting",
+                    "runtimeStatus",
                     "source",
                     "address",
                     "placements",
@@ -77606,6 +79615,50 @@
                     },
                     "buildWaiting": {
                       "type": "boolean"
+                    },
+                    "runtimeStatus": {
+                      "anyOf": [
+                        {
+                          "const": "idle",
+                          "type": "string"
+                        },
+                        {
+                          "const": "building",
+                          "type": "string"
+                        },
+                        {
+                          "const": "deploying",
+                          "type": "string"
+                        },
+                        {
+                          "const": "starting",
+                          "type": "string"
+                        },
+                        {
+                          "const": "running",
+                          "type": "string"
+                        },
+                        {
+                          "const": "partial",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unhealthy",
+                          "type": "string"
+                        },
+                        {
+                          "const": "crashed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "stopped",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unknown",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "source": {
                       "type": "object",
@@ -78605,7 +80658,9 @@
                           "id",
                           "name",
                           "status",
-                          "buildWaiting"
+                          "buildWaiting",
+                          "runtimeStatus",
+                          "liveDeployment"
                         ],
                         "properties": {
                           "id": {
@@ -78666,6 +80721,79 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "liveDeployment": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "label",
+                                  "createdAt"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "pattern": "^[a-z0-9]{16}$",
+                                    "description": "Panel-issued id.",
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "createdAt": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
@@ -80218,6 +82346,7 @@
                         "parentId",
                         "status",
                         "buildWaiting",
+                        "runtimeStatus",
                         "source",
                         "address",
                         "placements",
@@ -80382,6 +82511,50 @@
                         },
                         "buildWaiting": {
                           "type": "boolean"
+                        },
+                        "runtimeStatus": {
+                          "anyOf": [
+                            {
+                              "const": "idle",
+                              "type": "string"
+                            },
+                            {
+                              "const": "building",
+                              "type": "string"
+                            },
+                            {
+                              "const": "deploying",
+                              "type": "string"
+                            },
+                            {
+                              "const": "starting",
+                              "type": "string"
+                            },
+                            {
+                              "const": "running",
+                              "type": "string"
+                            },
+                            {
+                              "const": "partial",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unhealthy",
+                              "type": "string"
+                            },
+                            {
+                              "const": "crashed",
+                              "type": "string"
+                            },
+                            {
+                              "const": "stopped",
+                              "type": "string"
+                            },
+                            {
+                              "const": "unknown",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "source": {
                           "type": "object",
@@ -81381,7 +83554,9 @@
                               "id",
                               "name",
                               "status",
-                              "buildWaiting"
+                              "buildWaiting",
+                              "runtimeStatus",
+                              "liveDeployment"
                             ],
                             "properties": {
                               "id": {
@@ -81442,6 +83617,79 @@
                               },
                               "buildWaiting": {
                                 "type": "boolean"
+                              },
+                              "runtimeStatus": {
+                                "anyOf": [
+                                  {
+                                    "const": "idle",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "building",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "deploying",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "starting",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "running",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "partial",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unhealthy",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "crashed",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "stopped",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unknown",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "liveDeployment": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "label",
+                                      "createdAt"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "pattern": "^[a-z0-9]{16}$",
+                                        "description": "Panel-issued id.",
+                                        "type": "string"
+                                      },
+                                      "label": {
+                                        "type": "string"
+                                      },
+                                      "createdAt": {
+                                        "format": "date-time",
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             }
                           }
@@ -90770,6 +93018,397 @@
         "x-mcp": false
       }
     },
+    "/api/v1/templates.catalogStatus": {
+      "get": {
+        "operationId": "templates.catalogStatus",
+        "summary": "Get the template catalog's status",
+        "description": "Says where the template catalog comes from: the official catalog (the copy that ships with the panel or a newer signed download), its date and commit, the last check and its error or that none is published yet, the owner's private catalog if any, which templates are new, and how many need a newer panel. added in 0.2.17",
+        "tags": [
+          "templates"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "official",
+                    "extra",
+                    "newSlugs",
+                    "needNewerPanel",
+                    "skipped",
+                    "canRefresh",
+                    "canChangeSource",
+                    "source"
+                  ],
+                  "properties": {
+                    "official": {
+                      "type": "object",
+                      "required": [
+                        "origin",
+                        "sequence",
+                        "commit",
+                        "generatedAt",
+                        "templates",
+                        "fetchedAt",
+                        "lastTriedAt",
+                        "lastError",
+                        "enabled",
+                        "signingKey",
+                        "notPublished",
+                        "bundledWith"
+                      ],
+                      "properties": {
+                        "origin": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "const": "bundled",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "downloaded",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "sequence": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "commit": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "generatedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "templates": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "fetchedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastTriedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastError": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "signingKey": {
+                          "type": "boolean"
+                        },
+                        "notPublished": {
+                          "type": "boolean"
+                        },
+                        "bundledWith": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "extra": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "origin",
+                            "sequence",
+                            "commit",
+                            "generatedAt",
+                            "templates",
+                            "fetchedAt",
+                            "lastTriedAt",
+                            "lastError",
+                            "host",
+                            "signed"
+                          ],
+                          "properties": {
+                            "origin": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "const": "bundled",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "downloaded",
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "sequence": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "commit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "generatedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "templates": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "fetchedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastTriedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastError": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "host": {
+                              "type": "string"
+                            },
+                            "signed": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "newSlugs": {
+                      "type": "array",
+                      "items": {
+                        "minLength": 1,
+                        "maxLength": 60,
+                        "pattern": "^[a-z0-9][a-z0-9-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "needNewerPanel": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "catalog",
+                          "reason"
+                        ],
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "catalog": {
+                            "anyOf": [
+                              {
+                                "const": "official",
+                                "type": "string"
+                              },
+                              {
+                                "const": "private",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "canRefresh": {
+                      "type": "boolean"
+                    },
+                    "canChangeSource": {
+                      "type": "boolean"
+                    },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "official",
+                            "extra"
+                          ],
+                          "properties": {
+                            "official": {
+                              "type": "boolean"
+                            },
+                            "extra": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "url",
+                                    "publicKey",
+                                    "allowUnsigned"
+                                  ],
+                                  "properties": {
+                                    "url": {
+                                      "minLength": 9,
+                                      "maxLength": 2000,
+                                      "pattern": "^https://\\S+$",
+                                      "type": "string"
+                                    },
+                                    "publicKey": {
+                                      "anyOf": [
+                                        {
+                                          "maxLength": 100,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "allowUnsigned": {
+                                      "type": "boolean"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "signed-in",
+        "x-mcp": true
+      }
+    },
     "/api/v1/templates.create": {
       "post": {
         "operationId": "templates.create",
@@ -90875,6 +93514,7 @@
                           "parentId",
                           "status",
                           "buildWaiting",
+                          "runtimeStatus",
                           "source",
                           "address",
                           "placements",
@@ -91021,6 +93661,50 @@
                           },
                           "buildWaiting": {
                             "type": "boolean"
+                          },
+                          "runtimeStatus": {
+                            "anyOf": [
+                              {
+                                "const": "idle",
+                                "type": "string"
+                              },
+                              {
+                                "const": "building",
+                                "type": "string"
+                              },
+                              {
+                                "const": "deploying",
+                                "type": "string"
+                              },
+                              {
+                                "const": "starting",
+                                "type": "string"
+                              },
+                              {
+                                "const": "running",
+                                "type": "string"
+                              },
+                              {
+                                "const": "partial",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unhealthy",
+                                "type": "string"
+                              },
+                              {
+                                "const": "crashed",
+                                "type": "string"
+                              },
+                              {
+                                "const": "stopped",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unknown",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "source": {
                             "type": "object",
@@ -91365,6 +94049,8 @@
                     "logoUrl",
                     "creates",
                     "builtIn",
+                    "catalog",
+                    "unsigned",
                     "body",
                     "links",
                     "fields"
@@ -91405,6 +94091,25 @@
                       "type": "string"
                     },
                     "builtIn": {
+                      "type": "boolean"
+                    },
+                    "catalog": {
+                      "anyOf": [
+                        {
+                          "const": "official",
+                          "type": "string"
+                        },
+                        {
+                          "const": "private",
+                          "type": "string"
+                        },
+                        {
+                          "const": "custom",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "unsigned": {
                       "type": "boolean"
                     },
                     "body": {
@@ -91607,7 +94312,9 @@
                           "tags",
                           "logoUrl",
                           "creates",
-                          "builtIn"
+                          "builtIn",
+                          "catalog",
+                          "unsigned"
                         ],
                         "properties": {
                           "slug": {
@@ -91646,6 +94353,25 @@
                           },
                           "builtIn": {
                             "type": "boolean"
+                          },
+                          "catalog": {
+                            "anyOf": [
+                              {
+                                "const": "official",
+                                "type": "string"
+                              },
+                              {
+                                "const": "private",
+                                "type": "string"
+                              },
+                              {
+                                "const": "custom",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "unsigned": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -91668,6 +94394,55 @@
         "x-op-kind": "query",
         "x-permission": "signed-in",
         "x-mcp": true
+      }
+    },
+    "/api/v1/templates.markCatalogSeen": {
+      "post": {
+        "operationId": "templates.markCatalogSeen",
+        "summary": "Mark new templates as seen",
+        "description": "Clears the New tag of the templates a catalog update brought. The Templates page calls it when someone with templates.manage opens it. added in 0.2.17",
+        "tags": [
+          "templates"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "templates.manage",
+        "x-mcp": false
       }
     },
     "/api/v1/templates.preview": {
@@ -91910,6 +94685,407 @@
         "x-mcp": true
       }
     },
+    "/api/v1/templates.refreshCatalog": {
+      "post": {
+        "operationId": "templates.refreshCatalog",
+        "summary": "Check for new templates",
+        "description": "Downloads the official catalog (and the private one, if set) now instead of at the next check (every 6 hours), verifies it and switches to it when it is newer. On any failure the panel keeps the catalog it has and returns the reason. A 404 for the official catalog (none published yet) is no failure: official.notPublished is true and lastError null. One check runs at a time. added in 0.2.17",
+        "tags": [
+          "templates"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "official",
+                    "extra",
+                    "newSlugs",
+                    "needNewerPanel",
+                    "skipped",
+                    "canRefresh",
+                    "canChangeSource",
+                    "source"
+                  ],
+                  "properties": {
+                    "official": {
+                      "type": "object",
+                      "required": [
+                        "origin",
+                        "sequence",
+                        "commit",
+                        "generatedAt",
+                        "templates",
+                        "fetchedAt",
+                        "lastTriedAt",
+                        "lastError",
+                        "enabled",
+                        "signingKey",
+                        "notPublished",
+                        "bundledWith"
+                      ],
+                      "properties": {
+                        "origin": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "const": "bundled",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "downloaded",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "sequence": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "commit": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "generatedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "templates": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "fetchedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastTriedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastError": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "signingKey": {
+                          "type": "boolean"
+                        },
+                        "notPublished": {
+                          "type": "boolean"
+                        },
+                        "bundledWith": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "extra": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "origin",
+                            "sequence",
+                            "commit",
+                            "generatedAt",
+                            "templates",
+                            "fetchedAt",
+                            "lastTriedAt",
+                            "lastError",
+                            "host",
+                            "signed"
+                          ],
+                          "properties": {
+                            "origin": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "const": "bundled",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "downloaded",
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "sequence": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "commit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "generatedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "templates": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "fetchedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastTriedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastError": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "host": {
+                              "type": "string"
+                            },
+                            "signed": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "newSlugs": {
+                      "type": "array",
+                      "items": {
+                        "minLength": 1,
+                        "maxLength": 60,
+                        "pattern": "^[a-z0-9][a-z0-9-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "needNewerPanel": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "catalog",
+                          "reason"
+                        ],
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "catalog": {
+                            "anyOf": [
+                              {
+                                "const": "official",
+                                "type": "string"
+                              },
+                              {
+                                "const": "private",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "canRefresh": {
+                      "type": "boolean"
+                    },
+                    "canChangeSource": {
+                      "type": "boolean"
+                    },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "official",
+                            "extra"
+                          ],
+                          "properties": {
+                            "official": {
+                              "type": "boolean"
+                            },
+                            "extra": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "url",
+                                    "publicKey",
+                                    "allowUnsigned"
+                                  ],
+                                  "properties": {
+                                    "url": {
+                                      "minLength": 9,
+                                      "maxLength": 2000,
+                                      "pattern": "^https://\\S+$",
+                                      "type": "string"
+                                    },
+                                    "publicKey": {
+                                      "anyOf": [
+                                        {
+                                          "maxLength": 100,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "allowUnsigned": {
+                                      "type": "boolean"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "templates.manage",
+        "x-mcp": false
+      }
+    },
     "/api/v1/templates.saveCustom": {
       "post": {
         "operationId": "templates.saveCustom",
@@ -91976,6 +95152,8 @@
                     "logoUrl",
                     "creates",
                     "builtIn",
+                    "catalog",
+                    "unsigned",
                     "body",
                     "links",
                     "fields"
@@ -92016,6 +95194,25 @@
                       "type": "string"
                     },
                     "builtIn": {
+                      "type": "boolean"
+                    },
+                    "catalog": {
+                      "anyOf": [
+                        {
+                          "const": "official",
+                          "type": "string"
+                        },
+                        {
+                          "const": "private",
+                          "type": "string"
+                        },
+                        {
+                          "const": "custom",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "unsigned": {
                       "type": "boolean"
                     },
                     "body": {
@@ -92142,6 +95339,452 @@
                           }
                         }
                       }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "mutation",
+        "x-permission": "templates.manage",
+        "x-mcp": false
+      }
+    },
+    "/api/v1/templates.setCatalogSource": {
+      "post": {
+        "operationId": "templates.setCatalogSource",
+        "summary": "Set where templates come from",
+        "description": "Owner only. Turns the official catalog's downloads on or off (off: only the copy that ships with the panel) and sets or removes a private catalog that is added to the official one, signed with its own minisign key or, when allowed, unsigned. A changed private catalog is fetched right away. added in 0.2.17",
+        "tags": [
+          "templates"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "official",
+                  "extra"
+                ],
+                "properties": {
+                  "official": {
+                    "type": "boolean"
+                  },
+                  "extra": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "url",
+                          "publicKey",
+                          "allowUnsigned"
+                        ],
+                        "properties": {
+                          "url": {
+                            "minLength": 9,
+                            "maxLength": 2000,
+                            "pattern": "^https://\\S+$",
+                            "type": "string"
+                          },
+                          "publicKey": {
+                            "anyOf": [
+                              {
+                                "maxLength": 100,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "allowUnsigned": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "official",
+                    "extra",
+                    "newSlugs",
+                    "needNewerPanel",
+                    "skipped",
+                    "canRefresh",
+                    "canChangeSource",
+                    "source"
+                  ],
+                  "properties": {
+                    "official": {
+                      "type": "object",
+                      "required": [
+                        "origin",
+                        "sequence",
+                        "commit",
+                        "generatedAt",
+                        "templates",
+                        "fetchedAt",
+                        "lastTriedAt",
+                        "lastError",
+                        "enabled",
+                        "signingKey",
+                        "notPublished",
+                        "bundledWith"
+                      ],
+                      "properties": {
+                        "origin": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "const": "bundled",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "downloaded",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "sequence": {
+                          "anyOf": [
+                            {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "commit": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "generatedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "templates": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "fetchedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastTriedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastError": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "signingKey": {
+                          "type": "boolean"
+                        },
+                        "notPublished": {
+                          "type": "boolean"
+                        },
+                        "bundledWith": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "extra": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "origin",
+                            "sequence",
+                            "commit",
+                            "generatedAt",
+                            "templates",
+                            "fetchedAt",
+                            "lastTriedAt",
+                            "lastError",
+                            "host",
+                            "signed"
+                          ],
+                          "properties": {
+                            "origin": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "const": "bundled",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "downloaded",
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "sequence": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "commit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "generatedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "templates": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "fetchedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastTriedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "lastError": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "host": {
+                              "type": "string"
+                            },
+                            "signed": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "newSlugs": {
+                      "type": "array",
+                      "items": {
+                        "minLength": 1,
+                        "maxLength": 60,
+                        "pattern": "^[a-z0-9][a-z0-9-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "needNewerPanel": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "catalog",
+                          "reason"
+                        ],
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "catalog": {
+                            "anyOf": [
+                              {
+                                "const": "official",
+                                "type": "string"
+                              },
+                              {
+                                "const": "private",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "canRefresh": {
+                      "type": "boolean"
+                    },
+                    "canChangeSource": {
+                      "type": "boolean"
+                    },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "official",
+                            "extra"
+                          ],
+                          "properties": {
+                            "official": {
+                              "type": "boolean"
+                            },
+                            "extra": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "url",
+                                    "publicKey",
+                                    "allowUnsigned"
+                                  ],
+                                  "properties": {
+                                    "url": {
+                                      "minLength": 9,
+                                      "maxLength": 2000,
+                                      "pattern": "^https://\\S+$",
+                                      "type": "string"
+                                    },
+                                    "publicKey": {
+                                      "anyOf": [
+                                        {
+                                          "maxLength": 100,
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "allowUnsigned": {
+                                      "type": "boolean"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   }
                 }
