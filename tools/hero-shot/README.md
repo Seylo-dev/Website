@@ -43,7 +43,6 @@ SEYLO_DATA_DIR=$DATA SEYLO_PORT=3951 SEYLO_HOST=127.0.0.1 SEYLO_SECURE_COOKIES=f
 
 rm -rf out/demo && cp -R $SEYLO/test/playwright/demo out/demo && patch -p1 -d out < sections-demo.patch
 bun run sections.ts --both           # everything, light and dark; or name some: bun run sections.ts --both env metrics
-SEYLO_DIR=$SEYLO bun run catalog.ts  # apps/landing/lib/templates.ts from the panel's templates/
 ```
 
 `sections.ts` signs in as the owner (the session cookie plus its key, which the web app keeps in localStorage),

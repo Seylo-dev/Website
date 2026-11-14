@@ -1,0 +1,215 @@
+{
+  "source": "Seylo-dev/Templates",
+  "commit": "da90a4f313ceeb5a9532e0255a9773863b61551f",
+  "sequence": 0,
+  "generatedAt": "2026-11-14T00:00:00.000Z",
+  "templates": [
+    {
+      "slug": "appsmith",
+      "name": "Appsmith",
+      "category": "Developer tools",
+      "creates": "App",
+      "monogram": "AP",
+      "color": "#16A34A",
+      "logo": null
+    },
+    {
+      "slug": "code-server",
+      "name": "code-server",
+      "category": "Developer tools",
+      "creates": "App",
+      "monogram": "CS",
+      "color": "#2563EB",
+      "logo": "/templates/code-server/logo.webp"
+    },
+    {
+      "slug": "directus",
+      "name": "Directus",
+      "category": "CMS",
+      "creates": "App + Postgres",
+      "monogram": "DI",
+      "color": "#EA580C",
+      "logo": "/templates/directus/logo.svg"
+    },
+    {
+      "slug": "excalidraw",
+      "name": "Excalidraw",
+      "category": "Productivity",
+      "creates": "App",
+      "monogram": "EX",
+      "color": "#9333EA",
+      "logo": "/templates/excalidraw/logo.svg"
+    },
+    {
+      "slug": "filebrowser",
+      "name": "File Browser",
+      "category": "Storage",
+      "creates": "App",
+      "monogram": "FB",
+      "color": "#4F46E5",
+      "logo": "/templates/filebrowser/logo.svg"
+    },
+    {
+      "slug": "ghost",
+      "name": "Ghost",
+      "category": "CMS",
+      "creates": "App + MySQL",
+      "monogram": "GH",
+      "color": "#16A34A",
+      "logo": "/templates/ghost/logo.webp"
+    },
+    {
+      "slug": "gitea",
+      "name": "Gitea",
+      "category": "Developer tools",
+      "creates": "App + Postgres",
+      "monogram": "GI",
+      "color": "#2563EB",
+      "logo": "/templates/gitea/logo.svg"
+    },
+    {
+      "slug": "grafana",
+      "name": "Grafana",
+      "category": "Monitoring",
+      "creates": "App",
+      "monogram": "GR",
+      "color": "#9333EA",
+      "logo": "/templates/grafana/logo.svg"
+    },
+    {
+      "slug": "it-tools",
+      "name": "IT Tools",
+      "category": "Developer tools",
+      "creates": "App",
+      "monogram": "IT",
+      "color": "#DB2777",
+      "logo": "/templates/it-tools/logo.svg"
+    },
+    {
+      "slug": "listmonk",
+      "name": "listmonk",
+      "category": "Marketing",
+      "creates": "App + Postgres",
+      "monogram": "LI",
+      "color": "#7C3AED",
+      "logo": "/templates/listmonk/logo.svg"
+    },
+    {
+      "slug": "mattermost",
+      "name": "Mattermost",
+      "category": "Communication",
+      "creates": "App + Postgres",
+      "monogram": "MA",
+      "color": "#7C3AED",
+      "logo": "/templates/mattermost/logo.svg"
+    },
+    {
+      "slug": "meilisearch",
+      "name": "Meilisearch",
+      "category": "Search",
+      "creates": "App",
+      "monogram": "ME",
+      "color": "#0D9488",
+      "logo": "/templates/meilisearch/logo.svg"
+    },
+    {
+      "slug": "metabase",
+      "name": "Metabase",
+      "category": "Analytics",
+      "creates": "App + Postgres",
+      "monogram": "ME",
+      "color": "#7C3AED",
+      "logo": "/templates/metabase/logo.svg"
+    },
+    {
+      "slug": "n8n",
+      "name": "n8n",
+      "category": "Automation",
+      "creates": "App + Postgres",
+      "monogram": "N8",
+      "color": "#DC2626",
+      "logo": "/templates/n8n/logo.svg"
+    },
+    {
+      "slug": "nocodb",
+      "name": "NocoDB",
+      "category": "Databases",
+      "creates": "App + Postgres",
+      "monogram": "NO",
+      "color": "#16A34A",
+      "logo": "/templates/nocodb/logo.svg"
+    },
+    {
+      "slug": "pgadmin",
+      "name": "pgAdmin",
+      "category": "Databases",
+      "creates": "App",
+      "monogram": "PG",
+      "color": "#16A34A",
+      "logo": "/templates/pgadmin/logo.svg"
+    },
+    {
+      "slug": "plausible",
+      "name": "Plausible Analytics",
+      "category": "Analytics",
+      "creates": "App + Postgres + ClickHouse",
+      "monogram": "PA",
+      "color": "#0891B2",
+      "logo": "/templates/plausible/logo.svg"
+    },
+    {
+      "slug": "prometheus",
+      "name": "Prometheus",
+      "category": "Monitoring",
+      "creates": "App",
+      "monogram": "PR",
+      "color": "#2563EB",
+      "logo": "/templates/prometheus/logo.svg"
+    },
+    {
+      "slug": "redis-insight",
+      "name": "Redis Insight",
+      "category": "Databases",
+      "creates": "App + Redis",
+      "monogram": "RI",
+      "color": "#16A34A",
+      "logo": null
+    },
+    {
+      "slug": "stirling-pdf",
+      "name": "Stirling PDF",
+      "category": "Productivity",
+      "creates": "App",
+      "monogram": "SP",
+      "color": "#DB2777",
+      "logo": "/templates/stirling-pdf/logo.svg"
+    },
+    {
+      "slug": "umami",
+      "name": "Umami",
+      "category": "Analytics",
+      "creates": "App + Postgres",
+      "monogram": "UM",
+      "color": "#7C3AED",
+      "logo": "/templates/umami/logo.svg"
+    },
+    {
+      "slug": "uptime-kuma",
+      "name": "Uptime Kuma",
+      "category": "Monitoring",
+      "creates": "App",
+      "monogram": "UK",
+      "color": "#0D9488",
+      "logo": "/templates/uptime-kuma/logo.svg"
+    },
+    {
+      "slug": "vaultwarden",
+      "name": "Vaultwarden",
+      "category": "Security",
+      "creates": "App",
+      "monogram": "VA",
+      "color": "#475569",
+      "logo": "/templates/vaultwarden/logo.svg"
+    }
+  ]
+}

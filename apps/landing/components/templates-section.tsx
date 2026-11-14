@@ -1,7 +1,8 @@
 import { IconArrowRight, IconCode } from "@tabler/icons-react";
+import Image from "next/image";
 import { captures } from "@/lib/captures";
 import { links } from "@/lib/site";
-import { catalog } from "@/lib/templates";
+import { type CatalogTemplate, catalog, namesOf } from "@/lib/templates";
 import { Chips, Shot } from "./shot";
 
 const facts = [
@@ -9,6 +10,9 @@ const facts = [
   "Passwords generated for you",
   "Template code runs sandboxed",
 ];
+
+// Named in the copy when the catalog has them; the catalog changes without this page changing.
+const featured = namesOf(["n8n", "plausible", "grafana", "vaultwarden"]);
 
 export function TemplatesSection() {
   return (
@@ -24,8 +28,9 @@ export function TemplatesSection() {
             {catalog.length} apps, one click each.
           </h2>
           <p className="text-[17px] leading-[1.55] text-ink-soft">
-            n8n, Plausible, Grafana, Vaultwarden and the rest install as normal services: a pinned image, a database
-            when it needs one, a domain and its own passwords. Change anything afterwards.
+            {featured.length > 0 ? `${featured.join(", ")} and the rest install` : "Each one installs"} as normal
+            services: a pinned image, a database when it needs one, a domain and its own passwords. Change anything
+            afterwards.
           </p>
           <Chips items={facts} className="mt-1" />
           <a
@@ -48,13 +53,7 @@ export function TemplatesSection() {
             key={template.slug}
             className="lift flex min-w-0 items-center gap-2.5 rounded-xl bg-surface p-2.5 sm:gap-3 sm:p-3"
           >
-            <span
-              aria-hidden
-              className="flex size-8 shrink-0 items-center justify-center rounded-[8px] text-[12px] font-semibold text-white sm:size-9 sm:rounded-[9px] sm:text-[12.5px]"
-              style={{ backgroundColor: template.color }}
-            >
-              {template.monogram}
-            </span>
+            <TemplateTile template={template} />
             <span className="flex min-w-0 flex-col">
               <span className="text-[14px] leading-[1.3] font-medium text-ink">{template.name}</span>
               <span className="hidden text-[12.5px] leading-[1.35] text-ink-muted sm:block">{template.category}</span>
@@ -75,5 +74,25 @@ export function TemplatesSection() {
         </li>
       </ul>
     </section>
+  );
+}
+
+/** The app's logo on a light tile, as the panel shows it, or its letters on a color when it has none. */
+function TemplateTile({ template }: { template: CatalogTemplate }) {
+  const tile = "flex size-8 shrink-0 items-center justify-center rounded-[8px] sm:size-9 sm:rounded-[9px]";
+  if (template.logo)
+    return (
+      <span aria-hidden className={`${tile} bg-logo-tile p-[5px] sm:p-1.5`}>
+        <Image src={template.logo} alt="" width={24} height={24} unoptimized className="size-full object-contain" />
+      </span>
+    );
+  return (
+    <span
+      aria-hidden
+      className={`${tile} text-[12px] font-semibold text-white sm:text-[12.5px]`}
+      style={{ backgroundColor: template.color }}
+    >
+      {template.monogram}
+    </span>
   );
 }

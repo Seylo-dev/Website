@@ -65,6 +65,13 @@
         "typescript": "7.0.2",
       },
     },
+    "tools/catalog": {
+      "name": "@seylo-site/catalog",
+      "devDependencies": {
+        "@types/bun": "1.4.4",
+        "typescript": "7.0.2",
+      },
+    },
     "tools/hero-shot": {
       "name": "@seylo-site/hero-shot",
       "dependencies": {
@@ -319,6 +326,8 @@
     "@scalar/openapi-upgrader": ["@scalar/openapi-upgrader@0.4.7", "", { "dependencies": { "@scalar/helpers": "0.17.0", "@scalar/openapi-types": "0.9.8" } }, "sha512-iuhMoj6BGTza+yY/hKfwQXfqYC8ssm6+0pBw2NeDQrZMFDF0yjPaup4ECI7m9Ducw1s2UTXt0wsAo6NlrvpHcA=="],
 
     "@seylo-site/api": ["@seylo-site/api@workspace:apps/api"],
+
+    "@seylo-site/catalog": ["@seylo-site/catalog@workspace:tools/catalog"],
 
     "@seylo-site/docs": ["@seylo-site/docs@workspace:apps/docs"],
 

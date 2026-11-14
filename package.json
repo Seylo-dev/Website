@@ -12,8 +12,8 @@
     "dev:landing": "bun run --cwd apps/landing dev",
     "dev:docs": "bun run --cwd apps/docs dev",
     "build": "bun run --cwd apps/landing build && bun run --cwd apps/docs build",
-    "test": "bun run --cwd apps/api test",
-    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/landing typecheck && bun run --cwd apps/docs typecheck"
+    "test": "bun run --cwd apps/api test && bun run --cwd tools/catalog test",
+    "typecheck": "bun run --cwd apps/api typecheck && bun run --cwd apps/landing typecheck && bun run --cwd apps/docs typecheck && bun run --cwd tools/catalog typecheck"
   },
   "devDependencies": {
     "concurrently": "10.0.6",

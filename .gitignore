@@ -11,3 +11,5 @@ next-env.d.ts
 .DS_Store
 # The site API's dev SQLite file (production uses Postgres)
 apps/api/data
+# tools/catalog/sync.ts stages the landing's logo folder here; it removes it when done
+apps/landing/.catalog-*

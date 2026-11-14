@@ -7,9 +7,14 @@ and `apps/api` import it directly.
   the site API serves `install.sh` from.
 - `github.siteRepo` is this repo (`Seylo-dev/Website`): the docs' "Edit on GitHub" links point into it
   (`apps/docs/...`).
+- `github.templatesRepo` is the template repo (`Seylo-dev/Templates`): it publishes the signed template
+  catalog that `tools/catalog` turns into the landing's list and the docs' table.
 - `minisignPublicKey` is the release signing key, the same value as in the app repo's `brand/brand.json`.
   The site API serves `install.sh` only when the release's `manifest.json` is signed with it, and the docs
   print it for checking downloads by hand (`apps/api/test/brand.test.ts` checks they match).
+- `templatesMinisignPublicKey` is the template catalog's signing key (a key of its own, not the release key),
+  the same value as in the app repo's `brand/brand.json`. `tools/catalog` uses a catalog only when it is signed
+  with it. Until the key exists it is a placeholder, and builds keep the committed catalog.
 
 It mirrors the app repo's `brand/brand.json` (the panel, agent and installer read that one), and the app
 repo's `scripts/dev/check-site-brand.sh` checks that the URLs and the repo match. Keep the two copies (this one
@@ -26,4 +31,3 @@ Three rounded layers, the middle one sliding in: a new release joining a live st
 - `mark-glyph.svg`, `mark-white.svg`: the layers alone, in blue or white, for places that bring their own background
 - `app-icon-1024.png`: full-bleed square for app stores and home screens (the system rounds the corners)
 - `lockup-light.png`, `lockup-dark.png`: the mark with the name, set in Inter SemiBold
-

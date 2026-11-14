@@ -1,200 +1,25 @@
-// The template catalog that ships with the panel (Seylo-dev/App templates/*/meta.yaml), in the
-// order the panel's Templates page lists it. Monogram and color follow the panel's generated logos
-// (apps/panel/src/modules/templates/logo.ts): initials of the name, tile color picked from the slug.
-// Regenerate with tools/hero-shot/catalog.ts when the catalog changes.
+// The template catalog, from the signed catalog Seylo-dev/Templates publishes. tools/catalog/sync.ts
+// writes templates.generated.json (and the logos in public/templates/) before every build and keeps the
+// committed copy when it cannot get or trust a newer one. Do not edit the JSON by hand.
+
+import generated from "./templates.generated.json";
 
 export interface CatalogTemplate {
   slug: string;
   name: string;
   category: string;
   creates: string;
+  /** The letter tile for a template without a logo: initials and a color picked from the slug. */
   monogram: string;
   color: string;
+  /** The logo under public/ ("/templates/<slug>/logo.svg"), or null. */
+  logo: string | null;
 }
 
-export const catalog: CatalogTemplate[] = [
-  {
-    slug: "appsmith",
-    name: "Appsmith",
-    category: "Developer tools",
-    creates: "App",
-    monogram: "AP",
-    color: "#16A34A",
-  },
-  {
-    slug: "code-server",
-    name: "code-server",
-    category: "Developer tools",
-    creates: "App",
-    monogram: "CS",
-    color: "#2563EB",
-  },
-  {
-    slug: "directus",
-    name: "Directus",
-    category: "CMS",
-    creates: "App + Postgres",
-    monogram: "DI",
-    color: "#EA580C",
-  },
-  {
-    slug: "excalidraw",
-    name: "Excalidraw",
-    category: "Productivity",
-    creates: "App",
-    monogram: "EX",
-    color: "#9333EA",
-  },
-  {
-    slug: "filebrowser",
-    name: "File Browser",
-    category: "Storage",
-    creates: "App",
-    monogram: "FB",
-    color: "#4F46E5",
-  },
-  {
-    slug: "ghost",
-    name: "Ghost",
-    category: "CMS",
-    creates: "App + MySQL",
-    monogram: "GH",
-    color: "#16A34A",
-  },
-  {
-    slug: "gitea",
-    name: "Gitea",
-    category: "Developer tools",
-    creates: "App + Postgres",
-    monogram: "GI",
-    color: "#2563EB",
-  },
-  {
-    slug: "grafana",
-    name: "Grafana",
-    category: "Monitoring",
-    creates: "App",
-    monogram: "GR",
-    color: "#9333EA",
-  },
-  {
-    slug: "it-tools",
-    name: "IT Tools",
-    category: "Developer tools",
-    creates: "App",
-    monogram: "IT",
-    color: "#DB2777",
-  },
-  {
-    slug: "listmonk",
-    name: "listmonk",
-    category: "Marketing",
-    creates: "App + Postgres",
-    monogram: "LI",
-    color: "#7C3AED",
-  },
-  {
-    slug: "mattermost",
-    name: "Mattermost",
-    category: "Communication",
-    creates: "App + Postgres",
-    monogram: "MA",
-    color: "#7C3AED",
-  },
-  {
-    slug: "meilisearch",
-    name: "Meilisearch",
-    category: "Search",
-    creates: "App",
-    monogram: "ME",
-    color: "#0D9488",
-  },
-  {
-    slug: "metabase",
-    name: "Metabase",
-    category: "Analytics",
-    creates: "App + Postgres",
-    monogram: "ME",
-    color: "#7C3AED",
-  },
-  {
-    slug: "n8n",
-    name: "n8n",
-    category: "Automation",
-    creates: "App + Postgres",
-    monogram: "N8",
-    color: "#DC2626",
-  },
-  {
-    slug: "nocodb",
-    name: "NocoDB",
-    category: "Databases",
-    creates: "App + Postgres",
-    monogram: "NO",
-    color: "#16A34A",
-  },
-  {
-    slug: "pgadmin",
-    name: "pgAdmin",
-    category: "Databases",
-    creates: "App",
-    monogram: "PG",
-    color: "#16A34A",
-  },
-  {
-    slug: "plausible",
-    name: "Plausible Analytics",
-    category: "Analytics",
-    creates: "App + Postgres + ClickHouse",
-    monogram: "PA",
-    color: "#0891B2",
-  },
-  {
-    slug: "prometheus",
-    name: "Prometheus",
-    category: "Monitoring",
-    creates: "App",
-    monogram: "PR",
-    color: "#2563EB",
-  },
-  {
-    slug: "redis-insight",
-    name: "Redis Insight",
-    category: "Databases",
-    creates: "App + Redis",
-    monogram: "RI",
-    color: "#16A34A",
-  },
-  {
-    slug: "stirling-pdf",
-    name: "Stirling PDF",
-    category: "Productivity",
-    creates: "App",
-    monogram: "SP",
-    color: "#DB2777",
-  },
-  {
-    slug: "umami",
-    name: "Umami",
-    category: "Analytics",
-    creates: "App + Postgres",
-    monogram: "UM",
-    color: "#7C3AED",
-  },
-  {
-    slug: "uptime-kuma",
-    name: "Uptime Kuma",
-    category: "Monitoring",
-    creates: "App",
-    monogram: "UK",
-    color: "#0D9488",
-  },
-  {
-    slug: "vaultwarden",
-    name: "Vaultwarden",
-    category: "Security",
-    creates: "App",
-    monogram: "VA",
-    color: "#475569",
-  },
-];
+/** By name, the order the panel's Templates page lists them. */
+export const catalog: CatalogTemplate[] = generated.templates;
+
+/** The names of the templates among `slugs` that the catalog has, in that order. */
+export function namesOf(slugs: readonly string[], list: readonly CatalogTemplate[] = catalog): string[] {
+  return slugs.flatMap((slug) => list.find((t) => t.slug === slug)?.name ?? []);
+}

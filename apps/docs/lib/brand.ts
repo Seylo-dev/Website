@@ -4,7 +4,7 @@ export { brand };
 
 export const installCommand = `curl -fsSL https://${brand.urls.install} | sudo sh`;
 
-/** The app's repo: panel, agent, installer, templates and the releases. */
+/** The app's repo: panel, agent, installer and the releases. Templates are in brand.github.templatesRepo. */
 export const githubUrl = `https://github.com/${brand.github.repo}`;
 export const releasesUrl = `${githubUrl}/releases`;
 

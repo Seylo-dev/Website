@@ -22,6 +22,19 @@ const config: NextConfig = {
   outputFileTracingRoot: root,
   // No AGENTS.md: `next dev` should not write one into this folder.
   agentRules: false,
+  // The template logos (public/templates, from tools/catalog/sync.ts) show through <img>, where nothing in
+  // an SVG runs. Opened directly, an SVG is a document on this origin: no scripts, no requests, no sniffing.
+  async headers() {
+    return [
+      {
+        source: "/templates/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'none'; style-src 'unsafe-inline'; sandbox" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
+    ];
+  },
   // Early builds printed <site>/docs; the docs live on their own host.
   async redirects() {
     return [

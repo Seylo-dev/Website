@@ -75,8 +75,11 @@ The seven sections under Features show real crops of the panel (v0.1.1) instead 
 demo data, listed with their size and alt text in `lib/captures.ts`. They come from the panel's demo mode at 2x,
 taken by `tools/hero-shot/sections.ts --both` (see its README, "Demo mode"). The four theme preset previews of
 the White label section show each preset as it is, so they have one file each.
-The template tiles come from `lib/templates.ts`, generated from the panel's catalog by
-`tools/hero-shot/catalog.ts`.
+The template tiles come from `lib/templates.generated.json` and the logos in `public/templates/`, which
+`tools/catalog/sync.ts` writes from the signed catalog Seylo-dev/Templates publishes, before every build
+(`prebuild`) and keeping the committed copy when it cannot get or verify a newer one (see its README). A
+template without a logo gets a letter tile. The section names a few apps in its copy only when the catalog has
+them (`namesOf` in `lib/templates.ts`).
 
 - `components/shot.tsx`: `ThemeImage` (the light and the dark file as two images, one hidden by CSS; lazy, so
   the hidden one is not fetched), `Shot` (rounded, no rim, a drop shadow plus a faint blue glow; `fade` for

@@ -1,31 +1,125 @@
 ---
 title: Templates
-description: Install ready-made services from the catalog, and write your own templates in Easypanel's format.
+description: Install ready-made services from the catalog, where the catalog comes from, and how to add a template to it or write your own.
 ---
 
 ## Install from the catalog
 
-**Templates** in the sidebar lists ready-made services by category: analytics (Umami, Plausible, Metabase), automation (n8n), CMSes (Ghost, Directus), monitoring (Grafana, Prometheus, Uptime Kuma), developer tools (Gitea, Appsmith, code-server, IT Tools), Vaultwarden, Meilisearch, listmonk, Mattermost and more.
-
-Pick one, choose the project, the node and the service name, and fill in the few fields it asks for:
+**Templates** in the sidebar lists ready-made services by category. Pick one, choose the project, the node and the service name, and fill in the few fields it asks for:
 
 - password fields left empty are generated,
 - domain fields left empty use the node's automatic domain (the node needs a wildcard domain).
 
 Before anything is created the dialog lists the exact services, ports and domains the template makes. Nothing runs until you confirm. Databases a template creates are deployed before the apps that need them.
 
-Installed templates are ordinary services afterwards: change them like anything else. There is no link back to the template.
+Installed templates are ordinary services afterwards: change them like anything else. There is no link back to the template, so a newer catalog changes what the next install creates, never a service you already installed.
 
 New in 0.2: the **Docker Hub** tab next to the catalog sets up any single image from Docker Hub the same way; see [Deploy from Docker Hub](/guides/docker-hub).
 
+### What the catalog has
+
+<include>../../generated/templates-catalog.mdx</include>
+
+The catalog grows without panel releases: see [Where the catalog comes from](#where-the-catalog-comes-from). To get an app into it, [add a template](#add-a-template) or [ask for one](https://github.com/Seylo-dev/Templates/issues/new/choose).
+
+## Where the catalog comes from
+
+New in 0.2.17. Templates live in their own repository, [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates), not in the panel. Every change merged there publishes a new catalog: one `catalog.json` with every template, signed with the catalog's own minisign key.
+
+- **The panel ships a copy.** Every release carries the catalog of the day it was made, so a panel without internet access still lists templates.
+- **It checks for a newer one** when it starts, every 6 hours after that, and when someone clicks **Check for new templates** on the **Templates** page (people with the **templates.manage** permission: owners and admins).
+- **It only takes a catalog it can trust.** The signature must match the key built into the panel, every file must match its hash, and the catalog must not be older than the one the panel already has (an old catalog would bring back old image versions). Anything else keeps the current catalog, and the page says why. The panel keeps the download in its data folder and checks it again every time it reads it.
+
+So new templates and newer image versions reach your panel without a panel update. Panels up to 0.2.16 keep the templates they shipped with.
+
+The line under the title on **Templates** says which catalog you see:
+
+- "Official catalog, updated 14 Nov 2026 (a1b2c3d)." once the panel downloaded one, with the commit in the Templates repository it was built from,
+- "Catalog bundled with Seylo 0.2.17." before that, or when downloads are off,
+- the last failed check and when it was, for example "Could not reach github.com. Last tried 5 minutes ago.",
+- how many templates are new. A new template carries a **New** tag on its card until someone with **templates.manage** opens the page.
+
+### Templates that need a newer panel
+
+A template can name the oldest panel version it works with (`minPanel` in its [meta.yaml](#metayaml)), when it uses something older panels do not have. An older panel leaves it out, and the **Templates** page says "2 templates need a newer Seylo", with a link to **Settings → Updates**.
+
+### Turning downloads off
+
+**Catalog source** on the **Templates** page (the owner only) has the switch **Official catalog**. Off, the panel uses only the templates bundled with it and downloads nothing: the setting for panels without internet access, which would otherwise try every 6 hours.
+
+### Private catalogs
+
+**Catalog source** can also add one **Private catalog**: a catalog of your own in the same format, next to the official one. Use it for templates you do not want to publish, shared by several panels. A fork of the Templates repository can build and sign one with the same scripts and workflow as the official one.
+
+- **Catalog URL**: the `https://` URL of its `catalog.json`. The signature is read from the same URL with `.minisig` added.
+- **Public key**: the minisign public key that signs it (the `RW...` line of its `.pub` file). The panel checks a private catalog the same way as the official one.
+- **Allow it without a signature**: takes the catalog unsigned, when it has no key. Anyone who can change the file or the server it is on can then change what your templates install, so use it only for a server you control.
+
+The panel checks a private catalog on the same schedule. Its templates carry a **Private catalog** tag (**Private catalog, unsigned** without a key) on their cards and in the install dialog. When both catalogs have a template with the same name, the official one is used; both win over [your own templates](#your-own-templates). Changes to the catalog source are in the audit log.
+
+## Add a template
+
+New templates come in as pull requests to [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates). Its README and CONTRIBUTING.md have the details; in short:
+
+<Steps>
+<Step>
+
+### Fork and clone
+
+Fork [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates) on GitHub and clone your fork. You need [Bun](https://bun.sh) and git.
+
+</Step>
+<Step>
+
+### Start from the example
+
+```bash
+bun run new my-app
+```
+
+This copies the commented example to `templates/my-app/` with the name and slug filled in. The slug is the folder name: lowercase letters, digits and dashes, unique in the catalog.
+
+</Step>
+<Step>
+
+### Write it
+
+Fill in `meta.yaml` and `index.ts` (see [Template format](#template-format)). Pin the image to a version: `latest`, `stable`, `main`, `nightly` and `edge` are refused, a digest is fine. If the app has a logo, add it as `logo.svg` (or `logo.webp`, `logo.png`) and a line for it in `NOTICE` saying where it comes from; see [Logo](#logo).
+
+Write the template yourself rather than copying one from another catalog: the catalog has to be able to ship it under its own license.
+
+</Step>
+<Step>
+
+### Check it
+
+```bash
+bun run check my-app
+```
+
+This is the check every pull request runs, with the panel's own code: the first run downloads the panel version the repository is tested against and installs its dependencies. It reads `meta.yaml` the way the panel does and refuses unknown fields, runs `index.ts` in the same sandbox with sample values, checks that every image is pinned, installs the template on a test panel with a fake node, and checks the logo. Every problem is one line naming the file. `bun run check` without a slug checks every template.
+
+</Step>
+<Step>
+
+### Open a pull request
+
+The pull request runs the same check against the panel version the repository targets and against the oldest version it still supports. A template that needs a newer panel than that oldest one fails there until its `meta.yaml` sets `minPanel`. Once it is merged, the next catalog has it, and panels pick it up within 6 hours or on **Check for new templates**.
+
+</Step>
+</Steps>
+
+Not up for writing it? Open a [template request](https://github.com/Seylo-dev/Templates/issues/new/choose) with the app, its image and what it needs.
+
 ## Template format
 
-Templates use the same shape as Easypanel's: a folder with two files.
+Templates use the same shape as Easypanel's: a folder with two files, and the app's logo when it has one.
 
 <Files>
   <Folder name="templates/umami" defaultOpen>
     <File name="meta.yaml" />
     <File name="index.ts" />
+    <File name="logo.svg" />
   </Folder>
 </Files>
 
@@ -55,6 +149,8 @@ schema:
 ```
 
 Form fields are `string`, `number`/`integer` and `boolean`. `format: password` is generated when left empty, `format: domain` asks for a hostname, and `enum` makes a select. The panel always asks for the service name and the node itself; `generate` receives `input.serviceName` and `input.projectName` next to the form values.
+
+`name`, `description` (one line, at most 140 characters), `category` and `creates` are required, and links must be `https://`. New in 0.2.17, optional: `minPanel: "0.2.17"`, the oldest panel version that can install the template. Leave it out when any panel can; see [Templates that need a newer panel](#templates-that-need-a-newer-panel).
 
 ### index.ts
 
@@ -98,7 +194,13 @@ Service types:
 | `ref(service, VARIABLE)` | A `${{service.VARIABLE}}` reference the panel resolves on every deploy, so a reset database password reaches the app |
 | `PRIMARY_DOMAIN` | The node's automatic domain |
 
-Databases offer `INTERNAL_URL`, `INTERNAL_HOST`, `INTERNAL_PORT`, `USER`, `PASSWORD` and `DATABASE` (`clickhouse` also `INTERNAL_HTTP_URL` and `INTERNAL_HTTP_PORT`); apps offer `URL`, `DOMAIN` and `INTERNAL_URL`.
+Databases offer `INTERNAL_URL`, `INTERNAL_HOST`, `INTERNAL_PORT`, `USER`, `PASSWORD` and `DATABASE` (`clickhouse` also `INTERNAL_HTTP_URL` and `INTERNAL_HTTP_PORT`); apps offer `URL`, `DOMAIN`, `DOMAINS` and `INTERNAL_URL` (see [DOMAINS](/guides/environment-variables#domains)).
+
+### Logo
+
+`logo.svg`, or `logo.webp` or `logo.png` when the app has no small SVG. The card and the install dialog show it on a light tile; a template without one shows its first letter.
+
+Take it from [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) at the commit `NOTICE` names: an SVG from `svg/<name>.svg` as it is, or `png/<name>.png` resized to 128 px and saved as WebP when there is no SVG or it embeds a large image. Pick the variant drawn for light backgrounds. An SVG stays under 50 KB and a WebP or PNG under 30 KB, and an SVG has no scripts, event handlers, embedded images or links to other sites. Panels may have no internet access, so a logo is always a file in the folder, never a URL.
 
 ### Porting from Easypanel
 
@@ -110,6 +212,6 @@ The structure is the same, so porting is mostly renaming. A domain host of `$(EA
 
 ## Your own templates
 
-Templates of your own are saved on the panel with the `templates.saveCustom` operation (see the [API reference](/api-reference)): the slug, `meta.yaml` and `index.ts`. The files are checked first: the form must parse and `generate()` must run with the form's defaults. They need the **templates.manage** permission (owners and admins).
+Templates of your own are saved on the panel with the `templates.saveCustom` operation (see the [API reference](/api-reference)): the slug, `meta.yaml` and `index.ts`. The files are checked first: the form must parse and `generate()` must run with the form's defaults. They need the **templates.manage** permission (owners and admins). A slug the catalog already uses is refused.
 
-To add one to the built-in catalog, open a pull request on the [app repository](https://github.com/Seylo-dev/App) with a folder in `templates/`. Pin image tags; the template tests run every template and install it.
+For templates other people can use too, [add them to the catalog](#add-a-template). For templates you share between your own panels, a [private catalog](#private-catalogs) does it without saving each one on every panel.

@@ -1,8 +1,9 @@
 # Seylo website
 
 The repo behind [seylo.dev](https://seylo.dev): the landing page, the docs and the small site API. One Bun
-workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and the templates) lives in
-[Seylo-dev/App](https://github.com/Seylo-dev/App).
+workspace, one `bun.lock`. Seylo itself (the panel, the agent and the installer) lives in
+[Seylo-dev/App](https://github.com/Seylo-dev/App), its one-click templates in
+[Seylo-dev/Templates](https://github.com/Seylo-dev/Templates).
 
 | Folder                               | Stack                 | Serves                                                         |
 | ------------------------------------ | --------------------- | -------------------------------------------------------------- |
@@ -10,6 +11,7 @@ workspace, one `bun.lock`. Seylo itself (the panel, the agent, the installer and
 | [`apps/docs`](apps/docs)             | Next 16, Fumadocs     | `docs.seylo.dev`, with the API and CLI references              |
 | [`apps/api`](apps/api)               | Bun, Elysia, Postgres | `api.seylo.dev` (telemetry, reports, geo), `install.seylo.dev` |
 | [`tools/hero-shot`](tools/hero-shot) | Playwright            | The landing's hero image, captured from a running panel        |
+| [`tools/catalog`](tools/catalog)     | Bun                   | The template list and logos, from the signed template catalog  |
 
 Names, domains and the GitHub repos come from [`brand/brand.json`](brand/brand.json).
 
@@ -21,9 +23,9 @@ Needs Bun 1.4 (Node 24 for Next's tooling).
 bun install
 bun run dev            # all three: landing :3000, docs :3001, api :4000
 bun run dev:landing    # or dev:docs, dev:api
-bun run build          # landing + docs
-bun run test           # the API's tests
-bun run typecheck      # all three
+bun run build          # landing + docs (each first syncs the template catalog, see tools/catalog)
+bun run test           # the API's and tools/catalog's tests
+bun run typecheck      # all three, and tools/catalog
 ```
 
 ## Deploy on Easypanel
@@ -68,6 +70,9 @@ Nothing else is needed. Optional:
   env to the build), so redeploy after changing it.
 
 The landing needs no variables.
+
+The landing and docs builds download the template catalog from GitHub (`tools/catalog`). A build without
+network access, or before the catalog is published, uses the copy committed in this repo and still succeeds.
 
 To try an image locally: `docker build -f apps/docs/Dockerfile -t seylo-docs . && docker run -p 3001:80 seylo-docs`.
 

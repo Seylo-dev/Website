@@ -1,8 +1,8 @@
 # Seylo Docs
 
 The documentation for [Seylo](https://github.com/Seylo-dev/App), served at [docs.seylo.dev](https://docs.seylo.dev).
-Seylo itself (the panel, the agent, the installer and the templates) lives in
-[Seylo-dev/App](https://github.com/Seylo-dev/App).
+Seylo itself (the panel, the agent and the installer) lives in [Seylo-dev/App](https://github.com/Seylo-dev/App),
+its one-click templates in [Seylo-dev/Templates](https://github.com/Seylo-dev/Templates).
 
 Next.js 16 and [Fumadocs](https://fumadocs.dev) 16: MDX pages, search, `llms.txt`, OG images, an API reference
 generated from the panel's OpenAPI document and a CLI reference generated from the `seylo` binary.
@@ -67,6 +67,14 @@ Pick the file for your machine: `seylo_darwin_arm64`, `seylo_darwin_amd64`, `sey
 `seylo_linux_arm64` (not a Windows build: those leave the node commands out). Each release also has a
 `checksums.txt`. To document commands that are not released yet, build the binary from the app repo instead
 (`go build ./cmd/seylo` in its `go/` folder).
+
+## Template catalog
+
+The Templates guide includes `content/generated/templates-catalog.mdx`: how many templates the official
+catalog has and a table of them. `tools/catalog/sync.ts` (at the repo root) writes it from the signed catalog
+Seylo-dev/Templates publishes, before every build (`prebuild`); without network access or a catalog it can
+verify, the build keeps the committed copy. Do not edit it by hand. It is plain Markdown included with
+`<include>`, so search and the Markdown copies of the page have the table.
 
 ## Markdown for agents
 
