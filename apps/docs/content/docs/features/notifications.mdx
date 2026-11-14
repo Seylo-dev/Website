@@ -3,7 +3,7 @@ title: Alerts and notifications
 description: Notification channels defined once, the events that raise alerts, default and per-service rules, mutes, and the installable app with push notifications to people's own devices.
 ---
 
-Things that need attention raise an **alert**: a crash, a failed deploy, a node going offline. Every alert is recorded in the panel's alert feed (the dashboard and each service's **Alerts** tab show the recent ones). Rules decide which alerts also go to a **channel**.
+Things that need attention raise an **alert**: a crash, a failed deploy, a node going offline. Every alert is recorded in the panel's alert feed (the dashboard and each service's **Alerts** tab show the recent ones). Rules decide which alerts also go to a **channel**. New in 0.2.18: on the dashboard's **Alerts** card, an alert about a service links to that service's page.
 
 ## Channels
 
@@ -24,6 +24,20 @@ Create a channel once in **Settings → Notifications**, then pick it in any ale
 
 Deliveries are retried when the receiver is down.
 
+### What a notification says [#what-a-notification-says]
+
+Every channel gets the alert's title and its line of detail. New in 0.2.18: the title of an alert about a service names its project, for example "acme-shop / api crashed" (see [Alert titles](#alert-titles)), and the channels that show more than a title and a text also name the project and the service on their own, by their current names, with the service linked to its page in the panel:
+
+| Channel | Project and service |
+| --- | --- |
+| Webhook | `projectName`, `stackName`, `serviceName` and `serviceUrl` in the JSON (see [Webhook format](#webhook-format)) |
+| Discord | The fields **Project**, **Stack** (members of a compose stack only) and **Service**, the service linked to its page |
+| Slack | The same, as fields of the message |
+| Telegram and email | The lines "Project: acme-shop" and "Service: api", the service linked to its page, with "Stack: shop" between them for a member of a compose stack. An email's subject is the panel's name in brackets and the title. |
+| ntfy, Pushover and Gotify | The title and the text only. A tap opens the alert's page, or, new in 0.2.18, the service's page for an alert that has no page of its own, such as a failed cron job. |
+
+Alerts that are not about a service (nodes, updates, approvals, security) get none of these fields.
+
 ### Webhook format
 
 A webhook channel `POST`s JSON:
@@ -33,17 +47,23 @@ A webhook channel `POST`s JSON:
   "type": "alert",
   "event": "deploy_failed",
   "severity": "error",
-  "title": "Deploy of api failed",
+  "title": "acme-shop / api failed to deploy",
   "message": "The new version never became healthy. The previous version is still serving.",
   "link": "https://panel.example.com/p/...",
   "alertId": "...",
   "projectId": "...",
   "serviceId": "...",
   "nodeId": "...",
+  "projectName": "acme-shop",
+  "stackName": null,
+  "serviceName": "api",
+  "serviceUrl": "https://panel.example.com/p/.../s/...",
   "panel": { "name": "Seylo", "url": "https://panel.example.com" },
   "createdAt": "2026-11-05T10:00:00.000Z"
 }
 ```
+
+New in 0.2.18: `projectName`, `stackName`, `serviceName` and `serviceUrl`. They name the alert's project and service as they are called now, so after a rename they can differ from the title, which keeps the names the alert was raised with. `stackName` is set for a member of a compose stack only, and `serviceUrl` is the service's page in the panel. For an alert that is not about a service, and for **Send test**, they are `null`. Fields are only ever added to this body, never renamed.
 
 Every request carries `x-seylo-timestamp` (Unix seconds). With a signing secret it also carries `x-seylo-signature: sha256=<hex>`, the HMAC-SHA256 of `<timestamp>.<body>` with the secret. Check it before you trust the request.
 
@@ -74,6 +94,29 @@ Every request carries `x-seylo-timestamp` (Unix seconds). With a signing secret 
 The **Node health check failed** alert also covers what a node reports between checks: Docker not answering, Traefik failing to start (for example because another program holds port 80 or 443), low memory, a clock that drifted from the panel's, and a node that could not move to the panel's domain (see [Adding nodes](/guides/adding-nodes#when-the-panel-gets-a-domain)). New in 0.2.17: also a node whose [DNS cache](/guides/node-health#dns-cache-for-containers) does not answer containers that use it, with the fix; it is resolved once the cache answers again or no container uses it.
 
 When the problem goes away (the service stays up, the check passes again), the alert is resolved.
+
+### Alert titles [#alert-titles]
+
+New in 0.2.18. Many projects have an `api` or a `web`, so an alert about a service starts with its project: `<project> / <service>`, and for a member of a compose stack `<project> / <stack> / <member>`, as in the member's breadcrumb. What is about one part of the service follows a colon.
+
+| Event | Title | Before 0.2.18 |
+| --- | --- | --- |
+| Crash | acme-shop / api crashed | api crashed |
+| Stopped after repeated crashes | acme-shop / api was stopped after 5 crashes | api was stopped after 5 crashes |
+| Deploy failed | acme-shop / api failed to deploy | Deploy of api failed, or api failed to deploy |
+| Deploy succeeded | acme-shop / api deployed | api deployed |
+| Build failed | acme-shop / api failed to build | Build of api failed |
+| Health check failing | acme-shop / api is unhealthy, and in the feed acme-shop / api is healthy again | api is unhealthy |
+| Domain or certificate problem | acme-shop / web: no certificate for shop.example.com | No certificate for shop.example.com |
+| Uptime check down | acme-shop / web: Homepage is down, and in the feed acme-shop / web: Homepage is up again (the check's name) | Homepage is down |
+| Backup failed | acme-shop / db: backup failed | Backup of db failed |
+| Cron job failed | acme-shop / worker: cron job weekly failed, or timed out | Cron job weekly on worker failed |
+
+A member of the stack `shop` crashes as "acme-shop / shop / shop-web crashed". Node, update, approval and security alerts keep their titles; a node's starts with the node's name, for example "node-a: Disk / is 91% full".
+
+A title is written once, when the alert is raised. Renaming a project or a service later leaves the alerts already raised, and sent, as they were; the next one uses the new name.
+
+In the API and MCP, `alerts.list` (the `alerts_list` tool) returns each alert with its `projectId`, `serviceId` and `nodeId`, and new in 0.2.18 `projectName`, `serviceName` and `stackName`: the current names of the alert's project and service, `stackName` for a member of a compose stack only, `null` when the alert is not about one. Match on those, the ids or `event` rather than on the title. `projectName` names the project the alert was raised in, so for a service [moved to another project](/guides/clone-and-move) since, it is the old one.
 
 The feed keeps an alert for 180 days after it was resolved. New in 0.2: alerts nothing resolves, such as deploy, build, backup, cleanup and update results, go 180 days after they were raised; before, they stayed for good.
 
@@ -109,7 +152,7 @@ Each person sets their own in **Settings → Push notifications** (under Your ac
 - **Your devices**: every device that gets your pushes, with when it was added and last got one. Signing out on a device, or revoking its session in **Security**, removes it; so does a push service saying it is gone, or 5 failed sends in a row.
 - **What reaches your devices**: a switch per event. Problems are on to start with; **Deploy succeeded**, **Cron job failed** and the cleanup events are off. **Node back online** is offered here as well.
 
-You only get alerts for what you can see in the panel, checked when each alert is sent: a member gets their services' events, approvals they may decide and changes to their own sign-in methods and keys; owners and admins can also get node, update and panel access alerts. [Mutes](#mutes) silence pushes too. A tap on a notification opens the alert's page, in the app if it is open. A device gets at most 30 pushes in 10 minutes; the rest are in the alert feed.
+You only get alerts for what you can see in the panel, checked when each alert is sent: a member gets their services' events, approvals they may decide and changes to their own sign-in methods and keys; owners and admins can also get node, update and panel access alerts. [Mutes](#mutes) silence pushes too. A tap on a notification opens the alert's page, in the app if it is open. New in 0.2.18: an alert about a service that has no page of its own, such as a failed cron job, opens the service's page; before, it opened the dashboard. Its title names the project, as on every channel. A device gets at most 30 pushes in 10 minutes; the rest are in the alert feed.
 
 ### Privacy
 

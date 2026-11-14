@@ -20,8 +20,8 @@ The 5 second wait is fixed. It keeps a crash loop from burning CPU while still b
 
 The agent reports every crash to the panel with the exit code, whether the kernel killed the container for running out of memory, and the last 100 log lines. Reports wait on the node's disk while the panel is unreachable, so none are lost.
 
-- The **Crash** alert fires once per streak, not once per restart. It says what happened and what comes next, for example "api crashed: Exit code 1, restarting in a few seconds." or "Out of memory, left stopped."
-- The **Stopped after repeated crashes** alert fires when the agent gives up.
+- The **Crash** alert fires once per streak, not once per restart. It says what happened and what comes next, for example "acme-shop / api crashed" with "Exit code 1, restarting in a few seconds." or "Out of memory, left stopped." New in 0.2.18: the title starts with the service's project (see [Alert titles](/features/notifications#alert-titles)); before, it was "api crashed".
+- The **Stopped after repeated crashes** alert fires when the agent gives up: "acme-shop / api was stopped after 5 crashes".
 - The service's **Logs** keep the lines before the exit, followed by a system line saying which generation exited with which code.
 
 Where alerts go is set per event and channel; see [Alerts and notifications](/features/notifications).
