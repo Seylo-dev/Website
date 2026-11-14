@@ -30,6 +30,14 @@ The service header says **Deploying** while a deploy runs, with **Cancel deploy*
 
 Fixed in 0.2.16: the card could keep the previous deploy, for example "Failed, 1 hour ago", after a new one went live, until a reload. These screens no longer rely on the panel's live updates alone. A deploy list checks again every 15 seconds while one of its deploys moves (every 2 seconds while the live connection is down) and as soon as the browser tab is shown again, so a deploy that ended while the tab was hidden no longer stays on **Building**. The Overview's card also checks every minute while nothing moves. A running deploy's clock counts with the panel's time, not the computer's, and stops as soon as the deploy has ended.
 
+### The status dot during a deploy [#status-dot]
+
+Changed in 0.2.17. A service's status dot says whether it is up, and the label next to it what a deploy does. While a build waits for a slot, builds or rolls out on top of a version that is live, the dot follows that live version: green while it runs, amber while it partly runs or starts, red when it crashed or fails its health check, and gray only when it is stopped or its node does not answer. The label still says **Building**, **Waiting for a build slot** or **Deploying**. Before, a deploy made the dot amber, or gray while its build waited for a slot, so an app that crashed during a build looked busy, not down.
+
+A first deploy, with nothing live yet, has the pulsing amber dot, and a hollow amber ring while its build waits for a slot, where it had the gray dot of a stopped service. This holds wherever a service has a dot: the sidebar, the home page's **Cards**, **List** and **Table** (the **List** view's status chips now have a dot too), the project page, search, the service header and a compose stack's members on its **Overview**.
+
+In the API and MCP, services carry `runtimeStatus` next to `status`: what runs now, without the deploy (`running`, `crashed` and so on, `idle` before anything was deployed). `status` still puts a deploy in progress first (`building`, `deploying`).
+
 ### A failed deploy's output [#last-output]
 
 Changed in 0.2.16. A failed deploy's error is the reason alone, such as "not healthy after 5m0s: ...", followed by "The previous version stayed live." The new container's last output (its last 20 lines, secrets hidden) is a block of its own, **Last output of the new container**, collapsed, with the node, the number of lines and a copy button, in the deploy's log dialog and under the deploy on the **Deployments** tab. It is no longer inside the step log or the red error, and the **Deploy failed** alert carries the reason alone too. Agents before 0.2.16 send the output inside the message, and deploys that failed before the update kept it in their error: both are split the same way when shown, without rewriting the stored deploy.

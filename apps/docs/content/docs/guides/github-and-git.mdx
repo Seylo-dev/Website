@@ -215,7 +215,7 @@ A node runs as many builds at once as its **Builds at once** allows and queues t
 While a build waits:
 
 - its deploy's steps start with a **Queued** step, with a clock and the time it has waited, in front of **Clone**. It reads "Waiting for a build slot on `<node>` - 2 ahead", or "next in line", and follows the builds ahead of it as they start, finish or are cancelled. The place counts in the order the node got the builds, which is the order it starts them in: a build whose archive or source lookup takes longer is behind the ones that reached the node first. Once the build has its slot, the steps are the usual ones again.
-- the service header, the deploy list, the build log, the sidebar and the dashboard say **Waiting for a build slot** where they said **Building**. A git provider's commit status says "Waiting for a build slot" (pending) until the build starts.
+- the service header, the deploy list, the build log, the sidebar and the dashboard say **Waiting for a build slot** where they said **Building**. A git provider's commit status says "Waiting for a build slot" (pending) until the build starts. Changed in 0.2.17: the status dot next to the label shows whether the live version runs, and a first deploy that waits has a hollow amber ring (see [The status dot during a deploy](/features/zero-downtime-deploys#status-dot)).
 - **Built in** counts from the build's real start, and the **Clone** step's time leaves out the wait.
 - **Cancel deploy** takes the build out of the node's queue.
 

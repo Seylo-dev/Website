@@ -41,6 +41,8 @@ Changed in 0.2.15. The console followed a restart for 2 minutes only, and any ot
 - while nothing runs it says "The app is not running. Its console connects when it starts." and connects as soon as the app starts or a deploy goes live, with no click,
 - opening the page, coming back to the browser tab and the network coming back also reconnect it.
 
+Changed in 0.2.17: while a deploy builds, waits for a build slot or rolls out, the console goes by what runs meanwhile. It attaches to the live version while that runs, says the app is not running once the live version crashed (before, it kept trying to attach as long as a deploy went on), and attaches to a first deploy's new container as soon as it runs, where before it waited for the deploy to end.
+
 It stops at **Reconnect**, with the reason, when the panel refuses it (no permission, the service is gone, an agent too old), after about 25 seconds of tries that cannot attach (for example when the service's first node is offline: "The app has no running container to attach to."), or after the 30-minute idle timeout, which now says so. A shell still never reopens by itself.
 
 Also fixed in 0.2.15: **Reconnect** sometimes needed two clicks. While an app restarted, the panel answered an attach with "ready" right before refusing it, so the terminal wrote "Connected", then the refusal, and showed **Reconnect** again. A try the agent refuses at once now leaves nothing in the terminal: the console tries again by itself, and a shell's **Reconnect** says why in the panel's words.
