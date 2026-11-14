@@ -133,6 +133,25 @@ describe("sync", () => {
     expect(read(`${outputs.logos}/old/logo.svg`)).toBe(before.logo);
   });
 
+  test("a download that breaks off mid-body is a catalog problem: --soft keeps the committed copy", async () => {
+    const before = await committed();
+    // A fresh body for every request, each one failing after the headers came.
+    const breaking = () =>
+      new Response(new ReadableStream({ pull: (controller) => controller.error(new TypeError("socket closed")) }));
+    const { fetch } = server({});
+    const get = async (requested: string) => (requested === url ? breaking() : fetch(requested));
+
+    const error = await sync(options(get)).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CatalogError);
+    expect((error as Error).message).toBe(`The download of ${url} broke off: socket closed`);
+    const result = await sync(options(get, { soft: true }));
+    expect(result).toEqual({ written: false, reason: `The download of ${url} broke off: socket closed` });
+    expect(lines.at(-1)).toMatch(/^catalog: kept the committed copy\. The download of /);
+    expect(read(outputs.landing)).toBe(before.json);
+    expect(read(outputs.docs)).toBe(before.docs);
+    expect(read(`${outputs.logos}/old/logo.svg`)).toBe(before.logo);
+  });
+
   test("the same sequence again is fine", async () => {
     await committed();
     const { fetch } = server(signed([{ slug: "again" }]));

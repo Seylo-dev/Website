@@ -80,7 +80,15 @@ async function download(url: string, get: NonNullable<SyncOptions["fetch"]>): Pr
     throw new CatalogError(`${url} redirected to ${response.url}.`);
   const length = Number(response.headers.get("content-length") ?? 0);
   if (length > maxBytes) throw new CatalogError(`${url} is over ${maxBytes} bytes.`);
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await response.arrayBuffer());
+  } catch (error) {
+    // The connection dropped mid-body: a network problem like no answer at all, so --soft keeps the committed copy.
+    throw new CatalogError(
+      `The download of ${url} broke off: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
   if (bytes.byteLength > maxBytes) throw new CatalogError(`${url} is over ${maxBytes} bytes.`);
   return bytes;
 }
