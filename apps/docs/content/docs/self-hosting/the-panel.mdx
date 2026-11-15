@@ -175,7 +175,7 @@ New in 0.2.1. **Settings → Tailscale** serves the panel on your own tailnet, t
 **Settings → Appearance** changes how the panel looks for everyone who uses it:
 
 - **Color mode** (light, dark or system) and a **Theme preset**: Default, Night, Classic or Midnight, with an optional custom **Accent**.
-- **Branding**: the panel name, a logo for light and dark backgrounds and a favicon (PNG, SVG, WebP, JPEG or ICO, up to 512 KB), a **Sign-in page message**, and **Hide "Powered by Seylo"** in the footer.
+- **Branding**: the panel name, a logo for light and dark backgrounds and a favicon (PNG, SVG, WebP, JPEG or ICO, up to 512 KB), a **Sign-in page message**, and **Hide "Powered by Seylo"** in the footer. Since 0.2.19 the favicon is also the panel's `/favicon.ico`, which tools that look for a site's icon there read (before, that address answered with the panel's page), and the icon MCP clients get (see [The panel's icon](/features/mcp-and-ai#the-panels-icon)). Without one, `/favicon.ico` is Seylo's icon.
 - **Custom CSS**, applied after the theme. Only owners can change it.
 
 The theme and branding are part of the first page load, so there is no flash of the default look.

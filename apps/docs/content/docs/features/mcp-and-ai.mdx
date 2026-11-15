@@ -39,6 +39,10 @@ Claude (the desktop app and claude.ai) has no install link, so since 0.2.8 **Cop
 </Tab>
 </Tabs>
 
+### The panel's icon
+
+New in 0.2.19: the server gives clients the panel's icon when they connect (`serverInfo.icons`, from MCP 2025-11-25): the favicon uploaded under **Settings → Appearance → Branding**, else Seylo's own icon, at the address the client connected to. A client that shows server icons can show it; one that looks up an icon for the server's domain on its own keeps doing that. Before, the panel sent none, and a client that looks up the domain found no favicon there either (see [The panel](/self-hosting/the-panel)), so it could fall back to an icon of the parent domain, `example.com` for `panel.example.com`.
+
 ### Connecting
 
 New in 0.2.5: **Settings → API keys and MCP** has one-click install links for popular AI tools, with the command or config each one needs. **Ask before destructive actions** and read-only for new tokens are on by default; both can be switched off there if you want your agents to act on their own.
