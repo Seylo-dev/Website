@@ -2254,7 +2254,7 @@
       "get": {
         "operationId": "alerts.list",
         "summary": "List recent alerts",
-        "description": "Lists alerts newest first, limited to the projects, services and nodes the caller can see. Filter by project, service or node; page with the nextCursor of the previous call.",
+        "description": "Lists alerts newest first, limited to the projects, services and nodes the caller can see. Filter by project, service or node; page with the nextCursor of the previous call. An alert about a service carries its project and service ids and their current names (projectName, serviceName, stackName for a compose member); its title names them as they were when it was raised. serviceProjectId is the project the service is in now (its page), which differs from projectId once the service moved.",
         "tags": [
           "alerts"
         ],
@@ -2352,6 +2352,10 @@
                           "projectId",
                           "serviceId",
                           "nodeId",
+                          "projectName",
+                          "serviceName",
+                          "stackName",
+                          "serviceProjectId",
                           "link",
                           "resolvedAt",
                           "muted",
@@ -2510,6 +2514,52 @@
                             ]
                           },
                           "nodeId": {
+                            "anyOf": [
+                              {
+                                "pattern": "^[a-z0-9]{16}$",
+                                "description": "Panel-issued id.",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "projectName": {
+                            "description": "The current name of the project the alert is about (projectId); null when it is not about one.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "serviceName": {
+                            "description": "The current name of the service the alert is about (serviceId); null when it is not about one.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "stackName": {
+                            "description": "When the service is a member of a compose stack, the stack's current name; null otherwise.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "serviceProjectId": {
+                            "description": "For an alert about a service: the project the service is in now, so its page is /p/<serviceProjectId>/s/<serviceId> (projectId stays the project the alert happened in, which differs once the service moved). The alert's projectId when the service is gone; null when the alert is not about a service.",
                             "anyOf": [
                               {
                                 "pattern": "^[a-z0-9]{16}$",
@@ -93050,6 +93100,7 @@
                     "needNewerPanel",
                     "skipped",
                     "canRefresh",
+                    "checkDue",
                     "canChangeSource",
                     "source"
                   ],
@@ -93336,6 +93387,9 @@
                     "canRefresh": {
                       "type": "boolean"
                     },
+                    "checkDue": {
+                      "type": "boolean"
+                    },
                     "canChangeSource": {
                       "type": "boolean"
                     },
@@ -93407,6 +93461,52 @@
         "x-op-kind": "query",
         "x-permission": "signed-in",
         "x-mcp": true
+      }
+    },
+    "/api/v1/templates.checkCatalogIfDue": {
+      "get": {
+        "operationId": "templates.checkCatalogIfDue",
+        "summary": "Check for new templates if the last check is old",
+        "description": "Starts the panel's own check for new templates in the background when catalogStatus.checkDue is true (the last check is more than 10 minutes old and none runs) and returns at once; started says whether it did. The Templates page calls it when it opens. The check asks for catalog.json only when it changed since the copy the panel has (If-None-Match and If-Modified-Since, which GitHub answers with 304), and when a newer catalog arrives the panel invalidates templates.list, so an open page updates by itself. Any signed-in person may call it: it only downloads the public catalog and changes nothing but the panel's copy of it, never the source setting. Like the scheduled check it is not written to the audit log, and while the panel moves it starts none. added in 0.2.18",
+        "tags": [
+          "templates"
+        ],
+        "security": [
+          {
+            "session": [],
+            "sessionKey": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "started"
+                  ],
+                  "properties": {
+                    "started": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-op-kind": "query",
+        "x-permission": "signed-in",
+        "x-mcp": false
       }
     },
     "/api/v1/templates.create": {
@@ -94689,7 +94789,7 @@
       "post": {
         "operationId": "templates.refreshCatalog",
         "summary": "Check for new templates",
-        "description": "Downloads the official catalog (and the private one, if set) now instead of at the next check (every 6 hours), verifies it and switches to it when it is newer. On any failure the panel keeps the catalog it has and returns the reason. A 404 for the official catalog (none published yet) is no failure: official.notPublished is true and lastError null. One check runs at a time. added in 0.2.17",
+        "description": "Downloads the official catalog (and the private one, if set) now instead of at the next check (every 6 hours, or when the Templates page opens 10 minutes after the last one), verifies it and switches to it when it is newer. On any failure the panel keeps the catalog it has and returns the reason. A 404 for the official catalog (none published yet) is no failure: official.notPublished is true and lastError null. One check runs at a time. added in 0.2.17",
         "tags": [
           "templates"
         ],
@@ -94727,6 +94827,7 @@
                     "needNewerPanel",
                     "skipped",
                     "canRefresh",
+                    "checkDue",
                     "canChangeSource",
                     "source"
                   ],
@@ -95011,6 +95112,9 @@
                       }
                     },
                     "canRefresh": {
+                      "type": "boolean"
+                    },
+                    "checkDue": {
                       "type": "boolean"
                     },
                     "canChangeSource": {
@@ -95441,6 +95545,7 @@
                     "needNewerPanel",
                     "skipped",
                     "canRefresh",
+                    "checkDue",
                     "canChangeSource",
                     "source"
                   ],
@@ -95725,6 +95830,9 @@
                       }
                     },
                     "canRefresh": {
+                      "type": "boolean"
+                    },
+                    "checkDue": {
                       "type": "boolean"
                     },
                     "canChangeSource": {
