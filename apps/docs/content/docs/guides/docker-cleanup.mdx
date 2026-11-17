@@ -11,13 +11,15 @@ Old images, build cache and stopped containers pile up on a node with every depl
 
 Every way only touches images, caches, containers, volumes and folders that Seylo created (labelled `seylo.managed`). Everything else on the machine, including other tools' images and Wings' game servers, is left alone. Cleaning the whole machine is not offered on purpose.
 
+New in 0.2.19, on nodes with agent 0.2.19: images pulled from a registry for a service (a database's image, an app deployed from an image, the panel's own image) cannot carry that label, so the node remembers which of its services' containers were made from which image. Those images follow the same rule as built ones: the ones a service needs stay, older ones go. An image that any container on the machine uses stays, whoever runs it, and an image no Seylo service used is never removed. Images pulled before the update count once a service's container uses them, except the panel's own, whose old versions go with the first cleanup.
+
 ## Clean up now
 
 **Settings → Docker cleanup** frees disk space on one node. Pick the **Node** and what to clean, **Preview** the list with sizes, then **Clean up**:
 
 | What | Notes |
 | --- | --- |
-| **Unused images** | Images no service needs any more. The newest images of each service, which rollbacks use, stay. |
+| **Unused images** | Images no service needs any more, built or (new in 0.2.19) pulled for a service. The newest images of each service, which rollbacks use, stay. On the panel's node it also frees what deleted images left in the [panel's registry](#the-panels-registry). |
 | **Build cache** | Cached build layers; the next build of each app is slower |
 | **Stopped containers** | Old containers left after deploys |
 | **Orphaned service data** | Data folders of services removed without deleting their data. Deleted for good. |
@@ -35,7 +37,7 @@ On **Nodes**, open a node and its **Cleanup** view. **Scheduled cleanup** sets w
 | **Clean up on its own** | On by default from 0.2.5: every day at 04:00 node time and when a disk passes 80%. A node whose schedule was saved before keeps what was saved. |
 | **On a schedule** | A five-field **Cron expression** (minute, hour, day, month, weekday) in the node's own time zone, which the view names. It starts at `0 4 * * *`: every day at 04:00. **Next run** shows when it fires next. |
 | **When a disk is fuller than** | A percentage between 50 and 99, 80 to start with. The disk that holds the node's data (`/var/lib/seylo`) and Docker's disk are checked every 10 minutes; when the fuller one passes the line, the node cleans up. |
-| **What to remove** | **Old images** (past the newest 3 per service; the ones in use always stay), **Build cache** (what this panel's builders cached), **Stopped containers** (finished jobs, old generations, removed services) and **Unused volumes** |
+| **What to remove** | **Old images** (past the newest 3 per service, built or pulled, and on the panel's node what deleted images left in the panel's registry; the ones in use always stay), **Build cache** (what this panel's builders cached), **Stopped containers** (finished jobs, old generations, removed services) and **Unused volumes** |
 
 Turn on either trigger or both, then **Save schedule**.
 
@@ -58,6 +60,14 @@ New in 0.2.5: **Settings → Docker cleanup** shows each node's last cleanup, wi
 
 
 Below the schedule, **Recent cleanups** lists the node's cleanups, newest first: scheduled ones (**Schedule**), disk-triggered ones (**Disk 87%**, with the disk's use when it started) and the ones run by hand from **Settings → Docker cleanup** (**Manual** and who ran it). Each shows whether it was **Done** or **Failed**, the space it freed and how many items it removed; **What it removed** lists them (up to 200 lines). The header adds up what the kept runs freed in the last 30 days. The panel keeps the newest 100 runs per node.
+
+## The panel's registry
+
+Every image Seylo builds is pushed to the registry on the panel's node, under `/var/lib/seylo/registry`, so any node can pull it. The panel deletes images past each service's rollback history (its 5 newest builds) and every image of a deleted service, but the disk space only comes back when the registry collects its garbage. The panel's node does that once a day, and since 0.2.19 also whenever a cleanup there removes images (by hand, on its schedule or on a full disk); **Recent cleanups** then shows a line such as `registry: 52.3 GiB freed`, and **Preview** shows what a collection would free.
+
+A collection stops the registry for a short moment and only runs while no image is being pushed or pulled; it tries again a few minutes later otherwise. Connections that moved nothing for 2 minutes (Docker keeps idle ones open) are closed first.
+
+Before 0.2.19 the daily collection waited a day after every agent start, and agents restart with every update, and it gave up whenever any connection to the registry was open, so on a busy panel it could stop running altogether and the registry kept growing. The first collection after the panel's node updates its agent frees all of it.
 
 ## Alerts
 

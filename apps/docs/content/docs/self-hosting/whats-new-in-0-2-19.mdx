@@ -1,6 +1,6 @@
 ---
 title: What's new in 0.2.19
-description: The panel's icon for MCP clients and at /favicon.ico, from the favicon uploaded under Appearance.
+description: The panel's registry shrinks again, cleanup removes old pulled images, and the panel's icon for MCP clients and at /favicon.ico.
 ---
 
 0.2.19 updates a 0.2.18 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.19** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
@@ -10,7 +10,13 @@ description: The panel's icon for MCP clients and at /favicon.ico, from the favi
 - **MCP clients get the panel's icon.** When a client connects to the MCP server, the panel now names its icon (`serverInfo.icons`, from MCP 2025-11-25): the favicon uploaded under **Settings → Appearance → Branding**, whatever its format, else Seylo's own icon, at the address the client connected to. Before, it sent none, so clients made up their own: Claude's connector list, for one, showed an icon it found for the parent domain. See [The panel's icon](/features/mcp-and-ai#the-panels-icon).
 - **`/favicon.ico` is a real icon.** It answered with the panel's page, so tools that look for a site's icon there (favicon services, link previews) found none. It is now the favicon uploaded under Appearance, else Seylo's icon in 16, 32 and 48 pixels, and the page also links it. An uploaded favicon is now the page's only icon, so a browser that prefers SVG icons no longer keeps Seylo's built-in one next to it, also when the favicon changes while the page is open.
 
+## Fixed
+
+- **The panel's registry never shrank.** Every build is pushed to the registry on the panel's node, and the panel deletes old images from it, but the space only comes back when the registry collects its garbage. That collection waited a day after every agent start (agents restart with every update) and gave up whenever any node held a connection to the registry, so on a busy panel it could stop running altogether: one panel's registry had reached 67 GB. It now runs when it is due across restarts, closes connections that moved nothing for 2 minutes instead of waiting for them, and also runs with every cleanup that removes images on the panel's node, which reports what it freed (`registry: ... freed`). Needs the panel node's agent 0.2.19. See [The panel's registry](/guides/docker-cleanup#the-panels-registry).
+- **Cleanup kept every old version of a pulled image.** Images pulled from a registry (a database's, an app deployed from an image, the panel's own after each update) carry no Seylo label, so cleanup never removed them. The node now remembers which images its services' containers were made from, and those follow the same rule as built images: the ones a service needs and its 3 newest stay, older ones go, and an image any container on the machine uses always stays. Images no Seylo service used are still never touched. Needs the node's agent 0.2.19. See [Docker cleanup](/guides/docker-cleanup).
+
 ## After the update
 
-- Everything in 0.2.19 needs only the panel; nothing waits for the node's agent, and there is no migration.
+- There is no migration. The icon changes need only the panel; the two cleanup fixes need the node's agent 0.2.19 (nodes update after the panel, as always).
+- The first cleanup on the panel's node after its agent updates may free a lot at once: what the registry kept since it last collected garbage, and old panel images.
 - A client that already shows an icon for the panel may keep the one it has until you remove and add the connection again. Claude's connector list may keep showing an icon it looks up for the server's domain; whether it reads the icon the server names is up to Claude.
