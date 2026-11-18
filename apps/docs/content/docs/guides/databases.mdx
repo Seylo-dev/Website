@@ -291,10 +291,11 @@ New in 0.2.16: a PostgreSQL, MySQL, MariaDB or MongoDB schedule can back up chos
 
 ## Advanced tab
 
-New in 0.2.16. A database's **Advanced** tab, between **Alerts** and **Notes**, has the parts of an app's **Advanced** tab that a database takes. Its engine sets the rest (health check, nodes and replicas, container settings and ports).
+New in 0.2.16. A database's **Advanced** tab, between **Alerts** and **Notes**, has the parts of an app's **Advanced** tab that a database takes. Its engine sets the rest (health check, nodes and replicas, the other container settings and ports).
 
 - **Move to another node** copies the database to another node while it is stopped and starts it there with the same data, users and passwords. Before you click **Move**, the card says what happens on the node you pick, and while the move runs it shows the move with its log. Meanwhile the header says **Moving to `<node>`...**, with **Cancel move** while the data is copied (see [While it moves](/guides/moving-services#while-it-moves)). **Move to another node** is in the database's menus too. See [Moving a database](/guides/moving-services#databases).
 - **Resource limits**: memory limit and reservation, CPU weight and process limit. A database has no **Deploy** button, so **Save and restart** saves them and, after a confirm, restarts the database with them. It is offline for a few seconds and its data stays. A memory limit below what it uses stops it, so leave room for its caches.
+- **Command**, new in 0.2.21: what the database's container runs, for server options such as a connection limit, for example `mariadbd --max-connections=500` or `postgres -c max_connections=200`. Empty runs the image's own command. **Save and restart** saves it and, after a confirm, restarts the database with it, offline for a few seconds. A database deploys by stopping the old container first, so a command it does not start with fails the deploy and the database starts again as it was. Redis, Valkey and KeyDB take their password on the command line: their command must keep `--requirepass "$REDIS_PASSWORD"` (`$VALKEY_PASSWORD`, `$KEYDB_PASSWORD`), or the panel refuses it, since the database would take connections without a password. Before 0.2.21 a database's command could only be set through the API (`services.update`), and the panel did not show it.
 - **Restart after a crash**, the crash policy (see [Crash policy and alerts](/features/crash-policy-and-alerts)).
 
 ## Change the version

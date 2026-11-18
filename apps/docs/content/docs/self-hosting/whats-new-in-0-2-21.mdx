@@ -1,0 +1,18 @@
+---
+title: What's new in 0.2.21
+description: A database's command on its Advanced tab, and Redis-like databases keep their password.
+---
+
+0.2.21 updates a 0.2.20 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.21** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## Improved
+
+- **A database's command on its Advanced tab.** A database's **Advanced** tab has a **Command** card: what its container runs, for server options such as a connection limit (`mariadbd --max-connections=500`), with an example for its engine. Empty runs the image's own command. **Save and restart** saves it and restarts the database after a confirm, offline for a few seconds. If the database does not start with the new command, the deploy fails and it starts again as it was. Before, a database's command could only be set through the API, and the panel never showed it. See [Advanced tab](/guides/databases#advanced-tab).
+
+## Fixed
+
+- **A Redis, Valkey or KeyDB command could drop the password.** These engines take their password on the command line, which Seylo's command reads from `$REDIS_PASSWORD` (`$VALKEY_PASSWORD`, `$KEYDB_PASSWORD`). The panel now refuses a command for them that does not name that variable, an empty one included: the database would have taken connections without a password, and a new password would not have applied.
+
+## After the update
+
+- There is no migration, and only the panel changes.
