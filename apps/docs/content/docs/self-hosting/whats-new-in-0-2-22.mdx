@@ -1,14 +1,16 @@
 ---
 title: What's new in 0.2.22
-description: A project's service count no longer shows on top of its sidebar buttons.
+description: A busy exposed database no longer turns new connections away, and a project's service count no longer shows on top of its sidebar buttons.
 ---
 
 0.2.22 updates a 0.2.21 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.22** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
 
 ## Fixed
 
+- **A busy exposed database turned new connections away without a word.** The node relays an exposed port itself, and it took at most 1024 connections, 256 from one address, closing any client over that at once with nothing in any log. Connection pools reach a database in numbers, so a MySQL with about 1000 game-server connections, 250 of them from one node's address, lost new ones, and its clients reported errors such as "incomplete response". A database's exposed port and timed exposes now take up to 16384 connections, 8192 from one address, and the database's own connection limit is the one that counts. A full port says so in the node's agent log, once a minute. Needs the node's agent 0.2.22. See [How many connections](/guides/databases#how-many-connections).
 - **A project's service count showed on top of its row's buttons.** In the sidebar, a project row's **+** and **...** buttons show when you hover the row, reach them with the keyboard or open their menu, and the service count hides then. After a menu or the New service dialog was closed with the mouse, the buttons kept showing while the count came back, so the number sat on the **...**. Now only one of them shows at a time.
 
 ## After the update
 
-- There is no migration, and only the panel changes.
+- There is no migration. The sidebar fix needs only the panel; the connection caps need each node's agent 0.2.22 (nodes update after the panel, as always).
+- Updating a node's agent restarts the ports it relays, so every client connected through an exposed port drops once and reconnects. Update a node with busy exposed databases at a quiet time.
