@@ -1,0 +1,20 @@
+---
+title: What's new in 0.2.20
+description: MariaDB dumps no longer die after many clients disconnect at once, and a database backup that loses its connection runs once more.
+---
+
+0.2.20 updates a 0.2.19 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.20** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## Fixed
+
+- **MariaDB dumps died right after many clients disconnected.** A MariaDB server with `thread_handling=pool-of-threads` drops TLS connections that wait on the network once many TLS clients disconnected at once (game servers restarting together, for one): MariaDB keeps the errors of the connections that ended on its threads, up to 11.8. A nightly dump that ran right after such a restart failed with "Error 2026: TLS/SSL error: unexpected eof while reading when dumping table ...", and the database's Logs said "Got an error writing communication packets". MySQL and MariaDB dumps, restores and the listing of what a backup holds now connect without TLS when the database takes a plain connection: they run on the database's own node, on its project network. A database that refuses plain connections still gets TLS. Needs the node's agent 0.2.20. See [MySQL and MariaDB without TLS](/guides/backups#mysql-without-tls).
+
+## Improved
+
+- **A database backup that loses its connection runs once more.** When the database closed a dump's connection (a restart, a network blip, the MariaDB problem above) and the dump had not just waited for the upload, the backup runs again a minute later. A second try that works leaves a warning on the run with the first try's error; a second failure says it was the second try. Restores are not tried again. Needs the node's agent 0.2.20. See [A second try](/guides/backups#second-try).
+- **The panel's image names itself.** Registries showed the panel's image as Bun, the image it is built on; it now carries its own title, description, website and documentation labels.
+
+## After the update
+
+- There is no migration. Both backup changes need the node's agent 0.2.20 (nodes update after the panel, as always).
+- If your own clients reach a MariaDB server with `thread_handling=pool-of-threads` over TLS, they can lose connections the same way after a mass disconnect. MariaDB's default, `thread_handling=one-thread-per-connection`, does not.

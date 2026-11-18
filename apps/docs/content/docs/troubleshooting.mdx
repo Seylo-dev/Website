@@ -211,6 +211,8 @@ the dump exited with code 2: mariadb-dump: Error 2026: TLS/SSL error: unexpected
 ```
 
 Open the database's **Logs** around the time of the backup: a restart, an out-of-memory kill, or the line the message names ("Aborted connection" for MySQL and MariaDB, "Disconnecting timedout replica" for Redis, Valkey and KeyDB, "terminating connection" for PostgreSQL). A slow bucket no longer causes this by itself: the node holds up to 4 GiB of a backup while the upload catches up. When it had no more room and the dump waited, the error says so instead ("The database closed the connection after the dump waited 1m15s for the upload: the upload fell behind the dump by more than 4.3 GB, ..."): free space on the node, use a bucket the node reaches faster, or raise the timeout the message names. See [When the bucket is slow](/guides/backups#slow-buckets).
+
+Since 0.2.20 (agent 0.2.20) such a backup runs once more a minute later, unless the dump had just waited for the upload, and a second try that works leaves a warning on the run ([A second try](/guides/backups#second-try)). A MariaDB dump that ended with "Error 2026: TLS/SSL error: unexpected eof" while the database's Logs say "Got an error writing communication packets", right after many of its clients disconnected at once, is MariaDB's thread pool dropping TLS connections: since 0.2.20 dumps connect without TLS when the database allows it. See [MySQL and MariaDB without TLS](/guides/backups#mysql-without-tls).
 </Accordion>
 
 <Accordion title="A new node never builds">

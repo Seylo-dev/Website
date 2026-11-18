@@ -147,10 +147,10 @@ When there is no room left, the dump waits for the upload, as before: the node n
 A dump or a restore whose tool's last line says the database closed the connection gets a sentence after that line with what usually causes it:
 
 ```text
-the dump exited with code 2: mariadb-dump: Error 2026: TLS/SSL error: unexpected eof while reading when dumping table `orders` at row: 81234. The database closed the connection in the middle of the dump. Usually it restarted or ran out of memory: look in its Logs for a restart or "Aborted connection". Before Seylo 0.2.17 a slow upload to the bucket caused this too.
+the dump exited with code 2: mariadb-dump: Error 2013: Lost connection to server during query when dumping table `orders` at row: 81234. The database closed the connection in the middle of the dump. Usually it restarted or ran out of memory: look in its Logs for a restart or "Aborted connection". Before Seylo 0.2.17 a slow upload to the bucket caused this too.
 ```
 
-A restore says "in the middle of the restore" and "a slow download from the bucket". What to look for in the database's **Logs** around that time:
+A MySQL or MariaDB dump over TLS ("Error 2026: TLS/SSL error: unexpected eof") also says "Over TLS, MariaDB with thread_handling=pool-of-threads also drops connections right after many clients left at once." (see [MySQL and MariaDB without TLS](#mysql-without-tls)). A restore says "in the middle of the restore" and "a slow download from the bucket". What to look for in the database's **Logs** around that time:
 
 | Engine | The tool's line | In the database's Logs |
 | --- | --- | --- |
@@ -165,6 +165,22 @@ When a MySQL, MariaDB, Redis, Valkey or KeyDB dump had just waited a second or m
 ```
 
 When the disk was the limit it reads "... and the node has no room to hold it (backups leave 15% of its disk and 10 GiB free). Free space on the node, use a bucket it reaches faster or raise ...". For Redis, Valkey and KeyDB the setting to raise is `repl-timeout`. A mysqldump that exits without a word after such a wait (MySQL closed its idle session) gets "The dump stopped without a message right after it waited ... for the upload: ..., so the database most likely closed its connection meanwhile."
+
+### A second try [#second-try]
+
+New in 0.2.20, on nodes with agent 0.2.20. When the database closed a dump's connection (any line in the table above) and the dump had not just waited for the upload, the backup runs once more a minute later, measured and dumped from the start. A restart, a network blip or the MariaDB problem below has usually passed by then. When the second try works, the run succeeds with a warning:
+
+```text
+The first try lost its connection to the database (mariadb-dump: Error 2013: Lost connection to server during query when dumping table `orders` at row: 81234), so the backup ran again.
+```
+
+When it fails too, the error ends with "This was a second try: the first one lost its connection to the database too (...)". A dump the database dropped while it waited for the upload is not tried again, since it would wait the same way, and restores are never tried again.
+
+### MySQL and MariaDB without TLS [#mysql-without-tls]
+
+New in 0.2.20, on nodes with agent 0.2.20. MySQL and MariaDB dumps and restores, and the listing that measures what a backup holds, connect to the database without TLS when it takes a plain connection. They run in a helper container on the service's project network, on the database's own node, so the connection never leaves the machine. A database that refuses plain connections (`require_secure_transport`, or an admin user that requires SSL) still gets TLS, as before.
+
+The reason is a MariaDB problem (11.8 still has it): with `thread_handling=pool-of-threads`, after many TLS clients disconnect at once, game servers restarting together for one, MariaDB can drop the next TLS connections that wait on the network, a dump that sends faster than it is read among them. The dump then ended with "Error 2026: TLS/SSL error: unexpected eof while reading when dumping table ..." and the database's **Logs** said "Got an error writing communication packets". Your own TLS clients of such a server can hit it too: MariaDB's default `thread_handling=one-thread-per-connection` does not.
 
 ### Timeouts of the backup's own session
 
