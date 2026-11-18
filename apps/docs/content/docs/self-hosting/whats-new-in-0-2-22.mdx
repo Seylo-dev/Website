@@ -1,0 +1,14 @@
+---
+title: What's new in 0.2.22
+description: A project's service count no longer shows on top of its sidebar buttons.
+---
+
+0.2.22 updates a 0.2.21 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.22** updates the panel first, then each node. Nothing needs to be run on the servers, and there is no database step to do by hand.
+
+## Fixed
+
+- **A project's service count showed on top of its row's buttons.** In the sidebar, a project row's **+** and **...** buttons show when you hover the row, reach them with the keyboard or open their menu, and the service count hides then. After a menu or the New service dialog was closed with the mouse, the buttons kept showing while the count came back, so the number sat on the **...**. Now only one of them shows at a time.
+
+## After the update
+
+- There is no migration, and only the panel changes.
