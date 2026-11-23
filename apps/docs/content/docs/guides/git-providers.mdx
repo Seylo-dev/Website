@@ -127,6 +127,7 @@ A push to the deployed branch deploys the branch head that the provider's API re
 - A head commit message with `[skip ci]`, `[ci skip]`, `[skip cd]` or `[cd skip]` does not deploy.
 - [Watch paths](/guides/watch-paths) can limit deploys to pushes that touch certain files.
 - A push while an earlier push deploy is still queued joins it: that deploy builds the newer head, and the delivery says **A deploy was already queued**. So at most one push deploy waits behind the running one.
+- New in 0.2.23: a push for a commit that is already being deployed, or whose push deploy went live in the last 10 minutes, does not deploy it again. The delivery says **A deploy of this commit is already queued, running or live**.
 
 The panel also polls the branch head, to catch missed deliveries: every minute while the service has no working webhook, every 5 minutes while it has one, and not at all while the webhook delivered within the last 5 minutes, unless the webhook left a delivery unhandled (see [Deliveries](#deliveries)).
 

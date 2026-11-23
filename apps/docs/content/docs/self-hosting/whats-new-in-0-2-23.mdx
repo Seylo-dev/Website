@@ -1,0 +1,17 @@
+---
+title: What's new in 0.2.23
+description: A push deploys once, even when it reaches the panel twice.
+---
+
+0.2.23 updates a 0.2.22 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.23** updates the panel. The nodes need nothing, and there is no database step to do by hand.
+
+## Fixed
+
+- **Every push built twice.** A service with a repository webhook hears each push twice: from that webhook, and a few seconds later from the GitHub App. The second copy was only matched to a deploy that had not started yet. By the time it arrived the first deploy was usually building, so a second deploy of the same commit waited behind it, built again once the first was done, and replaced it. A push now deploys once:
+  - A push for a commit the service is already building or deploying is skipped, and so is one for a commit whose push deploy went live in the last 10 minutes. **Recent deliveries** lists the skipped one as **Ignored** ("A deploy of this commit is already queued, running or live.").
+  - A late copy of an older push no longer takes over a newer push that waits to start.
+  - Pushing a commit again later, for example after resetting a branch back to it, still deploys.
+
+## After the update
+
+- There is no migration, and the nodes stay as they are.
