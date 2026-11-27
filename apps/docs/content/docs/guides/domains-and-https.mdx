@@ -156,7 +156,7 @@ A hostname belongs to the service that routes it. Adding it, or a path under it,
 
 ## The visitor's address
 
-The node's Traefik passes the visitor's address to the app in `X-Forwarded-For` (as its last hop) and `X-Real-Ip`, and the scheme the visitor used in `X-Forwarded-Proto`. What a visitor sends in these headers is dropped where the request comes in, and Traefik sets its own from the connection. Behind Cloudflare's proxy that connection is Cloudflare's; the visitor's address is in Cloudflare's own `CF-Connecting-IP` header.
+The node's Traefik passes the visitor's address to the app in `X-Forwarded-For` (as its last hop) and `X-Real-Ip`, and the scheme the visitor used in `X-Forwarded-Proto`. What a visitor sends in these headers is dropped where the request comes in, and Traefik sets its own from the connection. Behind Cloudflare's proxy that connection is Cloudflare's; the visitor's address is in Cloudflare's own `CF-Connecting-IP` header. Every header an app gets is in [Request headers apps receive](/guides/request-headers).
 
 ### Through another node
 
@@ -176,6 +176,12 @@ sudo seylo restart
 ```
 
 Make the setting permanent in `/etc/sysctl.d/` too. Nodes next to Wings serve visitors through Wings' Traefik on Wings' network, which already keeps their address when that network has IPv6 on (Wings' default).
+
+## The visitor's country
+
+New in 0.2.24. Every request to an app also carries `X-Seylo-Country`, the visitor's country as two letters (`IL`, `US`), `XX` when it is not known. Each node looks the visitor's address up in a country database it keeps in memory (DB-IP's IP to Country Lite, refreshed monthly, no account needed), and a visitor cannot set the header themselves. Behind Cloudflare's proxy it is the visitor's country, from Cloudflare's `CF-Connecting-IP`, not the country of Cloudflare's server.
+
+It is on by default: **Settings → General → Visitor country** turns it off for every app, and the **Visitor country** card on a service's **Domains** tab for one service. See [Request headers apps receive](/guides/request-headers#the-visitors-country) for the details.
 
 ## Access rules
 

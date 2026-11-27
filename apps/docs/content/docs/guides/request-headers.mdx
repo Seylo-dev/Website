@@ -1,0 +1,92 @@
+---
+title: Request headers apps receive
+description: What the node's Traefik adds to every request it sends to an app - the visitor's address, the scheme and host they used, and their country - and which of them an app can trust.
+---
+
+Every request reaches an app through the node's Traefik (or Wings' Traefik, see [Running next to Wings](/guides/running-next-to-wings)). On the way it adds these headers. A visitor cannot set any of them: what a visitor sends under these names is deleted where the request comes in, and Traefik sets its own.
+
+| Header | Value |
+| --- | --- |
+| `X-Forwarded-For` | The addresses the request came through; the visitor's address is the last one |
+| `X-Real-Ip` | The visitor's address |
+| `X-Forwarded-Proto` | The scheme the visitor used: `http` or `https` (`ws` or `wss` for a WebSocket) |
+| `X-Forwarded-Host` | The host name the visitor asked for |
+| `X-Forwarded-Port` | The port the visitor connected to: `80` or `443` |
+| `X-Forwarded-Server` | The name of the Traefik container that took the request |
+| `X-Seylo-Country` | New in 0.2.24. The visitor's country as two upper-case letters (ISO 3166-1 alpha-2), `XX` when it is not known. See [The visitor's country](#the-visitors-country) |
+
+A request that came in on one node and is served by a copy on another (see [Load balancing and replicas](/guides/load-balancing)) carries the same values: the node that serves it keeps what the first node set from the visitor's connection, and only other nodes reach that entry point. See [The visitor's address](/guides/domains-and-https#the-visitors-address).
+
+## The visitor's country
+
+New in 0.2.24. `X-Seylo-Country` tells an app where a visitor is without a lookup of its own, for example to pick a currency or a language, or to suggest the store for the visitor's country.
+
+```http
+X-Seylo-Country: IL
+```
+
+- Two upper-case letters, ISO 3166-1 alpha-2: `DE`, `IL`, `US`.
+- `XX` when the country is not known: a private or reserved address, an address the database has no country for, or a node that has not downloaded its database yet.
+- Every request to the app has it, on every node on agent 0.2.24 or later, while it is on (see [Turning it off](#turning-it-off)).
+- A visitor cannot set it. Traefik deletes every `X-Seylo-Country` the visitor sent, and every other spelling an app could read as the same header: `X_Seylo_Country`, `X.Seylo.Country` and the like, which CGI, PHP, WSGI and nginx all turn into `HTTP_X_SEYLO_COUNTRY`.
+
+Read it like any header:
+
+```ts
+// Next.js middleware
+const country = request.headers.get("x-seylo-country") ?? "XX";
+```
+
+```php
+$country = $_SERVER['HTTP_X_SEYLO_COUNTRY'] ?? 'XX';
+```
+
+Treat `XX`, and a missing header (an app moved to a node on an older agent, or a panel where it is off), as unknown.
+
+### Where the country comes from
+
+The node looks up the visitor's address (the one in `X-Real-Ip`) in a country database it keeps in memory. A lookup takes well under a millisecond: Traefik asks a small lookup server on the same node, which answers from memory. The server runs on its own, apart from the agent, so an agent update or restart does not touch requests.
+
+The database is DB-IP's [IP to Country Lite](https://db-ip.com/db/download/ip-to-country-lite). Each node downloads it from `download.db-ip.com` over HTTPS when the header is turned on, and again each month once DB-IP publishes the new one, with no account. Until the first download finishes, apps get `XX`. A failed download keeps the database the node has.
+
+With a free [MaxMind](https://www.maxmind.com/en/geolite2/signup) account, nodes use MaxMind's GeoLite2 Country instead whenever DB-IP's file cannot be downloaded. Enter the **Account ID** and **License key** under **MaxMind GeoLite2** in **Settings → General → Visitor country**. The panel stores the key encrypted and never shows it again.
+
+Country data: [IP Geolocation by DB-IP](https://db-ip.com), CC BY 4.0. DB-IP's licence asks for this credit where the data is used: an app that shows visitors their country should credit DB-IP too.
+
+### Behind Cloudflare
+
+When Cloudflare's proxy is in front of a domain (the orange cloud), the node's Traefik is reached by Cloudflare, not by the visitor. `X-Forwarded-For` and `X-Real-Ip` then hold the address of Cloudflare's server, and Cloudflare puts the visitor's address in its own `CF-Connecting-IP` header.
+
+`X-Seylo-Country` already accounts for that: when a request comes from one of [Cloudflare's addresses](https://www.cloudflare.com/ips/), the node looks up the address in `CF-Connecting-IP`, so the header is the visitor's country, not Cloudflare's. A `CF-Connecting-IP` from anyone else is ignored.
+
+Cloudflare can also send its own country in `CF-IPCountry` (**Network → IP Geolocation** in Cloudflare, on by default). Both headers usually agree. An app that only ever runs behind Cloudflare can use either; `X-Seylo-Country` also works without Cloudflare and cannot be set by a visitor who reaches the node directly, which `CF-IPCountry` can.
+
+### Turning it off
+
+The header is on by default.
+
+- **For every app:** **Settings → General → Visitor country**, **Pass the visitor's country to apps**. Off, nodes stop the lookup server within a minute and stop refreshing the database.
+- **For one service:** the **Visitor country** card on the service's **Domains** tab, **Add the header**.
+
+Either way, a visitor's own `X-Seylo-Country` (and `X_Seylo_Country`) is still deleted, so an app never sees one that is made up.
+
+The card in Settings lists the nodes whose agent is older than 0.2.24: they add no header until they update.
+
+### Checking it on a node
+
+The node's health check **Visitor country header** (on the node's **Health** tab) says whether the lookup answers and how old its database is. On the node itself:
+
+```bash
+sudo seylo geoip status          # on or off, the database and its date, the lookup server
+sudo seylo geoip lookup 8.8.8.8  # the country of any address, from the node's database
+```
+
+The lookup runs as two systemd units, `seylo-geoip.socket` and `seylo-geoip.service`, which the agent installs and removes on its own. The socket listens on port 5758 of the `seylo-edge` network's gateway, where only Traefik reaches it. The database is `/var/lib/seylo/geoip/country.mmdb`.
+
+Before any app's requests ask the lookup, the agent checks that Traefik reaches it, from inside Traefik's own container. A host firewall must let Traefik reach port 5758 on the `seylo-edge` bridge, as it already does for the edge listener on 5756. With ufw the installer adds the rule, and on nodes installed before 0.2.24 the agent adds it itself:
+
+```bash
+sudo ufw allow in on seylo-edge to any port 5758 proto tcp comment "seylo geoip"
+```
+
+firewalld needs nothing: Docker's bridges are in its `docker` zone, which accepts. With another firewall that drops it, apps get no `X-Seylo-Country` (requests are never held up) and the **Visitor country header** check fails and says so.

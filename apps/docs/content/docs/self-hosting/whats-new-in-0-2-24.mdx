@@ -1,0 +1,25 @@
+---
+title: What's new in 0.2.24
+description: Apps get the visitor's country in the X-Seylo-Country request header, from a country database each node keeps.
+---
+
+0.2.24 updates a 0.2.23 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.24** updates the panel, then each node. There is no database step to do by hand.
+
+## New
+
+- **The visitor's country, as a request header.** Every request Traefik sends to an app now carries `X-Seylo-Country`: the visitor's country as two upper-case letters (ISO 3166-1 alpha-2), `XX` when it is not known. An app can pick a currency, a language or a store from it without a lookup of its own and without Cloudflare in front. It is on by default. See [Request headers apps receive](/guides/request-headers#the-visitors-country).
+  - Visitors cannot set it: Traefik deletes any `X-Seylo-Country` a visitor sends, and every spelling an app could read as the same header, such as `X_Seylo_Country`.
+  - Behind Cloudflare's proxy it is the visitor's country, taken from `CF-Connecting-IP` on requests from Cloudflare's addresses, not the country of Cloudflare's server.
+  - Each node keeps DB-IP's IP to Country Lite database in memory and downloads the new one every month, with no account. A MaxMind account in **Settings → General → Visitor country** is the fallback when DB-IP cannot be downloaded.
+  - The lookup runs on its own, apart from the agent, so agent updates and restarts do not touch requests.
+  - Turn it off for every app in **Settings → General → Visitor country**, or for one service with the **Visitor country** card on its **Domains** tab.
+  - The node health check **Visitor country header** says whether the lookup answers and how old its database is. On a node, `seylo geoip status` and `seylo geoip lookup <ip>` show the same.
+
+## After the update
+
+- The header needs each node's agent 0.2.24. **Settings → General → Visitor country** lists the nodes that are not there yet.
+- Each node downloads DB-IP's file (a few MB) from `download.db-ip.com` over HTTPS right after its update. Until that finishes, which takes seconds, apps get `XX`.
+- On a node with ufw active, the agent adds one rule so Traefik reaches the lookup on the `seylo-edge` bridge, like the installer's rule for the edge listener: `ufw allow in on seylo-edge to any port 5758 proto tcp`. With another firewall that drops it, the node adds no header and its health check says what to allow. See [Checking it on a node](/guides/request-headers#checking-it-on-a-node).
+- An app that reads the header should treat `XX`, and a missing header (a node not on 0.2.24 yet, or the header turned off), as unknown.
+
+Country data: [IP Geolocation by DB-IP](https://db-ip.com), CC BY 4.0.

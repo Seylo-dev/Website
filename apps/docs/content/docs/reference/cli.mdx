@@ -43,6 +43,47 @@ Flags:
       --trust-on-first-use   pin whatever certificate the panel presents on the first connection
 ```
 
+### `seylo geoip`
+
+The visitor country lookup behind the X-Seylo-Country header
+
+```text
+Usage:
+  seylo geoip [command]
+
+Available Commands:
+  lookup      Print the country of IP addresses from this node's database
+  status      Show the country header's database and lookup server on this node
+
+Flags:
+  -h, --help   help for geoip
+```
+
+#### `seylo geoip lookup`
+
+Print the country of IP addresses from this node's database
+
+```text
+Usage:
+  seylo geoip lookup <ip>... [flags]
+
+Flags:
+      --db string   country database (default: <data dir>/geoip/country.mmdb)
+  -h, --help        help for lookup
+```
+
+#### `seylo geoip status`
+
+Show the country header's database and lookup server on this node
+
+```text
+Usage:
+  seylo geoip status [flags]
+
+Flags:
+  -h, --help   help for status
+```
+
 ### `seylo health`
 
 Run the node health checks here
