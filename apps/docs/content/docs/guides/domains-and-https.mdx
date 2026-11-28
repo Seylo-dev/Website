@@ -19,7 +19,7 @@ Certificates come from Let's Encrypt over HTTP, one per hostname, so the panel n
 
 ## Custom domains
 
-Click **Add domain**, enter the hostname and the **Container port**. Left empty, it is the service's port: its first TCP port, or for an app built from a repository with none, the port its other domains use, else 80, the same `PORT` it gets (changed in 0.2.3: before, it suggested 3000). In **Edit routing**, an empty field keeps the domain's port. Changed in 0.2.12: the field takes any port, also one the app listens on without declaring it. On a service with TCP ports, the arrow at the end of the field lists them to pick from; before, the field was a list of those ports only. The row shows the record to create where the domain's DNS is managed: an `A` record (and `AAAA` when the node has IPv6) pointing at the node. When the zone is on Cloudflare, **Open Cloudflare DNS** opens Cloudflare with the record filled in; the panel never asks for a Cloudflare API token.
+Click **Add domain**, enter the hostname (or a wildcard such as `*.example.com`, see [Wildcard domains](#wildcard-domains)) and the **Container port**. Left empty, it is the service's port: its first TCP port, or for an app built from a repository with none, the port its other domains use, else 80, the same `PORT` it gets (changed in 0.2.3: before, it suggested 3000). In **Edit routing**, an empty field keeps the domain's port. Changed in 0.2.12: the field takes any port, also one the app listens on without declaring it. On a service with TCP ports, the arrow at the end of the field lists them to pick from; before, the field was a list of those ports only. The row shows the record to create where the domain's DNS is managed: an `A` record (and `AAAA` when the node has IPv6) pointing at the node. When the zone is on Cloudflare, **Open Cloudflare DNS** opens Cloudflare with the record filled in; the panel never asks for a Cloudflare API token.
 
 The panel checks the record through public resolvers and shows one of:
 
@@ -152,7 +152,39 @@ A hostname belongs to the service that routes it. Adding it, or a path under it,
 
 ### Custom certificates
 
-**Upload certificate** in a domain's menu takes a PEM certificate chain and its private key; the domain switches to it. Use it for a certificate from your own CA, or a wildcard certificate you already have. It may only name hosts of this service or hosts no other service uses.
+**Upload certificate** in a domain's menu takes a PEM certificate chain and its private key; the domain switches to it. Use it for a certificate from your own CA, or a wildcard certificate you already have (for a [wildcard domain](#wildcard-domains), one that names the wildcard itself). It may only name hosts of this service or hosts no other service uses.
+
+## Wildcard domains
+
+New in 0.2.25. A domain can be a wildcard: `*.example.com` sends every name one level under `example.com` (`shop.example.com`, `north.example.com`) to the service, with the domain's port, path, access rules and redirect to HTTPS, like any other domain. It does not take `example.com` itself, nor names two levels down such as `a.b.example.com`. Use it when an app picks what to show from the host name, for example a store per subdomain.
+
+Click **Add domain** and enter `*.example.com`. Create one DNS record named `*`:
+
+```text
+*.example.com   A   203.0.113.10
+```
+
+The panel checks it by looking up a random name under the base, such as `seylo-check-3f9a1c2b7e4d.example.com`, which only the `*` record answers, and shows the same statuses as for other domains. **Open Cloudflare DNS** works the same way.
+
+**Exact domains win.** A domain with an exact name, such as `admin.example.com`, on this service or any other, always takes its requests before the wildcard does, whatever its path. On a node next to Wings, the wildcard also comes before Wings' own redirect of unknown names to HTTPS.
+
+**HTTPS.** Let's Encrypt cannot issue wildcard certificates over its HTTP check, and the panel never asks for a DNS provider token, so a wildcard gets no Let's Encrypt certificate:
+
+| The row reads | When | What visitors get |
+| --- | --- | --- |
+| **Cloudflare's certificate** | The `*` record is proxied by Cloudflare (orange cloud) | Cloudflare's certificate, which covers `*.example.com`. The node answers Cloudflare with its default certificate, which SSL/TLS **Full** accepts. **Full (strict)** refuses it: upload a Cloudflare Origin CA certificate for `*.example.com` (below). |
+| **No certificate** | The record points straight at the node | A browser warning on HTTPS. Turn on Cloudflare's proxy for the `*` record, upload a certificate for `*.example.com`, or set **HTTPS** to **HTTP only**. The **Domains** tab counts the domain until then. |
+
+To use a certificate of your own, choose **Upload certificate** in the domain's menu. It must name `*.example.com` itself; one for `shop.example.com` only is refused. A Cloudflare Origin CA certificate (SSL/TLS → Origin Server in Cloudflare, free, valid up to 15 years) works with **Full (strict)**. **Regenerate certificate** is not offered for a wildcard.
+
+**Limits.**
+
+- A wildcard is never the primary domain: `${{service.URL}}`, `${{service.DOMAIN}}` and the IP:port redirect need one host name. Make an exact domain primary. `${{service.DOMAINS}}` lists the wildcard as written (`*.example.com`).
+- The base must be your own domain or below it, never a public suffix (`*.co.il` is refused), not a node's wildcard domain for automatic domains (add the automatic domain instead), and the wildcard may not cover the panel's own domain. The panel's own service takes none.
+- An exact name under a wildcard of another service (`north.example.com` under `*.example.com`) needs the right to edit that service's domains, since it would take that name's requests. The same goes the other way: a wildcard over names another service already has (`*.example.com` while another service has `shop.example.com`) needs the right to edit that service.
+- Each node needs agent 0.2.25. A node with an older agent leaves the wildcard out of its routes and keeps serving the service's other domains; the row reads **Update `<node>`** until it is updated.
+
+In the API and MCP, `domains.add` takes `host: "*.example.com"`, `domains.list` returns `wildcard: true` and `certificate.wildcard` (`cloudflareEdge` or `noCertificate`), `domains.checkDns` returns the name it looked up as `probe`, and refusals carry `reason` `wildcardPublicSuffix`, `wildcardNodeDomain`, `wildcardPanelDomain`, `wildcardPanelService` or `wildcardPrimary`. `noRoute.reason` is `agentTooOld` on a node to update.
 
 ## The visitor's address
 

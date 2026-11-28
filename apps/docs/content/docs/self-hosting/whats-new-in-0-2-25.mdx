@@ -1,0 +1,18 @@
+---
+title: What's new in 0.2.25
+description: Wildcard domains - one domain such as *.example.com routes every name one level under it to a service.
+---
+
+0.2.25 updates a 0.2.24 panel like any other release: **Settings → Updates** shows it with its changelog, and **Update to 0.2.25** updates the panel, then each node. There is no database step to do by hand.
+
+## New
+
+- **Wildcard domains.** A service can have a domain such as `*.example.com`: every name one level under `example.com` reaches it, with the domain's port, path, access rules and redirect to HTTPS. Exact domains, on any service, always come first. Create one DNS record named `*`. See [Wildcard domains](/guides/domains-and-https#wildcard-domains).
+  - Let's Encrypt cannot issue wildcard certificates over its HTTP check. Behind Cloudflare's proxy that does not matter: visitors get Cloudflare's certificate, and SSL/TLS **Full** accepts the node's default one. For **Full (strict)**, or DNS straight to the node, upload a certificate that names the wildcard, such as a free Cloudflare Origin CA certificate.
+  - The DNS check looks up a random name under the base, so only the `*` record answers it.
+  - A wildcard is never the primary domain, and the panel refuses one over a public suffix (`*.co.il`), over a node's wildcard domain for automatic domains, or over the panel's own domain.
+  - In the API and MCP, `domains.add` takes `host: "*.example.com"`.
+
+## After the update
+
+- Wildcard domains need each node's agent 0.2.25. Until a node is updated it leaves the wildcard out of its routes, keeps serving the service's other domains, and the row reads **Update `<node>`**.
